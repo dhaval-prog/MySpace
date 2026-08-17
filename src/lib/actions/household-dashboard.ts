@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getHouseholdContext, listHouseholdMembersLite } from "@/lib/actions/household";
+import { getHouseholdContext } from "@/lib/actions/household";
 import { listGoals, type HouseholdGoalSummary } from "@/lib/actions/household-goals";
 import { describeActivity } from "@/lib/household-activity-messages";
 
@@ -77,42 +77,3 @@ export async function getHouseholdSummary(householdId: string): Promise<Househol
   return { totalSharedSavings, goals, memberContributions, activity };
 }
 
-export interface DashboardHouseholdSummary {
-  totalSharedSavings: number;
-  activeGoals: HouseholdGoalSummary[];
-  activity: HouseholdActivityEntry[];
-}
-
-/**
- * Lightweight counterpart to getHouseholdSummary() for the main dashboard,
- * which only ever renders the savings total, up to 3 active goals, and a
- * handful of activity rows — never memberContributions or the full goal
- * list. Avoids: the 4-query getHouseholdContext (savings/goals/activity
- * don't need the household row or shared-vault id), downloading every
- * household_vault_transaction to sum contributions in JS (the savings total
- * comes from the get_household_shared_savings() RPC instead), and fetching
- * every goal just to filter status==='active' afterward (listGoals() takes
- * the status filter as a query param).
- */
-export async function getDashboardHouseholdSummary(householdId: string): Promise<DashboardHouseholdSummary> {
-  const supabase = await createClient();
-
-  const [savingsRes, activeGoals, members, activityRes] = await Promise.all([
-    supabase.rpc("get_household_shared_savings", { p_household_id: householdId }),
-    listGoals(householdId, { status: "active" }),
-    listHouseholdMembersLite(householdId),
-    supabase.from("household_activity").select("*").eq("household_id", householdId).order("created_at", { ascending: false }).limit(6),
-  ]);
-
-  const nameByActor = new Map(members.map((m) => [m.userId, m.name]));
-  const activity: HouseholdActivityEntry[] = (activityRes.data ?? []).map((a) => {
-    const actorName = nameByActor.get(a.actor_user_id) ?? "Someone";
-    return { id: a.id, kind: a.kind, actorName, message: describeActivity(a.kind, actorName, a.payload), createdAt: a.created_at };
-  });
-
-  return {
-    totalSharedSavings: savingsRes.data ?? 0,
-    activeGoals: activeGoals.slice(0, 3),
-    activity,
-  };
-}

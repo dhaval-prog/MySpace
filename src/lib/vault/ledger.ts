@@ -11,23 +11,6 @@ export interface VaultSummary {
 }
 
 /**
- * Balance-only reader for surfaces that just need the number — e.g. the
- * dashboard's "Vault Balance" stat card. Uses the get_vault_balance() RPC
- * (a SUM computed in Postgres) instead of downloading every transaction row
- * and summing them in JS, which is what getVaultSummary() below does for
- * the full ledger view. Same SECURITY INVOKER/RLS guarantees — the RPC only
- * ever sums auth.uid()'s own rows.
- */
-export async function getVaultBalance(supabase: SupabaseClient<Database>): Promise<number> {
-  const { data, error } = await supabase.rpc("get_vault_balance");
-  if (error) {
-    console.error("vault: get_vault_balance RPC failed —", error.message, error.code ? `(${error.code})` : "");
-    return 0;
-  }
-  return data ?? 0;
-}
-
-/**
  * The balance is always derived from the ledger, never cached, so the UI
  * can never drift from what's actually in transaction history.
  */

@@ -79,7 +79,6 @@ export async function createHousehold(name: string): Promise<{ householdId: stri
   const { household, error } = await insertHouseholdWithUniqueCode(supabase, user.id, trimmed);
   if (error || !household) return { error: error ?? "Failed to create household" };
 
-  revalidatePath("/dashboard");
   revalidatePath("/goals");
   revalidatePath("/split");
   return { householdId: household.id };
@@ -206,7 +205,6 @@ export async function joinHousehold(token: string): Promise<{ householdId: strin
   const { data, error } = await supabase.rpc("redeem_household_invite", { p_token: token.trim() });
   if (error || !data?.ok) return { error: error?.message ?? "That invite code is invalid or has expired." };
 
-  revalidatePath("/dashboard");
   revalidatePath("/goals");
   revalidatePath("/split");
   return { householdId: data.household_id };

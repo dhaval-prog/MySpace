@@ -12,7 +12,7 @@ import { signIn, type AuthState } from "@/lib/actions/auth";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") ?? "/dashboard";
+  const redirectTo = searchParams.get("redirectTo") ?? "/home";
   const [state, formAction, pending] = useActionState<AuthState, FormData>(signIn, {});
 
   return (

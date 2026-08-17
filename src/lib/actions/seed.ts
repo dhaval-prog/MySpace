@@ -208,6 +208,6 @@ export async function seedDemoData() {
     }))
   );
 
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
+  revalidatePath("/home");
+  redirect("/home");
 }

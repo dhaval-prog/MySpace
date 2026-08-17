@@ -8,7 +8,7 @@ export default function NotFound() {
       <p className="max-w-sm text-sm text-muted-foreground">
         This page, room, or item doesn&apos;t exist — or may have been moved.
       </p>
-      <Button render={<Link href="/dashboard">Back to dashboard</Link>} />
+      <Button render={<Link href="/home">Back home</Link>} />
     </div>
   );
 }

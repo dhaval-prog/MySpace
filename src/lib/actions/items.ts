@@ -123,7 +123,7 @@ export async function createItem(
 
   revalidatePath(`/home/rooms/${roomId}/furniture/${furnitureId}`);
   revalidatePath("/items");
-  revalidatePath("/dashboard");
+  revalidatePath("/home");
   redirect(`/home/rooms/${roomId}/furniture/${furnitureId}`);
 }
 
@@ -148,7 +148,7 @@ export async function createItemFromVoice(
 
   revalidatePath(`/home/rooms/${input.roomId}/furniture/${input.furnitureId}`);
   revalidatePath("/items");
-  revalidatePath("/dashboard");
+  revalidatePath("/home");
   return { itemId: result.id };
 }
 
@@ -223,7 +223,7 @@ export async function deleteItem(itemId: string) {
   const supabase = await createClient();
   await supabase.from("items").delete().eq("id", itemId);
   revalidatePath("/items");
-  revalidatePath("/dashboard");
+  revalidatePath("/home");
   redirect("/items");
 }
 

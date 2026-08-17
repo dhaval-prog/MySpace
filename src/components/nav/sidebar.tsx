@@ -2,16 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Home,
-  ShieldCheck,
-  Target,
-  Receipt,
-  Crown,
-  User,
-  type LucideIcon,
-} from "lucide-react";
+import { Home, ShieldCheck, Target, Receipt, Crown, User, type LucideIcon } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/nav/nav-items";
 import { QuickAddMenu } from "@/components/nav/quick-add-menu";
@@ -19,7 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { HouseholdRole } from "@/lib/supabase/types";
 
 const ICONS: Record<string, LucideIcon> = {
-  LayoutDashboard,
   Home,
   ShieldCheck,
   Target,

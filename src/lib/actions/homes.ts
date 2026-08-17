@@ -35,22 +35,21 @@ export async function createHome(name: string, homeType: HomeType) {
     );
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/home");
   redirect(`/home?id=${home.id}`);
 }
 
 export async function renameHome(homeId: string, name: string) {
   const supabase = await createClient();
   await supabase.from("homes").update({ name }).eq("id", homeId);
-  revalidatePath("/dashboard");
   revalidatePath("/home");
 }
 
 export async function deleteHome(homeId: string) {
   const supabase = await createClient();
   await supabase.from("homes").delete().eq("id", homeId);
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
+  revalidatePath("/home");
+  redirect("/home");
 }
 
 export async function addRoom(homeId: string, name: string, type: string, icon: string) {
@@ -75,7 +74,6 @@ export async function addRoom(homeId: string, name: string, type: string, icon: 
   });
 
   revalidatePath("/home");
-  revalidatePath("/dashboard");
 }
 
 export async function renameRoom(roomId: string, name: string) {

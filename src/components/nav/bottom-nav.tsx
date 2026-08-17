@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Home, ShieldCheck, Target, Receipt } from "lucide-react";
+import { Home, ShieldCheck, Target, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/home", label: "Items", icon: Home },
+  { href: "/home", label: "Home", icon: Home },
   { href: "/vault", label: "Vault", icon: ShieldCheck },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/split", label: "Split", icon: Receipt },

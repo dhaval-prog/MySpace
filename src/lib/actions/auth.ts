@@ -11,7 +11,7 @@ export interface AuthState {
 export async function signIn(_prevState: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const redirectTo = String(formData.get("redirectTo") ?? "/dashboard");
+  const redirectTo = String(formData.get("redirectTo") ?? "/home");
 
   if (!email || !password) {
     return { error: "Please enter your email and password." };
@@ -24,7 +24,7 @@ export async function signIn(_prevState: AuthState, formData: FormData): Promise
     return { error: error.message };
   }
 
-  redirect(redirectTo || "/dashboard");
+  redirect(redirectTo || "/home");
 }
 
 export async function signUp(_prevState: AuthState, formData: FormData): Promise<AuthState> {
@@ -60,7 +60,7 @@ export async function signUp(_prevState: AuthState, formData: FormData): Promise
     };
   }
 
-  redirect("/dashboard");
+  redirect("/home");
 }
 
 export async function signOut() {
@@ -112,5 +112,5 @@ export async function updatePassword(
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  redirect("/home");
 }
