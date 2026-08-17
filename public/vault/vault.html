@@ -19,15 +19,15 @@
 </script>
 <style>
   :root{
-    --bg:#F5F1EA;
-    --ink:#1C1917;
-    --ink-dim:#7C7569;
-    --ink-faint:#A39C8F;
-    --line:rgba(28,25,23,.09);
-    --line-strong:rgba(28,25,23,.18);
-    --glass:rgba(253,250,245,.78);
-    --brass:#2C4A3E;
-    --pos:#5B7FA6;
+    --bg:#FBF3F2;
+    --ink:#4759A6;
+    --ink-dim:#6B85D0;
+    --ink-faint:rgba(71,89,166,.55);
+    --line:rgba(71,89,166,.12);
+    --line-strong:rgba(71,89,166,.22);
+    --glass:rgba(251,243,242,.78);
+    --brass:#6B85D0;
+    --pos:#6B85D0;
     --neg:#C0392B;
   }
   *{box-sizing:border-box}
@@ -52,7 +52,7 @@
   header{display:flex;align-items:center;justify-content:space-between;padding:22px 26px 10px;gap:16px}
   .brand{display:flex;align-items:center;gap:10px}
   .mark{width:22px;height:22px;border:1px solid var(--line-strong);border-radius:5px;
-    display:grid;place-items:center;background:linear-gradient(150deg,rgba(33,26,30,.10),transparent)}
+    display:grid;place-items:center;background:linear-gradient(150deg,rgba(71,89,166,.10),transparent)}
   .mark i{display:block;width:6px;height:6px;border-radius:50%;background:var(--brass)}
   .brand b{font-weight:500;font-size:13px;letter-spacing:.22em}
   .chip{display:flex;align-items:center;gap:9px;padding:8px 13px;border:1px solid var(--line);
@@ -65,7 +65,7 @@
   /* panels */
   .card{background:var(--glass);backdrop-filter:blur(18px) saturate(1.1);
     border:1px solid var(--line);border-radius:16px;
-    box-shadow:0 24px 60px -28px rgba(0,0,0,.85),inset 0 1px 0 rgba(33,26,30,.06)}
+    box-shadow:0 24px 60px -28px rgba(0,0,0,.85),inset 0 1px 0 rgba(71,89,166,.06)}
   main{flex:1;display:flex;align-items:stretch;justify-content:space-between;padding:0 26px;gap:24px;min-height:0}
   .side{width:288px;height:100%;position:relative}
   .side.right{align-items:flex-end}
@@ -86,13 +86,13 @@
   #lockCard.show{opacity:1;pointer-events:auto;transform:translateY(-50%)}
   #pinDots{display:flex;gap:9px;margin:14px 0 4px}
   #pinDots i{width:10px;height:10px;border-radius:50%;border:1px solid var(--line-strong);transition:.2s}
-  #pinDots i.on{background:var(--brass);border-color:var(--brass);box-shadow:0 0 14px rgba(44,74,62,.5)}
+  #pinDots i.on{background:var(--brass);border-color:var(--brass);box-shadow:0 0 14px rgba(107,133,208,.5)}
   #pinDots.err i{border-color:var(--neg)}
   #keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-  #keys button{aspect-ratio:1/1;min-height:44px;border:1px solid var(--line);background:rgba(33,26,30,.03);
+  #keys button{aspect-ratio:1/1;min-height:44px;border:1px solid var(--line);background:rgba(71,89,166,.03);
     color:var(--ink);border-radius:11px;font-family:'DM Mono',monospace;font-size:16px;cursor:pointer;
     transition:.15s;display:grid;place-items:center}
-  #keys button:hover{background:rgba(33,26,30,.09);border-color:var(--line-strong)}
+  #keys button:hover{background:rgba(71,89,166,.09);border-color:var(--line-strong)}
   #keys button:active{transform:scale(.96)}
   #keys button.wide{font-family:'Inter';font-size:10px;letter-spacing:.14em;text-transform:uppercase}
   #hint{font-size:10.5px;color:var(--ink-faint);margin-top:14px;letter-spacing:.04em}
@@ -106,7 +106,7 @@
   .btn{display:flex;align-items:center;gap:8px;padding:12px 16px;min-height:44px;border-radius:11px;
     border:1px solid transparent;background:transparent;color:var(--ink-dim);font-family:'Inter';font-weight:400;
     font-size:12px;letter-spacing:.02em;cursor:pointer;transition:.18s;white-space:nowrap}
-  .btn:hover{background:rgba(33,26,30,.06);color:var(--ink);border-color:var(--line)}
+  .btn:hover{background:rgba(71,89,166,.06);color:var(--ink);border-color:var(--line)}
   .btn:disabled{opacity:.35;cursor:default}
   .btn.primary{background:var(--brass);color:#fff;font-weight:500}
   .btn.primary:hover{filter:brightness(1.08);background:var(--brass);color:#fff}
@@ -126,9 +126,9 @@
   .field{margin-bottom:14px}
   .field label{display:block;margin-bottom:7px}
   .field input[type=text],.field input[type=number],.field select{width:100%;padding:13px 14px;border-radius:11px;
-    border:1px solid var(--line-strong);background:rgba(33,26,30,.04);color:var(--ink);
+    border:1px solid var(--line-strong);background:rgba(71,89,166,.04);color:var(--ink);
     font-family:'DM Mono',monospace;font-size:15px;outline:none;transition:.18s}
-  .field input:focus,.field select:focus{border-color:var(--brass);background:rgba(33,26,30,.07)}
+  .field input:focus,.field select:focus{border-color:var(--brass);background:rgba(71,89,166,.07)}
   .field input::placeholder{color:var(--ink-faint);font-size:13px}
   .field.text input{font-family:'Inter';font-size:13px;font-weight:300}
   .presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
@@ -148,20 +148,20 @@
     border-radius:12px;margin-bottom:14px}
   .switch b{font-weight:400;font-size:13px;display:block}
   .switch small{color:var(--ink-dim);font-size:11px}
-  .tog{width:44px;height:26px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(33,26,30,.05);
+  .tog{width:44px;height:26px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(71,89,166,.05);
     position:relative;cursor:pointer;flex:0 0 auto;transition:.22s}
   .tog:after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
     background:var(--ink-dim);transition:.22s}
-  .tog.on{background:rgba(44,74,62,.16);border-color:var(--brass)}
+  .tog.on{background:rgba(107,133,208,.16);border-color:var(--brass)}
   .tog.on:after{left:21px;background:var(--brass)}
-  .info{padding:13px 14px;border-radius:11px;background:rgba(44,74,62,.08);border:1px solid rgba(44,74,62,.22);
-    font-size:12px;color:#1f3a30;line-height:1.55;margin-bottom:14px}
+  .info{padding:13px 14px;border-radius:11px;background:rgba(107,133,208,.08);border:1px solid rgba(107,133,208,.22);
+    font-size:12px;color:var(--ink);line-height:1.55;margin-bottom:14px}
 
   /* history */
   .filters{display:flex;gap:7px;margin-bottom:6px}
   .filters button{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--line);background:transparent;
     color:var(--ink-faint);font-family:'Inter';font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.15s}
-  .filters button.on{color:var(--ink);border-color:var(--line-strong);background:rgba(33,26,30,.06)}
+  .filters button.on{color:var(--ink);border-color:var(--line-strong);background:rgba(71,89,166,.06)}
   #txList{display:flex;flex-direction:column}
   .tx{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:14px 2px;border-bottom:1px solid var(--line)}
   .tx:last-child{border-bottom:0}
@@ -183,7 +183,7 @@
   #moneyPanel .kv span:last-child{font-family:'DM Mono',monospace}
   .x{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);
     background:transparent;color:var(--ink-dim);cursor:pointer;font-size:14px;line-height:1}
-  .x:hover{color:var(--ink);background:rgba(33,26,30,.06)}
+  .x:hover{color:var(--ink);background:rgba(71,89,166,.06)}
 
   /* machine control panel: overlays the same slot as Vault Access / balance,
      independently centered so it never inflates .side's shared height */
@@ -195,17 +195,17 @@
   #machPanel .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
   #machPanel .head b{font-weight:400;font-size:12px;letter-spacing:.16em;text-transform:uppercase}
   #machAmt{font-family:'DM Mono',monospace;font-size:34px;letter-spacing:-.01em;
-    padding:14px 16px;border:1px solid var(--line-strong);border-radius:12px;background:rgba(33,26,30,.04);
+    padding:14px 16px;border:1px solid var(--line-strong);border-radius:12px;background:rgba(71,89,166,.04);
     text-align:right;line-height:1.1;color:var(--ink)}
   #machAmt.dim{color:var(--ink-faint)}
   #machNote{font-size:11px;color:var(--ink-dim);margin:9px 0 14px;letter-spacing:.03em;min-height:15px}
   #machKeys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
-  #machKeys button{min-height:42px;border:1px solid var(--line);background:rgba(33,26,30,.03);color:var(--ink);
+  #machKeys button{min-height:42px;border:1px solid var(--line);background:rgba(71,89,166,.03);color:var(--ink);
     border-radius:10px;font-family:'DM Mono',monospace;font-size:15px;cursor:pointer;transition:.14s}
-  #machKeys button:hover{background:rgba(33,26,30,.09);border-color:var(--line-strong)}
+  #machKeys button:hover{background:rgba(71,89,166,.09);border-color:var(--line-strong)}
   #machKeys button:active{transform:scale(.96)}
   #machKeys button.fn{font-family:'Inter';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
-  #machProg{height:2px;border-radius:2px;background:rgba(33,26,30,.09);overflow:hidden;margin:16px 0 14px}
+  #machProg{height:2px;border-radius:2px;background:rgba(71,89,166,.09);overflow:hidden;margin:16px 0 14px}
   #machProg i{display:block;height:100%;width:0;background:var(--brass);transition:width .12s linear}
   .machStage{display:none}
   .machStage.on{display:block}
