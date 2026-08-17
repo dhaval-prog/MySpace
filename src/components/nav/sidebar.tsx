@@ -56,9 +56,7 @@ export function Sidebar({ homeName, members = [] }: { homeName?: string; members
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 shrink-0 flex-col gap-5 border-r border-border bg-card px-4 py-5 shadow-sm md:flex">
       <div className="flex items-center gap-2.5 px-2">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary font-heading text-lg text-primary-foreground">
-          S
-        </span>
+        <img src="/logo-icon.svg" alt="" className="size-9 shrink-0" />
         <div className="min-w-0">
           <p className="truncate text-base font-semibold tracking-tight">My Space</p>
           <p className="truncate text-[11px] text-muted-foreground">Everything in one place</p>
