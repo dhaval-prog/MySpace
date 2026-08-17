@@ -71,7 +71,7 @@ export function Sidebar({ homeName }: { homeName?: string }) {
           <span className="flex size-[30px] items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Home className="size-3.5" />
           </span>
-          Home Inventory
+          My Space
         </div>
 
         <QuickAddMenu className="w-full justify-start rounded-full px-4" />

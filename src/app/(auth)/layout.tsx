@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Home className="size-5" />
         </span>
-        Home Inventory
+        My Space
       </Link>
       <div className="w-full max-w-sm">{children}</div>
     </div>
