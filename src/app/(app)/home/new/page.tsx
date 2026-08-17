@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const TYPES: HomeType[] = ["1bhk", "2bhk", "3bhk", "custom"];
 
 export default function NewHomePage() {
-  const [name, setName] = useState("My Apartment");
+  const [name, setName] = useState("My Home");
   const [selected, setSelected] = useState<HomeType>("2bhk");
   const [pending, startTransition] = useTransition();
 
@@ -33,7 +33,7 @@ export default function NewHomePage() {
           id="home-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="My Apartment"
+          placeholder="My Home"
           className="max-w-sm"
         />
       </div>

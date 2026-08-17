@@ -99,7 +99,7 @@ export function Sidebar({ homeName, members = [] }: { homeName?: string; members
               )}
             >
               <Icon className="size-4" />
-              {item.label === "My Apartment" && homeName ? homeName : item.label}
+              {item.label === "My Home" && homeName ? homeName : item.label}
             </Link>
           );
         })}

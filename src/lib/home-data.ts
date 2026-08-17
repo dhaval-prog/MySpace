@@ -1,22 +1,26 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Furniture, Home, Room, StorageLocation } from "@/lib/supabase/types";
+import type { Database, Home, Item } from "@/lib/supabase/types";
 
-export interface RoomWithFurniture {
-  room: Room;
-  furniture: (Furniture & { itemCount: number })[];
+export interface RoomFilter {
+  id: string;
+  name: string;
   itemCount: number;
 }
 
-export interface HomeViewData {
+export interface HomeItemsView {
   home: Home;
-  rooms: RoomWithFurniture[];
-  totals: { items: number; noPhoto: number };
+  rooms: RoomFilter[];
+  items: (Item & { roomId: string; roomName: string })[];
+  totals: { items: number; rooms: number };
 }
 
-export async function getHomeViewData(
+/** Flat item-browsing view for the My Home page — every item across the
+ * home's rooms, each tagged with its room for the tab filter, independent
+ * of the room/furniture grid used on the room detail pages. */
+export async function getHomeItemsView(
   supabase: SupabaseClient<Database>,
   homeId: string
-): Promise<HomeViewData | null> {
+): Promise<HomeItemsView | null> {
   const { data: home } = await supabase.from("homes").select("*").eq("id", homeId).maybeSingle();
   if (!home) return null;
 
@@ -28,45 +32,50 @@ export async function getHomeViewData(
 
   const roomIds = (rooms ?? []).map((r) => r.id);
   const { data: furniture } = roomIds.length
-    ? await supabase.from("furniture").select("*").in("room_id", roomIds).order("sort_order", { ascending: true })
-    : { data: [] as Furniture[] };
+    ? await supabase.from("furniture").select("id, room_id").in("room_id", roomIds)
+    : { data: [] as { id: string; room_id: string }[] };
 
   const furnitureIds = (furniture ?? []).map((f) => f.id);
   const { data: storageLocations } = furnitureIds.length
-    ? await supabase.from("storage_locations").select("*").in("furniture_id", furnitureIds)
-    : { data: [] as StorageLocation[] };
+    ? await supabase.from("storage_locations").select("id, furniture_id").in("furniture_id", furnitureIds)
+    : { data: [] as { id: string; furniture_id: string }[] };
 
   const storageIds = (storageLocations ?? []).map((s) => s.id);
-  const { data: items } = storageIds.length
+  const { data: rawItems } = storageIds.length
     ? await supabase
         .from("items")
-        .select("id, storage_location_id, photo_url")
+        .select("*")
         .in("storage_location_id", storageIds)
-    : { data: [] as { id: string; storage_location_id: string; photo_url: string | null }[] };
+        .order("created_at", { ascending: false })
+    : { data: [] as Item[] };
 
   const storageToFurniture = new Map((storageLocations ?? []).map((s) => [s.id, s.furniture_id]));
-  const itemCountByFurniture = new Map<string, number>();
-  for (const item of items ?? []) {
-    const furnitureId = storageToFurniture.get(item.storage_location_id);
-    if (!furnitureId) continue;
-    itemCountByFurniture.set(furnitureId, (itemCountByFurniture.get(furnitureId) ?? 0) + 1);
-  }
+  const furnitureToRoom = new Map((furniture ?? []).map((f) => [f.id, f.room_id]));
+  const roomNameById = new Map((rooms ?? []).map((r) => [r.id, r.name]));
 
-  const roomsWithFurniture: RoomWithFurniture[] = (rooms ?? []).map((room) => {
-    const roomFurniture = (furniture ?? [])
-      .filter((f) => f.room_id === room.id)
-      .map((f) => ({ ...f, itemCount: itemCountByFurniture.get(f.id) ?? 0 }));
-    return {
-      room,
-      furniture: roomFurniture,
-      itemCount: roomFurniture.reduce((sum, f) => sum + f.itemCount, 0),
-    };
+  const items = (rawItems ?? []).flatMap((item) => {
+    const furnitureId = storageToFurniture.get(item.storage_location_id);
+    const roomId = furnitureId ? furnitureToRoom.get(furnitureId) : undefined;
+    const roomName = roomId ? roomNameById.get(roomId) : undefined;
+    if (!roomId || !roomName) return [];
+    return [{ ...item, roomId, roomName }];
   });
 
-  const totals = {
-    items: (items ?? []).length,
-    noPhoto: (items ?? []).filter((i) => !i.photo_url).length,
-  };
+  const itemCountByRoom = new Map<string, number>();
+  for (const item of items) {
+    itemCountByRoom.set(item.roomId, (itemCountByRoom.get(item.roomId) ?? 0) + 1);
+  }
 
-  return { home, rooms: roomsWithFurniture, totals };
+  const roomFilters: RoomFilter[] = (rooms ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    itemCount: itemCountByRoom.get(r.id) ?? 0,
+  }));
+
+  return {
+    home,
+    rooms: roomFilters,
+    items,
+    totals: { items: items.length, rooms: roomFilters.length },
+  };
 }

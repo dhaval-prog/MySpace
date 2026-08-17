@@ -17,7 +17,7 @@ export async function seedDemoData() {
 
   const { data: home, error: homeError } = await supabase
     .from("homes")
-    .insert({ user_id: user.id, name: "My Apartment", home_type: "2bhk" })
+    .insert({ user_id: user.id, name: "My Home", home_type: "2bhk" })
     .select()
     .single();
   if (homeError || !home) throw new Error(homeError?.message ?? "Failed to create demo home");
