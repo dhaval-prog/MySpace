@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ItemDetailSheet } from "@/components/items/item-detail-sheet";
 import { categoryLabel, categoryBadgeClass } from "@/lib/constants";
 import { deleteItem } from "@/lib/actions/items";
 import type { Item } from "@/lib/supabase/types";
@@ -21,6 +22,7 @@ function formatAddedDate(iso: string): string {
 
 export function ItemGridCard({ item }: { item: Item }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   return (
@@ -50,7 +52,7 @@ export function ItemGridCard({ item }: { item: Item }) {
         </DropdownMenu>
       </div>
 
-      <Link href={`/items/${item.id}`} className="mt-3 block">
+      <button type="button" onClick={() => setDetailOpen(true)} className="mt-3 block w-full text-left">
         <p className="truncate font-semibold">{item.name}</p>
         <p className="truncate text-sm text-muted-foreground">{item.container || "—"}</p>
         <div className="mt-3 border-t pt-3">
@@ -59,7 +61,9 @@ export function ItemGridCard({ item }: { item: Item }) {
             Added {formatAddedDate(item.created_at)}
           </p>
         </div>
-      </Link>
+      </button>
+
+      <ItemDetailSheet itemId={item.id} open={detailOpen} onOpenChange={setDetailOpen} />
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>

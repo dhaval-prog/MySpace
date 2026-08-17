@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { buildLocationIndex, pathForStorageLocation, type LocationNode } from "@/lib/location";
 import type { Item } from "@/lib/supabase/types";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -188,6 +189,34 @@ export async function updateItem(
   revalidatePath(`/items/${itemId}`);
   revalidatePath(`/home/rooms/${roomId}/furniture/${furnitureId}`);
   redirect(`/items/${itemId}`);
+}
+
+export interface ItemDetail {
+  item: Item;
+  path: LocationNode[];
+  homeId: string;
+  roomId: string;
+  furnitureId: string;
+}
+
+/** Powers the item-detail popup (ItemDetailSheet) — same data the full
+ * /items/[itemId] page fetches, just callable on demand from a card click
+ * instead of requiring a navigation. */
+export async function getItemDetail(itemId: string): Promise<ItemDetail | null> {
+  const supabase = await createClient();
+  const { data: item } = await supabase.from("items").select("*").eq("id", itemId).maybeSingle();
+  if (!item) return null;
+
+  const index = await buildLocationIndex(supabase);
+  const path = pathForStorageLocation(index, item.storage_location_id);
+  if (!path) return null;
+
+  const home = path.find((n) => n.type === "home");
+  const room = path.find((n) => n.type === "room");
+  const furniture = path.find((n) => n.type === "furniture");
+  if (!home || !room || !furniture) return null;
+
+  return { item, path, homeId: home.id, roomId: room.id, furnitureId: furniture.id };
 }
 
 export async function deleteItem(itemId: string) {
