@@ -51,7 +51,6 @@
 :root {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-dm-serif), Georgia, serif;
-  --font-dm-mono: var(--font-dm-mono), ui-monospace, monospace;
   --radiant-gradient: linear-gradient(135deg, #f2b9c7 0%, #a8ddee 40%, #ef7ea6 70%, #f7e2dc 100%);
   --background: #F2EDEE;
   --foreground: #211A1E;

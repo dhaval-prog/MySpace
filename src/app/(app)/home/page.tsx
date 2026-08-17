@@ -28,9 +28,10 @@ export default async function HomePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
   const [{ data: homes }, { data: profile }] = await Promise.all([
     supabase.from("homes").select("id, name").order("created_at", { ascending: true }),
-    supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle(),
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
   ]);
 
   if (!homes || homes.length === 0) {
