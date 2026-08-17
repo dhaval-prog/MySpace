@@ -217,7 +217,7 @@ export default async function DashboardPage() {
       </div>
 
       {activeGoals.length > 0 && (
-        <div>
+        <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-[17px] font-semibold tracking-tight">Goals</h3>
             <Link href="/goals" className="inline-flex items-center gap-1 text-xs font-medium text-primary">
@@ -226,7 +226,7 @@ export default async function DashboardPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activeGoals.map((g) => (
-              <Card key={g.goal.id} className="bg-muted/40 p-5">
+              <div key={g.goal.id} className="rounded-2xl bg-muted/40 p-5">
                 <div className="flex items-center gap-3">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-lg">{g.goal.icon}</span>
                   <p className="min-w-0 truncate font-semibold">{g.goal.name}</p>
@@ -240,25 +240,17 @@ export default async function DashboardPage() {
                     {g.progressPct}% · {inr(g.goal.target_amount)}
                   </span>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {data.totals.rooms} room{data.totals.rooms === 1 ? "" : "s"}, {data.totals.items} item{data.totals.items === 1 ? "" : "s"} catalogued.
-            {data.totals.noPhoto > 0 &&
-              ` ${data.totals.noPhoto} thing${data.totals.noPhoto === 1 ? "" : "s"} need${data.totals.noPhoto === 1 ? "s" : ""} a photo.`}
-          </p>
-        </div>
-        <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-1.5 text-xs text-muted-foreground md:inline-flex">
-          <span className="size-1.5 rounded-full bg-foreground" />
-          Synced just now
-        </span>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        {data.totals.rooms} room{data.totals.rooms === 1 ? "" : "s"}, {data.totals.items} item{data.totals.items === 1 ? "" : "s"} catalogued.
+        {data.totals.noPhoto > 0 &&
+          ` ${data.totals.noPhoto} thing${data.totals.noPhoto === 1 ? "" : "s"} need${data.totals.noPhoto === 1 ? "s" : ""} a photo.`}
+      </p>
     </div>
   );
 }
