@@ -20,7 +20,15 @@ import { Label } from "@/components/ui/label";
 import { createHousehold, joinHousehold } from "@/lib/actions/household";
 import type { HouseholdListEntry } from "@/lib/actions/household";
 
-export function HouseholdSwitcher({ households, currentId }: { households: HouseholdListEntry[]; currentId: string }) {
+export function HouseholdSwitcher({
+  households,
+  currentId,
+  basePath = "/goals",
+}: {
+  households: HouseholdListEntry[];
+  currentId: string;
+  basePath?: string;
+}) {
   const router = useRouter();
   const current = households.find((h) => h.household.id === currentId);
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,7 +55,7 @@ export function HouseholdSwitcher({ households, currentId }: { households: House
                 key={h.household.id}
                 className={h.household.id === currentId ? "bg-accent" : undefined}
                 render={
-                  <Link href={`/household?id=${h.household.id}`}>
+                  <Link href={`${basePath}?id=${h.household.id}`}>
                     🏠 {h.household.name}
                     <span className="ml-auto text-xs text-muted-foreground capitalize">{h.role}</span>
                   </Link>
@@ -67,8 +75,8 @@ export function HouseholdSwitcher({ households, currentId }: { households: House
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CreateHouseholdDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => router.push(`/household?id=${id}`)} />
-      <JoinHouseholdDialog open={joinOpen} onOpenChange={setJoinOpen} onJoined={(id) => router.push(`/household?id=${id}`)} />
+      <CreateHouseholdDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => router.push(`${basePath}?id=${id}`)} />
+      <JoinHouseholdDialog open={joinOpen} onOpenChange={setJoinOpen} onJoined={(id) => router.push(`${basePath}?id=${id}`)} />
     </>
   );
 }

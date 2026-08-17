@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { joinHousehold } from "@/lib/actions/household";
 
-export function JoinHouseholdCta() {
+export function JoinHouseholdCta({ redirectTo = "/goals" }: { redirectTo?: string } = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState("");
@@ -55,7 +55,7 @@ export function JoinHouseholdCta() {
                   return;
                 }
                 setOpen(false);
-                router.push(`/household?id=${result.householdId}`);
+                router.push(`${redirectTo}?id=${result.householdId}`);
               })
             }
           >

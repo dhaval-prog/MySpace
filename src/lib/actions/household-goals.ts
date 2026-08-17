@@ -83,7 +83,7 @@ export async function createGoal(
   });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to create goal" };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { goalId: data.goal_id };
 }
 
@@ -98,7 +98,7 @@ export async function deleteGoal(goalId: string): Promise<{ ok: true } | { error
   const { data, error } = await supabase.rpc("delete_household_goal", { p_goal_id: goalId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to delete goal" };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   revalidatePath("/vault");
   return { ok: true };
 }
@@ -204,7 +204,7 @@ export async function contributeToGoal(
     }
   }
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   revalidatePath("/vault");
   return { ok: true };
 }

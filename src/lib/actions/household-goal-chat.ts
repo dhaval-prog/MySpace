@@ -38,7 +38,7 @@ export async function sendGoalMessage(goalId: string, text: string): Promise<{ o
     .insert({ goal_id: goalId, household_id: goal.household_id, user_id: user.id, message: trimmed, kind: "user" });
   if (error) return { error: error.message };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }
 
@@ -86,7 +86,7 @@ export async function editGoalMessage(messageId: string, newText: string): Promi
   if (error) return { error: error.message };
   if (!data) return { error: "This message can no longer be edited." };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }
 
@@ -96,6 +96,6 @@ export async function deleteGoalMessage(messageId: string): Promise<{ ok: true }
   if (error) return { error: error.message };
   if (!data) return { error: "This message can no longer be deleted." };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }

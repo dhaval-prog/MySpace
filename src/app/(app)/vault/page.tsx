@@ -23,7 +23,7 @@ export default async function VaultPage() {
           /household; this is just a visible entry point from the vault. */}
       {primary && summary && (
         <Link
-          href={`/household?id=${primary.household.id}`}
+          href={`/goals?id=${primary.household.id}`}
           className="absolute top-4 left-4 flex items-center gap-2 rounded-full border border-white/15 bg-black/40 px-4 py-2 text-sm text-white backdrop-blur-md transition hover:bg-black/55"
         >
           🏠 {primary.household.name}

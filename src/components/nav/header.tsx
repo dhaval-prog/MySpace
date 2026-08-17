@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Home } from "lucide-react";
+import { Home, Plus } from "lucide-react";
 import { HeaderSearch } from "@/components/search/header-search";
 import { UserMenu } from "@/components/nav/user-menu";
+import { QuickAddMenu } from "@/components/nav/quick-add-menu";
 
 export function Header({ name, email }: { name: string; email: string }) {
   return (
@@ -13,6 +14,17 @@ export function Header({ name, email }: { name: string; email: string }) {
       </Link>
 
       <HeaderSearch className="max-w-md flex-1 md:mx-auto" />
+
+      <QuickAddMenu
+        trigger={
+          <button
+            aria-label="Quick add"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full border text-muted-foreground hover:text-foreground md:hidden"
+          >
+            <Plus className="size-4.5" />
+          </button>
+        }
+      />
 
       <UserMenu name={name} email={email} />
     </header>

@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Package, User, Plus } from "lucide-react";
+import { LayoutDashboard, Home, ShieldCheck, Target, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { QuickAddMenu } from "@/components/nav/quick-add-menu";
 
 const TABS = [
-  { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/search", label: "Search", icon: Search },
-  { href: "/items", label: "Items", icon: Package },
-  { href: "/settings", label: "Me", icon: User },
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/home", label: "Items", icon: Home },
+  { href: "/vault", label: "Vault", icon: ShieldCheck },
+  { href: "/goals", label: "Goals", icon: Target },
+  { href: "/split", label: "Split", icon: Receipt },
 ];
 
 export function BottomNav() {
@@ -18,24 +18,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 mx-3 mb-3 flex items-center justify-around rounded-full border border-white/80 bg-white/70 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_10px_30px_rgba(11,11,20,0.1)] backdrop-blur-xl md:hidden">
-      {TABS.slice(0, 2).map((tab) => (
-        <BottomNavLink key={tab.href} tab={tab} active={pathname.startsWith(tab.href)} />
-      ))}
-
-      <div className="-mt-5">
-        <QuickAddMenu
-          trigger={
-            <button
-              aria-label="Quick add"
-              className="flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 active:scale-95"
-            >
-              <Plus className="size-6" />
-            </button>
-          }
-        />
-      </div>
-
-      {TABS.slice(2).map((tab) => (
+      {TABS.map((tab) => (
         <BottomNavLink key={tab.href} tab={tab} active={pathname.startsWith(tab.href)} />
       ))}
     </nav>

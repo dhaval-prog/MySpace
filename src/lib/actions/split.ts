@@ -171,7 +171,7 @@ export async function addSplitGroupMember(groupId: string, userId: string): Prom
   const { data, error } = await supabase.rpc("add_split_group_member", { p_group_id: groupId, p_user_id: userId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to add member" };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }
 
@@ -180,7 +180,7 @@ export async function removeSplitGroupMember(groupId: string, userId: string): P
   const { data, error } = await supabase.rpc("remove_split_group_member", { p_group_id: groupId, p_user_id: userId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to remove member" };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }
 
@@ -486,7 +486,7 @@ export async function createExpense(householdId: string, input: CreateExpenseInp
   });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to record expense" };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { expenseId: data.expense_id };
 }
 
@@ -512,7 +512,7 @@ export async function updateExpense(expenseId: string, input: CreateExpenseInput
   });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to update expense" };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }
 
@@ -521,7 +521,7 @@ export async function deleteExpense(expenseId: string): Promise<{ ok: true } | {
   const { data, error } = await supabase.rpc("delete_split_expense", { p_expense_id: expenseId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to delete expense" };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }
 
@@ -550,6 +550,6 @@ export async function recordSettlement(householdId: string, input: RecordSettlem
   });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to record settlement" };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }

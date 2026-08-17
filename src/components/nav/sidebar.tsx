@@ -15,6 +15,8 @@ import {
   ShieldCheck,
   Users,
   Settings,
+  Target,
+  Receipt,
   Menu,
   type LucideIcon,
 } from "lucide-react";
@@ -34,6 +36,8 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   Users,
   Settings,
+  Target,
+  Receipt,
 };
 
 export function Sidebar({ homeName }: { homeName?: string }) {

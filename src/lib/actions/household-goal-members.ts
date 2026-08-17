@@ -64,7 +64,7 @@ export async function addGoalMember(goalId: string, userId: string): Promise<{ o
   const { data, error } = await supabase.rpc("add_goal_member", { p_goal_id: goalId, p_user_id: userId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to add member" };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }
 
@@ -73,6 +73,6 @@ export async function removeGoalMember(goalId: string, userId: string): Promise<
   const { data, error } = await supabase.rpc("remove_goal_member", { p_goal_id: goalId, p_user_id: userId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to remove member" };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }

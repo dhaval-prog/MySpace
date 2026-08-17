@@ -123,7 +123,7 @@ export async function sendSplitMessage(
     });
   if (error) return { error: error.message };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }
 
@@ -177,7 +177,7 @@ export async function editSplitMessage(
   if (error) return { error: error.message };
   if (!data) return { error: "This message can no longer be edited." };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }
 
@@ -194,6 +194,6 @@ export async function deleteSplitMessage(
   if (error) return { error: error.message };
   if (!data) return { error: "This message can no longer be deleted." };
 
-  revalidatePath("/household");
+  revalidatePath("/split");
   return { ok: true };
 }

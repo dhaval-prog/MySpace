@@ -79,7 +79,8 @@ export async function createHousehold(name: string): Promise<{ householdId: stri
   if (error || !household) return { error: error ?? "Failed to create household" };
 
   revalidatePath("/dashboard");
-  revalidatePath("/household");
+  revalidatePath("/goals");
+  revalidatePath("/split");
   return { householdId: household.id };
 }
 
@@ -176,7 +177,8 @@ export async function generateInvite(
   if (error || !data)
     return { error: error?.message ?? "Failed to create invite. Only the household owner or a co-owner can invite members." };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
+  revalidatePath("/split");
   return { token: data.token, expiresAt: data.expires_at };
 }
 
@@ -186,7 +188,8 @@ export async function joinHousehold(token: string): Promise<{ householdId: strin
   if (error || !data?.ok) return { error: error?.message ?? "That invite code is invalid or has expired." };
 
   revalidatePath("/dashboard");
-  revalidatePath("/household");
+  revalidatePath("/goals");
+  revalidatePath("/split");
   return { householdId: data.household_id };
 }
 
@@ -195,7 +198,8 @@ export async function removeMember(householdId: string, memberUserId: string): P
   const { error } = await supabase.from("household_members").delete().eq("household_id", householdId).eq("user_id", memberUserId);
   if (error) return { error: error.message };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
+  revalidatePath("/split");
   return { ok: true };
 }
 
@@ -215,7 +219,8 @@ export async function updateMemberRole(
   const { error } = await supabase.from("household_members").update({ role }).eq("household_id", householdId).eq("user_id", memberUserId);
   if (error) return { error: error.message };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
+  revalidatePath("/split");
   return { ok: true };
 }
 

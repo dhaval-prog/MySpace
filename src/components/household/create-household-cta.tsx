@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { createHousehold } from "@/lib/actions/household";
 
 /** The empty-state entry point for a user with no households yet — a standalone trigger + dialog, separate from HouseholdSwitcher's dropdown-driven one. */
-export function CreateHouseholdCta() {
+export function CreateHouseholdCta({ redirectTo = "/goals" }: { redirectTo?: string } = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -50,7 +50,7 @@ export function CreateHouseholdCta() {
                   return;
                 }
                 setOpen(false);
-                router.push(`/household?id=${result.householdId}`);
+                router.push(`${redirectTo}?id=${result.householdId}`);
               })
             }
           >

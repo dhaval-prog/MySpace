@@ -1,34 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Home as HomeIcon, Users } from "lucide-react";
+import { Plus, Compass, Wallet, Target, Receipt, ArrowUp, ArrowDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardData } from "@/lib/dashboard-data";
-import { getCompactIcon } from "@/lib/icon-map";
+import { getVaultSummary } from "@/lib/vault/ledger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LocationPath } from "@/components/shared/location-path";
 import { relativeDay } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SeedDemoButton } from "@/components/shared/seed-demo-button";
 import { listMyHouseholds } from "@/lib/actions/household";
 import { getHouseholdSummary } from "@/lib/actions/household-dashboard";
+import { getSplitSummary, getDefaultGroupId } from "@/lib/actions/split";
 
 function inr(amount: number): string {
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
-
-const ICON_BADGE_GRADIENTS = [
-  "from-[#fdf3c8] to-[#f4a8cf]",
-  "from-[#f4a8cf] to-[#c9a1f0]",
-  "from-[#fbdcc4] to-[#f4a8cf]",
-];
-
-const STORAGE_BADGE_STYLES = [
-  "bg-[#0b0b14] text-white",
-  "bg-gradient-to-br from-[#f4a8cf] to-[#c9a1f0] text-[#0b0b14]",
-  "bg-[#0b0b14]/8 text-[#0b0b14]",
-];
 
 function greeting() {
   const hour = new Date().getHours();
@@ -37,34 +24,61 @@ function greeting() {
   return "Good evening";
 }
 
+const STAT_CARDS = [
+  { key: "items", label: "Items Tracked", icon: Compass },
+  { key: "vault", label: "Vault Balance", icon: Wallet },
+  { key: "goals", label: "Active Goals", icon: Target },
+  { key: "owed", label: "You Are Owed", icon: Receipt },
+] as const;
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
-  const data = await getDashboardData(supabase);
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+
   const memberships = await listMyHouseholds();
   const primaryHousehold = memberships[0];
-  const householdSummary = primaryHousehold ? await getHouseholdSummary(primaryHousehold.household.id) : null;
 
-  const name = profile?.name || user?.email?.split("@")[0] || "there";
-  const subtext =
-    data.homes.length > 0
-      ? `${data.totals.rooms} room${data.totals.rooms === 1 ? "" : "s"}, ${data.totals.items} item${data.totals.items === 1 ? "" : "s"} catalogued.` +
-        (data.totals.noPhoto > 0
-          ? ` ${data.totals.noPhoto} thing${data.totals.noPhoto === 1 ? "" : "s"} need${data.totals.noPhoto === 1 ? "s" : ""} a photo.`
-          : "")
-      : "Here's what's going on in your home.";
+  const [data, vault, householdSummary, splitSummary] = await Promise.all([
+    getDashboardData(supabase),
+    getVaultSummary(supabase, user.id),
+    primaryHousehold ? getHouseholdSummary(primaryHousehold.household.id) : Promise.resolve(null),
+    primaryHousehold
+      ? getDefaultGroupId(primaryHousehold.household.id).then((groupId) =>
+          groupId ? getSplitSummary(primaryHousehold.household.id) : null
+        )
+      : Promise.resolve(null),
+  ]);
 
-  return (
-    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
-      {data.homes.length === 0 ? (
+  const name = profile?.name || user.email?.split("@")[0] || "there";
+  const activeGoalCount = householdSummary?.goals.filter((g) => g.goal.status === "active").length ?? 0;
+  const statValues: Record<(typeof STAT_CARDS)[number]["key"], string> = {
+    items: String(data.totals.items),
+    vault: inr(vault.balance),
+    goals: String(activeGoalCount),
+    owed: inr(splitSummary?.youAreOwed ?? 0),
+  };
+
+  const activeGoals = householdSummary?.goals.filter((g) => g.goal.status === "active").slice(0, 3) ?? [];
+
+  type ActivityEntry = { id: string; message: string; createdAt: string };
+  const activity: ActivityEntry[] = [
+    ...data.recentItems.slice(0, 4).map(({ item }) => ({
+      id: `item-${item.id}`,
+      message: `Added "${item.name}"`,
+      createdAt: item.created_at,
+    })),
+    ...(householdSummary?.activity.slice(0, 4).map((a) => ({ id: a.id, message: a.message, createdAt: a.createdAt })) ?? []),
+  ]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
+
+  if (data.homes.length === 0) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
         <EmptyState
           icon="Home"
           title="Let's set up your home"
@@ -84,147 +98,116 @@ export default async function DashboardPage() {
             </div>
           }
         />
-      ) : (
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="space-y-5">
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+      <div>
+        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
+          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+        </p>
+        <h1 className="font-heading text-4xl text-foreground md:text-5xl">
+          {greeting()}, {name}.
+        </h1>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {STAT_CARDS.map(({ key, label, icon: Icon }) => (
+          <Card key={key} className="p-5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-accent">
+              <Icon className="size-4.5 text-accent-foreground" />
+            </div>
+            <p className="mt-3 font-mono text-2xl text-foreground">{statValues[key]}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{label}</p>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+        <Card className="p-5">
+          <CardHeader className="p-0">
+            <h3 className="text-[17px] font-semibold tracking-tight">Recent Activity</h3>
+          </CardHeader>
+          <CardContent className="mt-3 p-0">
+            {activity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing yet — activity will show up here as you go.</p>
+            ) : (
+              <ul className="divide-y">
+                {activity.map((a) => (
+                  <li key={a.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 text-sm">
+                    <span className="min-w-0 flex-1">{a.message}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{relativeDay(a.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-5">
+          <Card className="p-5">
+            <CardHeader className="p-0">
+              <h3 className="text-[17px] font-semibold tracking-tight">Quick Actions</h3>
+            </CardHeader>
+            <CardContent className="mt-3 grid grid-cols-1 gap-2 p-0">
+              <Button variant="outline" className="justify-start" render={<Link href="/vault"><ArrowUp className="size-4" />Add to Vault</Link>} />
+              <Button variant="outline" className="justify-start" render={<Link href="/goals"><Target className="size-4" />New Goal</Link>} />
+              <Button variant="outline" className="justify-start" render={<Link href="/split"><ArrowDown className="size-4" />Split an Expense</Link>} />
+            </CardContent>
+          </Card>
+
+          {data.recentItems.length === 0 && (
             <Card className="p-5">
-              <CardHeader className="flex-row items-baseline p-0">
-                <h3 className="text-[17px] font-semibold tracking-tight">
-                  Recently added
-                </h3>
-                <Link href="/recent" className="ml-auto text-xs font-medium">
-                  All
-                </Link>
-              </CardHeader>
-              <CardContent className="mt-3 p-0">
-                {data.recentItems.length === 0 ? (
-                  <p className="text-sm text-[#0b0b14]/55">
-                    Nothing added yet.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-[#0b0b14]/6">
-                    {data.recentItems.map(({ item, path }, i) => (
-                      <li key={item.id}>
-                        <Link
-                          href={`/items/${item.id}`}
-                          className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 hover:opacity-80"
-                        >
-                          <span
-                            className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${ICON_BADGE_GRADIENTS[i % ICON_BADGE_GRADIENTS.length]}`}
-                          >
-                            <HomeIcon className="size-3.5 text-[#0b0b14]" />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-semibold">
-                              {item.name}
-                            </span>
-                            <LocationPath
-                              nodes={path}
-                              container={item.container}
-                              className="mt-0.5"
-                            />
-                          </span>
-                          <span className="shrink-0 text-[11px] text-[#0b0b14]/45">
-                            {relativeDay(item.created_at)}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
+              <p className="text-sm text-muted-foreground">Nothing added yet.</p>
+              <Link href="/recent" className="mt-2 inline-block text-xs font-medium">
+                View all activity
+              </Link>
             </Card>
+          )}
+        </div>
+      </div>
+
+      {activeGoals.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[17px] font-semibold tracking-tight">Goals</h3>
+            <Link href="/goals" className="text-xs font-medium">
+              View all
+            </Link>
           </div>
-
-          <div className="space-y-5">
-            <Card className="p-5">
-              <CardHeader className="p-0">
-                <h3 className="text-[17px] font-semibold tracking-tight">
-                  Most used storage
-                </h3>
-              </CardHeader>
-              <CardContent className="mt-3 p-0">
-                {data.topAreas.length === 0 ? (
-                  <p className="text-sm text-[#0b0b14]/55">
-                    No storage areas in use yet.
-                  </p>
-                ) : (
-                  <ol className="space-y-3">
-                    {data.topAreas.map((area, i) => {
-                      const Icon = getCompactIcon(area.icon);
-                      return (
-                        <li
-                          key={area.furnitureId}
-                          className="flex items-center gap-2.5 text-[13px]"
-                        >
-                          <span
-                            className={`flex size-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${STORAGE_BADGE_STYLES[i % STORAGE_BADGE_STYLES.length]}`}
-                          >
-                            {i + 1}
-                          </span>
-                          <Icon className="size-4 shrink-0 text-[#0b0b14]/45" />
-                          <span className="min-w-0 flex-1 truncate">
-                            {area.roomName} {area.roomName && "·"}{" "}
-                            {area.furnitureName}
-                          </span>
-                          <Badge
-                            variant="secondary"
-                            className="shrink-0 bg-[#0b0b14]/7 text-[#0b0b14]"
-                          >
-                            {area.itemCount} items
-                          </Badge>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="p-5">
-              <CardHeader className="flex-row items-baseline p-0">
-                <h3 className="text-[17px] font-semibold tracking-tight">Household</h3>
-                <Link href="/household" className="ml-auto text-xs font-medium">
-                  {primaryHousehold ? "View" : "Get started"}
-                </Link>
-              </CardHeader>
-              <CardContent className="mt-3 p-0">
-                {primaryHousehold && householdSummary ? (
-                  <Link href={`/household?id=${primaryHousehold.household.id}`} className="block">
-                    <p className="text-xs text-[#0b0b14]/55">{primaryHousehold.household.name} — Household Savings</p>
-                    <p className="mt-1 text-2xl font-semibold tracking-tight">{inr(householdSummary.totalSharedSavings)}</p>
-                    <p className="mt-1 text-[13px] text-[#0b0b14]/55">
-                      {householdSummary.goals.filter((g) => g.goal.status === "active").length} active goal
-                      {householdSummary.goals.filter((g) => g.goal.status === "active").length === 1 ? "" : "s"}
-                    </p>
-                  </Link>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Users className="size-4" />
-                    </span>
-                    <p className="text-sm text-[#0b0b14]/55">Pool savings with the people you share a home with.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {activeGoals.map((g) => (
+              <Card key={g.goal.id} className="p-5">
+                <p className="font-semibold">{g.goal.name}</p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-accent">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${g.progressPct}%` }} />
+                </div>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="font-mono text-lg">{inr(g.currentAmount)}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {g.progressPct}% · {inr(g.goal.target_amount)}
+                  </span>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
       )}
 
-      <div className="flex items-start gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
-            {greeting()}, {name}.
-          </h1>
-          <p className="mt-2 text-[15px] text-[#0b0b14]/60">{subtext}</p>
+          <p className="text-sm text-muted-foreground">
+            {data.totals.rooms} room{data.totals.rooms === 1 ? "" : "s"}, {data.totals.items} item{data.totals.items === 1 ? "" : "s"} catalogued.
+            {data.totals.noPhoto > 0 &&
+              ` ${data.totals.noPhoto} thing${data.totals.noPhoto === 1 ? "" : "s"} need${data.totals.noPhoto === 1 ? "s" : ""} a photo.`}
+          </p>
         </div>
-        {data.homes.length > 0 && (
-          <span className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-full bg-white/60 px-3.5 py-1.5 text-xs text-[#0b0b14]/60 md:inline-flex">
-            <span className="size-1.5 rounded-full bg-[#0b0b14]" />
-            Synced just now
-          </span>
-        )}
+        <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-1.5 text-xs text-muted-foreground md:inline-flex">
+          <span className="size-1.5 rounded-full bg-foreground" />
+          Synced just now
+        </span>
       </div>
     </div>
   );

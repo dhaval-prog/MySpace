@@ -122,7 +122,7 @@ export async function sendHouseholdMessage(householdId: string, text: string): P
     });
   }
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }
 
@@ -196,7 +196,7 @@ export async function editHouseholdMessage(messageId: string, newText: string): 
   if (error) return { error: error.message };
   if (!data) return { error: "This message can no longer be edited — someone has already seen it." };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }
 
@@ -206,6 +206,6 @@ export async function deleteHouseholdMessage(messageId: string): Promise<{ ok: t
   if (error) return { error: error.message };
   if (!data) return { error: "This message can no longer be deleted — someone has already seen it." };
 
-  revalidatePath("/household");
+  revalidatePath("/goals");
   return { ok: true };
 }
