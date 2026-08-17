@@ -6,7 +6,7 @@
 <title>Vault</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <script type="importmap">
 {
   "imports": {
@@ -19,22 +19,22 @@
 </script>
 <style>
   :root{
-    --bg:#0e0f11;
-    --ink:#eceae6;
-    --ink-dim:#9b9893;
-    --ink-faint:#6a6864;
-    --line:rgba(236,234,230,.10);
-    --line-strong:rgba(236,234,230,.18);
-    --glass:rgba(24,25,28,.62);
-    --brass:oklch(0.78 0.11 82);
-    --pos:oklch(0.76 0.11 155);
-    --neg:oklch(0.68 0.14 32);
+    --bg:#F2EDEE;
+    --ink:#211A1E;
+    --ink-dim:#7C6E74;
+    --ink-faint:#A2949A;
+    --line:rgba(33,26,30,.09);
+    --line-strong:rgba(33,26,30,.18);
+    --glass:rgba(255,255,255,.72);
+    --brass:#4759A6;
+    --pos:#1F5B75;
+    --neg:#C6446F;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
     margin:0;background:var(--bg);color:var(--ink);
-    font-family:'Sora',Helvetica,Arial,sans-serif;font-weight:300;
+    font-family:'Inter',Helvetica,Arial,sans-serif;font-weight:400;
     -webkit-font-smoothing:antialiased;overflow:hidden;
   }
   a{color:var(--brass);text-decoration:none}
@@ -45,14 +45,14 @@
     background:radial-gradient(120% 90% at 50% 45%,transparent 40%,rgba(0,0,0,.55) 100%)}
   #ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between}
   .pe{pointer-events:auto}
-  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .mono{font-family:'DM Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
   .lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
 
   /* top bar */
   header{display:flex;align-items:center;justify-content:space-between;padding:22px 26px 10px;gap:16px}
   .brand{display:flex;align-items:center;gap:10px}
   .mark{width:22px;height:22px;border:1px solid var(--line-strong);border-radius:5px;
-    display:grid;place-items:center;background:linear-gradient(150deg,rgba(255,255,255,.10),transparent)}
+    display:grid;place-items:center;background:linear-gradient(150deg,rgba(33,26,30,.10),transparent)}
   .mark i{display:block;width:6px;height:6px;border-radius:50%;background:var(--brass)}
   .brand b{font-weight:500;font-size:13px;letter-spacing:.22em}
   .chip{display:flex;align-items:center;gap:9px;padding:8px 13px;border:1px solid var(--line);
@@ -65,7 +65,7 @@
   /* panels */
   .card{background:var(--glass);backdrop-filter:blur(18px) saturate(1.1);
     border:1px solid var(--line);border-radius:16px;
-    box-shadow:0 24px 60px -28px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.06)}
+    box-shadow:0 24px 60px -28px rgba(0,0,0,.85),inset 0 1px 0 rgba(33,26,30,.06)}
   main{flex:1;display:flex;align-items:stretch;justify-content:space-between;padding:0 26px;gap:24px;min-height:0}
   .side{width:288px;height:100%;position:relative}
   .side.right{align-items:flex-end}
@@ -86,15 +86,15 @@
   #lockCard.show{opacity:1;pointer-events:auto;transform:translateY(-50%)}
   #pinDots{display:flex;gap:9px;margin:14px 0 4px}
   #pinDots i{width:10px;height:10px;border-radius:50%;border:1px solid var(--line-strong);transition:.2s}
-  #pinDots i.on{background:var(--brass);border-color:var(--brass);box-shadow:0 0 14px rgba(212,175,110,.5)}
+  #pinDots i.on{background:var(--brass);border-color:var(--brass);box-shadow:0 0 14px rgba(71,89,166,.5)}
   #pinDots.err i{border-color:var(--neg)}
   #keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-  #keys button{aspect-ratio:1/1;min-height:44px;border:1px solid var(--line);background:rgba(255,255,255,.03);
-    color:var(--ink);border-radius:11px;font-family:'IBM Plex Mono',monospace;font-size:16px;cursor:pointer;
+  #keys button{aspect-ratio:1/1;min-height:44px;border:1px solid var(--line);background:rgba(33,26,30,.03);
+    color:var(--ink);border-radius:11px;font-family:'DM Mono',monospace;font-size:16px;cursor:pointer;
     transition:.15s;display:grid;place-items:center}
-  #keys button:hover{background:rgba(255,255,255,.09);border-color:var(--line-strong)}
+  #keys button:hover{background:rgba(33,26,30,.09);border-color:var(--line-strong)}
   #keys button:active{transform:scale(.96)}
-  #keys button.wide{font-family:'Sora';font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+  #keys button.wide{font-family:'Inter';font-size:10px;letter-spacing:.14em;text-transform:uppercase}
   #hint{font-size:10.5px;color:var(--ink-faint);margin-top:14px;letter-spacing:.04em}
   #lockMsg{font-size:11px;color:var(--neg);height:14px;margin-top:8px;letter-spacing:.04em}
 
@@ -104,12 +104,12 @@
     transition:opacity .5s,transform .5s;flex-wrap:wrap;justify-content:center}
   #actions.show{opacity:1;transform:none}
   .btn{display:flex;align-items:center;gap:8px;padding:12px 16px;min-height:44px;border-radius:11px;
-    border:1px solid transparent;background:transparent;color:var(--ink-dim);font-family:'Sora';font-weight:400;
+    border:1px solid transparent;background:transparent;color:var(--ink-dim);font-family:'Inter';font-weight:400;
     font-size:12px;letter-spacing:.02em;cursor:pointer;transition:.18s;white-space:nowrap}
-  .btn:hover{background:rgba(255,255,255,.06);color:var(--ink);border-color:var(--line)}
+  .btn:hover{background:rgba(33,26,30,.06);color:var(--ink);border-color:var(--line)}
   .btn:disabled{opacity:.35;cursor:default}
-  .btn.primary{background:var(--brass);color:#17140e;font-weight:500}
-  .btn.primary:hover{filter:brightness(1.08);background:var(--brass);color:#17140e}
+  .btn.primary{background:var(--brass);color:#fff;font-weight:500}
+  .btn.primary:hover{filter:brightness(1.08);background:var(--brass);color:#fff}
   .btn.ghost{border-color:var(--line)}
   .btn .k{width:7px;height:7px;border-radius:2px;background:currentColor;opacity:.55}
 
@@ -121,25 +121,25 @@
     max-height:min(86vh,780px);overflow:auto;padding:24px;opacity:0;pointer-events:none;
     transition:opacity .32s cubic-bezier(.2,.7,.2,1),transform .32s cubic-bezier(.2,.7,.2,1)}
   .sheet.show{opacity:1;transform:translate(-50%,-50%);pointer-events:auto}
-  .sheet h2{font-size:17px;font-weight:400;margin:0 0 4px;letter-spacing:.01em}
+  .sheet h2{font-family:'DM Serif Display',Georgia,serif;font-size:20px;font-weight:400;margin:0 0 4px;letter-spacing:0}
   .sheet p.note{font-size:12px;color:var(--ink-dim);margin:0 0 20px}
   .field{margin-bottom:14px}
   .field label{display:block;margin-bottom:7px}
   .field input[type=text],.field input[type=number],.field select{width:100%;padding:13px 14px;border-radius:11px;
-    border:1px solid var(--line-strong);background:rgba(255,255,255,.04);color:var(--ink);
-    font-family:'IBM Plex Mono',monospace;font-size:15px;outline:none;transition:.18s}
-  .field input:focus,.field select:focus{border-color:var(--brass);background:rgba(255,255,255,.07)}
+    border:1px solid var(--line-strong);background:rgba(33,26,30,.04);color:var(--ink);
+    font-family:'DM Mono',monospace;font-size:15px;outline:none;transition:.18s}
+  .field input:focus,.field select:focus{border-color:var(--brass);background:rgba(33,26,30,.07)}
   .field input::placeholder{color:var(--ink-faint);font-size:13px}
-  .field.text input{font-family:'Sora';font-size:13px;font-weight:300}
+  .field.text input{font-family:'Inter';font-size:13px;font-weight:300}
   .presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
   .presets button{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;
-    color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:11.5px;cursor:pointer;transition:.15s}
+    color:var(--ink-dim);font-family:'DM Mono',monospace;font-size:11.5px;cursor:pointer;transition:.15s}
   .presets button:hover,.presets button.on{border-color:var(--brass);color:var(--brass)}
   .ledger{border:1px solid var(--line);border-radius:12px;padding:4px 14px;margin:18px 0}
   .ledger div{display:flex;justify-content:space-between;align-items:center;padding:11px 0;font-size:12.5px;
     color:var(--ink-dim);border-bottom:1px solid var(--line)}
   .ledger div:last-child{border-bottom:0}
-  .ledger div b{font-family:'IBM Plex Mono',monospace;font-weight:400;color:var(--ink);font-size:13.5px}
+  .ledger div b{font-family:'DM Mono',monospace;font-weight:400;color:var(--ink);font-size:13.5px}
   .ledger div.tot b{color:var(--brass);font-size:15px}
   .err{font-size:11.5px;color:var(--neg);min-height:15px;margin:-6px 0 10px;letter-spacing:.03em}
   .rowBtns{display:flex;gap:9px;margin-top:6px}
@@ -148,29 +148,29 @@
     border-radius:12px;margin-bottom:14px}
   .switch b{font-weight:400;font-size:13px;display:block}
   .switch small{color:var(--ink-dim);font-size:11px}
-  .tog{width:44px;height:26px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(255,255,255,.05);
+  .tog{width:44px;height:26px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(33,26,30,.05);
     position:relative;cursor:pointer;flex:0 0 auto;transition:.22s}
   .tog:after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
     background:var(--ink-dim);transition:.22s}
-  .tog.on{background:rgba(212,175,110,.22);border-color:var(--brass)}
+  .tog.on{background:rgba(71,89,166,.16);border-color:var(--brass)}
   .tog.on:after{left:21px;background:var(--brass)}
-  .info{padding:13px 14px;border-radius:11px;background:rgba(212,175,110,.08);border:1px solid rgba(212,175,110,.25);
-    font-size:12px;color:#e6d3ac;line-height:1.55;margin-bottom:14px}
+  .info{padding:13px 14px;border-radius:11px;background:rgba(71,89,166,.08);border:1px solid rgba(71,89,166,.22);
+    font-size:12px;color:#33407a;line-height:1.55;margin-bottom:14px}
 
   /* history */
   .filters{display:flex;gap:7px;margin-bottom:6px}
   .filters button{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--line);background:transparent;
-    color:var(--ink-faint);font-family:'Sora';font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.15s}
-  .filters button.on{color:var(--ink);border-color:var(--line-strong);background:rgba(255,255,255,.06)}
+    color:var(--ink-faint);font-family:'Inter';font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.15s}
+  .filters button.on{color:var(--ink);border-color:var(--line-strong);background:rgba(33,26,30,.06)}
   #txList{display:flex;flex-direction:column}
   .tx{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:14px 2px;border-bottom:1px solid var(--line)}
   .tx:last-child{border-bottom:0}
   .tx .t{font-size:13px}
   .tx .d{font-size:10.5px;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase}
-  .tx .a{font-family:'IBM Plex Mono',monospace;font-size:14px;text-align:right}
+  .tx .a{font-family:'DM Mono',monospace;font-size:14px;text-align:right}
   .tx .a.p{color:var(--pos)}
   .tx .a.n{color:var(--neg)}
-  .tx .b{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-faint);text-align:right}
+  .tx .b{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--ink-faint);text-align:right}
   .empty{padding:26px 0;text-align:center;color:var(--ink-faint);font-size:12px}
 
   /* money inspect panel */
@@ -180,10 +180,10 @@
   #moneyPanel .big{font-size:32px;font-weight:300;margin:8px 0 18px;letter-spacing:-.02em}
   #moneyPanel .kv{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);font-size:12px}
   #moneyPanel .kv span:first-child{color:var(--ink-dim)}
-  #moneyPanel .kv span:last-child{font-family:'IBM Plex Mono',monospace}
+  #moneyPanel .kv span:last-child{font-family:'DM Mono',monospace}
   .x{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);
     background:transparent;color:var(--ink-dim);cursor:pointer;font-size:14px;line-height:1}
-  .x:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+  .x:hover{color:var(--ink);background:rgba(33,26,30,.06)}
 
   /* machine control panel: overlays the same slot as Vault Access / balance,
      independently centered so it never inflates .side's shared height */
@@ -194,22 +194,22 @@
   #machPanel.show{opacity:1;transform:translateY(-50%);pointer-events:auto}
   #machPanel .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
   #machPanel .head b{font-weight:400;font-size:12px;letter-spacing:.16em;text-transform:uppercase}
-  #machAmt{font-family:'IBM Plex Mono',monospace;font-size:34px;letter-spacing:-.01em;
-    padding:14px 16px;border:1px solid var(--line-strong);border-radius:12px;background:rgba(255,255,255,.04);
+  #machAmt{font-family:'DM Mono',monospace;font-size:34px;letter-spacing:-.01em;
+    padding:14px 16px;border:1px solid var(--line-strong);border-radius:12px;background:rgba(33,26,30,.04);
     text-align:right;line-height:1.1;color:var(--ink)}
   #machAmt.dim{color:var(--ink-faint)}
   #machNote{font-size:11px;color:var(--ink-dim);margin:9px 0 14px;letter-spacing:.03em;min-height:15px}
   #machKeys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
-  #machKeys button{min-height:42px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink);
-    border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:15px;cursor:pointer;transition:.14s}
-  #machKeys button:hover{background:rgba(255,255,255,.09);border-color:var(--line-strong)}
+  #machKeys button{min-height:42px;border:1px solid var(--line);background:rgba(33,26,30,.03);color:var(--ink);
+    border-radius:10px;font-family:'DM Mono',monospace;font-size:15px;cursor:pointer;transition:.14s}
+  #machKeys button:hover{background:rgba(33,26,30,.09);border-color:var(--line-strong)}
   #machKeys button:active{transform:scale(.96)}
-  #machKeys button.fn{font-family:'Sora';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
-  #machProg{height:2px;border-radius:2px;background:rgba(255,255,255,.09);overflow:hidden;margin:16px 0 14px}
+  #machKeys button.fn{font-family:'Inter';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+  #machProg{height:2px;border-radius:2px;background:rgba(33,26,30,.09);overflow:hidden;margin:16px 0 14px}
   #machProg i{display:block;height:100%;width:0;background:var(--brass);transition:width .12s linear}
   .machStage{display:none}
   .machStage.on{display:block}
-  #machCounted{font-family:'IBM Plex Mono',monospace;font-size:40px;letter-spacing:-.02em;margin:4px 0 2px}
+  #machCounted{font-family:'DM Mono',monospace;font-size:40px;letter-spacing:-.02em;margin:4px 0 2px}
   #machSub{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
   #machDone{font-size:12px;color:var(--pos);margin:12px 0 14px}
   #toast{z-index:14;position:fixed;left:50%;bottom:128px;transform:translate(-50%,10px);padding:12px 20px;border-radius:999px;
@@ -839,7 +839,7 @@ function drawScreen(text,tone){
   const g=screenCv.getContext('2d');
   g.fillStyle='#07090c';g.fillRect(0,0,512,192);
   g.fillStyle=tone==='ok'?'#7ee0a8':tone==='warn'?'#e0b273':'#e07a63';
-  g.font='500 84px "IBM Plex Mono", monospace';g.textAlign='center';g.textBaseline='middle';
+  g.font='500 84px "DM Mono", monospace';g.textAlign='center';g.textBaseline='middle';
   g.fillText(text,256,104);
   g.globalAlpha=.35;g.fillRect(0,0,512,2);g.globalAlpha=1;
   screenTex.needsUpdate=true;
@@ -1090,19 +1090,19 @@ function drawDisp(label,value,tone){
   g.fillStyle='#08331f';g.fillRect(516,26,240,120);
   g.textBaseline='middle';
   const fs=value.length>8?62:value.length>6?74:86;
-  g.font='500 '+fs+'px "IBM Plex Mono", monospace';
+  g.font='500 '+fs+'px "DM Mono", monospace';
   g.textAlign='right';
   g.fillStyle=tone==='ok'?'#7dffb0':'#ff8a3d';
   g.fillText(value,478,88);
   g.fillStyle=tone==='run'?'#5fe89a':'#1c6b46';
-  g.font='500 64px "IBM Plex Mono", monospace';
+  g.font='500 64px "DM Mono", monospace';
   g.fillText(tone==='idle'?'---':String(mach.notes||0).padStart(3,'0'),740,90);
   g.textAlign='left';
-  g.font='400 30px Sora, sans-serif';
+  g.font='400 30px Inter, sans-serif';
   g.fillStyle='rgba(170,190,205,.6)';
   g.fillText(label,30,186);
   g.fillStyle='rgba(170,190,205,.35)';
-  g.font='400 26px Sora, sans-serif';
+  g.font='400 26px Inter, sans-serif';
   g.fillText('NOTES',548,186);
   g.fillStyle=tone==='run'?'#ffd15c':'rgba(255,209,92,.25)';
   g.beginPath();g.arc(800,88,16,0,7);g.fill();

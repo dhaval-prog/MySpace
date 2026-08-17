@@ -27,7 +27,7 @@ export function VoiceMicButton({
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-full transition-colors disabled:pointer-events-none disabled:opacity-40",
         dim,
-        isListening ? "bg-rose-500 text-white" : "bg-[#0b0b14] text-white hover:bg-[#0b0b14]/85",
+        isListening ? "bg-destructive text-white" : "bg-primary text-primary-foreground hover:opacity-90",
         className
       )}
     >

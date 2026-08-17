@@ -17,15 +17,15 @@ import { relativeDay } from "@/lib/utils";
 import type { RecentItem, StorageAreaUsage } from "@/lib/dashboard-data";
 
 const ICON_BADGE_GRADIENTS = [
-  "from-[#fdf3c8] to-[#f4a8cf]",
-  "from-[#f4a8cf] to-[#c9a1f0]",
-  "from-[#fbdcc4] to-[#f4a8cf]",
+  "from-[#E4E9FA] to-[#6B85D0]",
+  "from-[#FBE0E8] to-[#EF7EA6]",
+  "from-[#A8DDEE] to-[#6B85D0]",
 ];
 
 const STORAGE_BADGE_STYLES = [
-  "bg-[#0b0b14] text-white",
-  "bg-gradient-to-br from-[#f4a8cf] to-[#c9a1f0] text-[#0b0b14]",
-  "bg-[#0b0b14]/8 text-[#0b0b14]",
+  "bg-primary text-primary-foreground",
+  "bg-gradient-to-br from-[#EF7EA6] to-[#6B85D0] text-white",
+  "bg-muted text-foreground",
 ];
 
 type BrowseTab = "search" | "recent" | "storage" | "all";
@@ -40,9 +40,9 @@ const BROWSE_TABS: { key: BrowseTab; label: string; icon: typeof Clock }[] = [
 function BrowseTabBar({ active, onChange }: { active: BrowseTab; onChange: (tab: BrowseTab) => void }) {
   const activeIndex = BROWSE_TABS.findIndex((t) => t.key === active);
   return (
-    <div className="relative grid grid-cols-4 rounded-full bg-[#0b0b14]/5 p-1">
+    <div className="relative grid grid-cols-4 rounded-full bg-muted p-1">
       <span
-        className="absolute inset-y-1 left-1 rounded-full bg-white shadow-sm transition-transform duration-300 ease-out"
+        className="absolute inset-y-1 left-1 rounded-full bg-card shadow-sm transition-transform duration-300 ease-out"
         style={{ width: "calc((100% - 0.5rem) / 4)", transform: `translateX(${activeIndex * 100}%)` }}
       />
       {BROWSE_TABS.map((tab) => {
@@ -54,7 +54,7 @@ function BrowseTabBar({ active, onChange }: { active: BrowseTab; onChange: (tab:
             type="button"
             onClick={() => onChange(tab.key)}
             className={`relative z-10 flex items-center justify-center gap-1.5 rounded-full px-2 py-2 text-[13px] font-medium transition-colors ${
-              isActive ? "text-[#0b0b14]" : "text-[#0b0b14]/50"
+              isActive ? "text-foreground" : "text-muted-foreground"
             }`}
           >
             <Icon className="size-3.5 shrink-0" />
@@ -143,7 +143,7 @@ function SearchInner({
                     </Link>
                   </CardHeader>
                   <CardContent className="mt-3 p-0">
-                    <ul className="divide-y divide-[#0b0b14]/6">
+                    <ul className="divide-y divide-border">
                       {recentItems.map(({ item, path }, i) => (
                         <li key={item.id}>
                           <Link
@@ -153,13 +153,13 @@ function SearchInner({
                             <span
                               className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${ICON_BADGE_GRADIENTS[i % ICON_BADGE_GRADIENTS.length]}`}
                             >
-                              <HomeIcon className="size-3.5 text-[#0b0b14]" />
+                              <HomeIcon className="size-3.5 text-foreground" />
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[13px] font-semibold">{item.name}</span>
                               <LocationPath nodes={path} container={item.container} className="mt-0.5" />
                             </span>
-                            <span className="shrink-0 text-[11px] text-[#0b0b14]/45">
+                            <span className="shrink-0 text-[11px] text-muted-foreground">
                               {relativeDay(item.created_at)}
                             </span>
                           </Link>
@@ -186,11 +186,11 @@ function SearchInner({
                             >
                               {i + 1}
                             </span>
-                            <Icon className="size-4 shrink-0 text-[#0b0b14]/45" />
+                            <Icon className="size-4 shrink-0 text-muted-foreground" />
                             <span className="min-w-0 flex-1 truncate">
                               {area.roomName} {area.roomName && "·"} {area.furnitureName}
                             </span>
-                            <Badge variant="secondary" className="shrink-0 bg-[#0b0b14]/7 text-[#0b0b14]">
+                            <Badge variant="secondary" className="shrink-0 bg-muted text-foreground">
                               {area.itemCount} items
                             </Badge>
                           </li>

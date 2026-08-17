@@ -57,7 +57,7 @@ export default async function HomePage({
         <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
           {greeting()}, {name}.
         </h1>
-        <p className="mt-2 text-[15px] text-[#0b0b14]/60">{subtext}</p>
+        <p className="mt-2 text-[15px] text-muted-foreground">{subtext}</p>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -94,15 +94,15 @@ export default async function HomePage({
             </Button>
           </Link>
           {homes.length > 1 && <DeleteHomeDialog homeId={homeId} homeName={home.name} roomCount={rooms.length} />}
-          <span className="mx-1 hidden h-6 w-px bg-[#0b0b14]/10 sm:block" />
+          <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
           <Link href="/favorites">
-            <Button variant="outline" size="sm" className="border-[#0b0b14]/12 bg-white">
+            <Button variant="outline" size="sm" className="bg-card">
               <Star className="size-4" />
               Favorites
             </Button>
           </Link>
           <Link href="/important">
-            <Button variant="outline" size="sm" className="border-[#0b0b14]/12 bg-white">
+            <Button variant="outline" size="sm" className="bg-card">
               <AlertTriangle className="size-4" />
               Important
             </Button>
