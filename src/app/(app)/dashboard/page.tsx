@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Compass, Wallet, Target, Receipt, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Compass, Wallet, Target, Receipt, ArrowUp, ArrowDown, Package, Activity as ActivityIcon, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getVaultSummary } from "@/lib/vault/ledger";
@@ -64,21 +64,24 @@ export default async function DashboardPage() {
 
   const activeGoals = householdSummary?.goals.filter((g) => g.goal.status === "active").slice(0, 3) ?? [];
 
-  type ActivityEntry = { id: string; message: string; createdAt: string };
+  type ActivityEntry = { id: string; message: string; createdAt: string; icon: "item" | "household" };
   const activity: ActivityEntry[] = [
     ...data.recentItems.slice(0, 4).map(({ item }) => ({
       id: `item-${item.id}`,
       message: `Added "${item.name}"`,
       createdAt: item.created_at,
+      icon: "item" as const,
     })),
-    ...(householdSummary?.activity.slice(0, 4).map((a) => ({ id: a.id, message: a.message, createdAt: a.createdAt })) ?? []),
+    ...(householdSummary?.activity
+      .slice(0, 4)
+      .map((a) => ({ id: a.id, message: a.message, createdAt: a.createdAt, icon: "household" as const })) ?? []),
   ]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 6);
 
   if (data.homes.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-8 p-4 md:p-8">
         <EmptyState
           icon="Home"
           title="Let's set up your home"
@@ -103,7 +106,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
+    <div className="mx-auto max-w-7xl space-y-8 p-4 md:p-8">
       <div>
         <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
@@ -111,6 +114,7 @@ export default async function DashboardPage() {
         <h1 className="font-heading text-4xl text-foreground md:text-5xl">
           {greeting()}, {name}.
         </h1>
+        <p className="mt-2 text-sm text-muted-foreground">Here is what is happening in your space.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -135,12 +139,18 @@ export default async function DashboardPage() {
               <p className="text-sm text-muted-foreground">Nothing yet — activity will show up here as you go.</p>
             ) : (
               <ul className="divide-y">
-                {activity.map((a) => (
-                  <li key={a.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0 text-sm">
-                    <span className="min-w-0 flex-1">{a.message}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{relativeDay(a.createdAt)}</span>
-                  </li>
-                ))}
+                {activity.map((a) => {
+                  const EntryIcon = a.icon === "item" ? Package : ActivityIcon;
+                  return (
+                    <li key={a.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0 text-sm">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent">
+                        <EntryIcon className="size-4 text-accent-foreground" />
+                      </span>
+                      <span className="min-w-0 flex-1">{a.message}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{relativeDay(a.createdAt)}</span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </CardContent>
@@ -152,9 +162,46 @@ export default async function DashboardPage() {
               <h3 className="text-[17px] font-semibold tracking-tight">Quick Actions</h3>
             </CardHeader>
             <CardContent className="mt-3 grid grid-cols-1 gap-2 p-0">
-              <Button variant="outline" className="justify-start" render={<Link href="/vault"><ArrowUp className="size-4" />Add to Vault</Link>} />
-              <Button variant="outline" className="justify-start" render={<Link href="/goals"><Target className="size-4" />New Goal</Link>} />
-              <Button variant="outline" className="justify-start" render={<Link href="/split"><ArrowDown className="size-4" />Split an Expense</Link>} />
+              <Button
+                variant="secondary"
+                className="justify-start bg-accent text-accent-foreground hover:bg-accent/70"
+                render={
+                  <Link href="/vault">
+                    <ArrowUp className="size-4" />
+                    Add to Vault
+                  </Link>
+                }
+              />
+              <Button
+                variant="secondary"
+                className="justify-start bg-accent text-accent-foreground hover:bg-accent/70"
+                render={
+                  <Link href="/goals">
+                    <Target className="size-4" />
+                    New Goal
+                  </Link>
+                }
+              />
+              <Button
+                variant="secondary"
+                className="justify-start bg-accent text-accent-foreground hover:bg-accent/70"
+                render={
+                  <Link href="/split">
+                    <ArrowDown className="size-4" />
+                    Split an Expense
+                  </Link>
+                }
+              />
+              <Button
+                variant="secondary"
+                className="justify-start bg-accent text-accent-foreground hover:bg-accent/70"
+                render={
+                  <Link href={`/quick-add?type=item`}>
+                    <Package className="size-4" />
+                    Add Item
+                  </Link>
+                }
+              />
             </CardContent>
           </Card>
 
@@ -173,15 +220,18 @@ export default async function DashboardPage() {
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-[17px] font-semibold tracking-tight">Goals</h3>
-            <Link href="/goals" className="text-xs font-medium">
-              View all
+            <Link href="/goals" className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+              View all <ArrowRight className="size-3.5" />
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activeGoals.map((g) => (
-              <Card key={g.goal.id} className="p-5">
-                <p className="font-semibold">{g.goal.name}</p>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-accent">
+              <Card key={g.goal.id} className="bg-muted/40 p-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-lg">{g.goal.icon}</span>
+                  <p className="min-w-0 truncate font-semibold">{g.goal.name}</p>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-card">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${g.progressPct}%` }} />
                 </div>
                 <div className="mt-2 flex items-baseline justify-between">

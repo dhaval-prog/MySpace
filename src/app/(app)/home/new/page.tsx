@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const TYPES: HomeType[] = ["1bhk", "2bhk", "3bhk", "custom"];
 
 export default function NewHomePage() {
-  const [name, setName] = useState("My Home");
+  const [name, setName] = useState("My Apartment");
   const [selected, setSelected] = useState<HomeType>("2bhk");
   const [pending, startTransition] = useTransition();
 
