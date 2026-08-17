@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/nav/sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Header } from "@/components/nav/header";
 import { Toaster } from "@/components/ui/sonner";
-import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
+import { listMyHouseholds, listHouseholdMembersLite } from "@/lib/actions/household";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -14,17 +14,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  const { data: homes } = await supabase
-    .from("homes")
-    .select("id, name")
-    .order("created_at", { ascending: true })
-    .limit(1);
+  // Independent reads — run together instead of one after another. Every
+  // authenticated page renders through this layout, so trimming a
+  // sequential chain to a single round trip here matters on every navigation.
+  const [{ data: profile }, { data: homes }, memberships] = await Promise.all([
+    supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
+    supabase.from("homes").select("id, name").order("created_at", { ascending: true }).limit(1),
+    listMyHouseholds(),
+  ]);
 
-  const memberships = await listMyHouseholds();
   const primaryHousehold = memberships[0];
-  const householdContext = primaryHousehold ? await getHouseholdContext(primaryHousehold.household.id) : null;
-  const sidebarMembers = householdContext?.members.map((m) => ({ userId: m.userId, name: m.name, role: m.role })) ?? [];
+  const sidebarMembers = primaryHousehold ? await listHouseholdMembersLite(primaryHousehold.household.id) : [];
 
   const name = profile?.name || user.email?.split("@")[0] || "there";
 

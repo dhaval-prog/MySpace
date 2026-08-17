@@ -3,14 +3,14 @@ import { redirect } from "next/navigation";
 import { Plus, Compass, Wallet, Target, Receipt, ArrowUp, ArrowDown, Package, Activity as ActivityIcon, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardData } from "@/lib/dashboard-data";
-import { getVaultSummary } from "@/lib/vault/ledger";
+import { getVaultBalance } from "@/lib/vault/ledger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { relativeDay } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SeedDemoButton } from "@/components/shared/seed-demo-button";
 import { listMyHouseholds } from "@/lib/actions/household";
-import { getHouseholdSummary } from "@/lib/actions/household-dashboard";
+import { getDashboardHouseholdSummary } from "@/lib/actions/household-dashboard";
 import { getSplitSummary, getDefaultGroupId } from "@/lib/actions/split";
 
 function inr(amount: number): string {
@@ -42,10 +42,10 @@ export default async function DashboardPage() {
   const memberships = await listMyHouseholds();
   const primaryHousehold = memberships[0];
 
-  const [data, vault, householdSummary, splitSummary] = await Promise.all([
+  const [data, vaultBalance, householdSummary, splitSummary] = await Promise.all([
     getDashboardData(supabase),
-    getVaultSummary(supabase, user.id),
-    primaryHousehold ? getHouseholdSummary(primaryHousehold.household.id) : Promise.resolve(null),
+    getVaultBalance(supabase),
+    primaryHousehold ? getDashboardHouseholdSummary(primaryHousehold.household.id) : Promise.resolve(null),
     primaryHousehold
       ? getDefaultGroupId(primaryHousehold.household.id).then((groupId) =>
           groupId ? getSplitSummary(primaryHousehold.household.id) : null
@@ -54,15 +54,13 @@ export default async function DashboardPage() {
   ]);
 
   const name = profile?.name || user.email?.split("@")[0] || "there";
-  const activeGoalCount = householdSummary?.goals.filter((g) => g.goal.status === "active").length ?? 0;
+  const activeGoals = householdSummary?.activeGoals ?? [];
   const statValues: Record<(typeof STAT_CARDS)[number]["key"], string> = {
     items: String(data.totals.items),
-    vault: inr(vault.balance),
-    goals: String(activeGoalCount),
+    vault: inr(vaultBalance),
+    goals: String(activeGoals.length),
     owed: inr(splitSummary?.youAreOwed ?? 0),
   };
-
-  const activeGoals = householdSummary?.goals.filter((g) => g.goal.status === "active").slice(0, 3) ?? [];
 
   type ActivityEntry = { id: string; message: string; createdAt: string; icon: "item" | "household" };
   const activity: ActivityEntry[] = [
@@ -79,7 +77,7 @@ export default async function DashboardPage() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 6);
 
-  if (data.homes.length === 0) {
+  if (!data.hasHomes) {
     return (
       <div className="mx-auto max-w-7xl space-y-8 p-4 md:p-8">
         <EmptyState

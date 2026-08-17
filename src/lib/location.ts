@@ -38,6 +38,47 @@ export async function buildLocationIndex(
   };
 }
 
+/**
+ * Same shape as buildLocationIndex(), but scoped to only the ancestry chain
+ * of the given storage_location ids — for the dashboard's ~8 recent items,
+ * this is a handful of rows instead of the user's entire home hierarchy.
+ * Walks parent_id chains iteratively (usually 1-2 round trips; nesting is
+ * rarely deep) rather than assuming a fixed depth.
+ */
+export async function buildScopedLocationIndex(
+  supabase: SupabaseClient<Database>,
+  storageLocationIds: string[]
+): Promise<LocationIndex> {
+  const storageLocations = new Map<string, StorageLocation>();
+  let frontier = Array.from(new Set(storageLocationIds));
+
+  while (frontier.length > 0) {
+    const { data } = await supabase.from("storage_locations").select("*").in("id", frontier);
+    const next: string[] = [];
+    for (const row of data ?? []) {
+      storageLocations.set(row.id, row);
+      if (row.parent_id && !storageLocations.has(row.parent_id)) next.push(row.parent_id);
+    }
+    frontier = Array.from(new Set(next));
+  }
+
+  const furnitureIds = Array.from(new Set(Array.from(storageLocations.values()).map((s) => s.furniture_id)));
+  const { data: furnitureRows } = furnitureIds.length
+    ? await supabase.from("furniture").select("*").in("id", furnitureIds)
+    : { data: [] as Furniture[] };
+  const furniture = new Map((furnitureRows ?? []).map((f) => [f.id, f]));
+
+  const roomIds = Array.from(new Set(Array.from(furniture.values()).map((f) => f.room_id)));
+  const { data: roomRows } = roomIds.length ? await supabase.from("rooms").select("*").in("id", roomIds) : { data: [] as Room[] };
+  const rooms = new Map((roomRows ?? []).map((r) => [r.id, r]));
+
+  const homeIds = Array.from(new Set(Array.from(rooms.values()).map((r) => r.home_id)));
+  const { data: homeRows } = homeIds.length ? await supabase.from("homes").select("*").in("id", homeIds) : { data: [] as Home[] };
+  const homes = new Map((homeRows ?? []).map((h) => [h.id, h]));
+
+  return { homes, rooms, furniture, storageLocations };
+}
+
 export function pathForStorageLocation(
   index: LocationIndex,
   storageLocationId: string

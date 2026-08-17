@@ -667,6 +667,18 @@ export type Database = {
         };
         Returns: { ok: boolean; settlement_id: string };
       };
+      get_vault_balance: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
+      get_household_shared_savings: {
+        Args: { p_household_id: string };
+        Returns: number;
+      };
+      get_top_storage_areas: {
+        Args: { p_limit?: number };
+        Returns: { furniture_id: string; item_count: number }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

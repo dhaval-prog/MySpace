@@ -1,6 +1,7 @@
 "use server";
 
 import { randomBytes } from "crypto";
+import { cache } from "react";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { displayName } from "@/lib/utils";
@@ -84,8 +85,8 @@ export async function createHousehold(name: string): Promise<{ householdId: stri
   return { householdId: household.id };
 }
 
-/** All households the current user belongs to, with their role in each — RLS already scopes `households` to memberships, this just attaches the role. */
-export async function listMyHouseholds(): Promise<HouseholdListEntry[]> {
+/** All households the current user belongs to, with their role in each — RLS already scopes `households` to memberships, this just attaches the role. Wrapped in React's cache() so the dashboard (which calls this directly) and any household page that also needs it don't each pay for a fresh round trip within the same request. */
+export const listMyHouseholds = cache(async function listMyHouseholds(): Promise<HouseholdListEntry[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -107,10 +108,10 @@ export async function listMyHouseholds(): Promise<HouseholdListEntry[]> {
   return (households ?? [])
     .map((h) => ({ household: h, role: roleById.get(h.id) ?? "viewer" }))
     .sort((a, b) => (a.household.created_at < b.household.created_at ? 1 : -1));
-}
+});
 
-/** Full household context for a page load: household row, the caller's role, the member roster (with display names), and the id of the household's one auto-created shared vault. Returns null if the caller isn't a member (RLS would also block the underlying reads, but this fails fast with a clear signal). */
-export async function getHouseholdContext(householdId: string): Promise<HouseholdContext | null> {
+/** Full household context for a page load: household row, the caller's role, the member roster (with display names), and the id of the household's one auto-created shared vault. Returns null if the caller isn't a member (RLS would also block the underlying reads, but this fails fast with a clear signal). Wrapped in cache() — the dashboard, /goals, and /split pages each independently need this and previously each triggered their own 4-query round trip in the same request. */
+export const getHouseholdContext = cache(async function getHouseholdContext(householdId: string): Promise<HouseholdContext | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -156,6 +157,24 @@ export async function getHouseholdContext(householdId: string): Promise<Househol
       .sort((a, b) => (a.joinedAt < b.joinedAt ? -1 : 1)),
     sharedVaultId: sharedVault?.id ?? "",
   };
+});
+
+/** Lightweight member roster for navigation — just userId/name/role, 2 queries (household_members + profiles) instead of getHouseholdContext's 4 (which also loads the household row and shared-vault id, neither of which the sidebar renders). Used by the authenticated layout, which wraps every page, so this runs on every navigation — keeping it minimal matters more here than for a single page's own data fetch. */
+export async function listHouseholdMembersLite(householdId: string): Promise<{ userId: string; name: string; role: HouseholdRole }[]> {
+  const supabase = await createClient();
+  const { data: members } = await supabase.from("household_members").select("user_id, role").eq("household_id", householdId);
+  if (!members || members.length === 0) return [];
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, name")
+    .in(
+      "id",
+      members.map((m) => m.user_id)
+    );
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, displayName(p)]));
+
+  return members.map((m) => ({ userId: m.user_id, name: nameById.get(m.user_id) ?? "Member", role: m.role }));
 }
 
 export async function generateInvite(

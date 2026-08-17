@@ -1,13 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Home, Item } from "@/lib/supabase/types";
-import { buildLocationIndex, pathForStorageLocation, type LocationNode } from "@/lib/location";
-
-export interface HomeStats {
-  home: Home;
-  roomCount: number;
-  furnitureCount: number;
-  itemCount: number;
-}
+import type { Database, Item } from "@/lib/supabase/types";
+import { buildScopedLocationIndex, pathForStorageLocation, type LocationNode } from "@/lib/location";
 
 export interface RecentItem {
   item: Item;
@@ -23,87 +16,78 @@ export interface StorageAreaUsage {
 }
 
 export interface DashboardData {
-  homes: HomeStats[];
+  hasHomes: boolean;
   recentItems: RecentItem[];
   topAreas: StorageAreaUsage[];
-  totals: { rooms: number; furniture: number; items: number; categories: number; noPhoto: number };
+  totals: { rooms: number; items: number; noPhoto: number };
 }
 
+const RECENT_ITEM_COLUMNS =
+  "id, user_id, storage_location_id, name, category, description, quantity, container, photo_url, tags, is_favorite, is_important, qr_code, created_at, updated_at";
+
+/**
+ * The dashboard's single data source. Deliberately does NOT call
+ * buildLocationIndex() or fetch every item — that full-home-hierarchy dump
+ * is for My Home/item-browsing/item-movement, not for four summary numbers
+ * and a couple of small lists. Counts are computed by Postgres (count-only
+ * head requests, no rows transferred); "top storage areas" is computed by
+ * the get_top_storage_areas() RPC (a GROUP BY in Postgres, not a JS loop
+ * over every item); location paths are resolved only for the ~13 specific
+ * storage locations this page actually renders (8 recent items + up to 5
+ * top areas), via buildScopedLocationIndex() instead of the full index.
+ */
 export async function getDashboardData(supabase: SupabaseClient<Database>): Promise<DashboardData> {
-  const index = await buildLocationIndex(supabase);
-  const { data: homesData } = await supabase.from("homes").select("*").order("created_at", { ascending: true });
-  const { data: itemsData } = await supabase
-    .from("items")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [homesCountRes, roomsCountRes, itemsCountRes, noPhotoCountRes, recentItemsRes, topAreasRes] = await Promise.all([
+    supabase.from("homes").select("*", { count: "exact", head: true }),
+    supabase.from("rooms").select("*", { count: "exact", head: true }),
+    supabase.from("items").select("*", { count: "exact", head: true }),
+    supabase.from("items").select("*", { count: "exact", head: true }).is("photo_url", null),
+    supabase.from("items").select(RECENT_ITEM_COLUMNS).order("created_at", { ascending: false }).limit(8),
+    supabase.rpc("get_top_storage_areas", { p_limit: 5 }),
+  ]);
 
-  const homes = homesData ?? [];
-  const items = itemsData ?? [];
+  const recentItemsData = (recentItemsRes.data ?? []) as Item[];
+  const topAreaRows = (topAreasRes.data ?? []) as { furniture_id: string; item_count: number }[];
 
-  const roomsByHome = new Map<string, number>();
-  for (const room of index.rooms.values()) {
-    roomsByHome.set(room.home_id, (roomsByHome.get(room.home_id) ?? 0) + 1);
-  }
+  const furnitureIds = topAreaRows.map((r) => r.furniture_id);
+  const [{ data: topFurnitureRows }, scopedIndex] = await Promise.all([
+    furnitureIds.length ? supabase.from("furniture").select("id, name, icon, room_id").in("id", furnitureIds) : Promise.resolve({ data: [] }),
+    buildScopedLocationIndex(
+      supabase,
+      recentItemsData.map((i) => i.storage_location_id)
+    ),
+  ]);
 
-  const furnitureByHome = new Map<string, number>();
-  const roomHome = new Map(Array.from(index.rooms.values()).map((r) => [r.id, r.home_id]));
-  for (const f of index.furniture.values()) {
-    const homeId = roomHome.get(f.room_id);
-    if (!homeId) continue;
-    furnitureByHome.set(homeId, (furnitureByHome.get(homeId) ?? 0) + 1);
-  }
+  const roomIds = Array.from(new Set((topFurnitureRows ?? []).map((f) => f.room_id)));
+  const { data: topRoomRows } = roomIds.length ? await supabase.from("rooms").select("id, name").in("id", roomIds) : { data: [] };
+  const roomNameById = new Map((topRoomRows ?? []).map((r) => [r.id, r.name]));
+  const furnitureById = new Map((topFurnitureRows ?? []).map((f) => [f.id, f]));
 
-  const itemsByHome = new Map<string, number>();
-  const itemsByFurniture = new Map<string, number>();
-  for (const item of items) {
-    const path = pathForStorageLocation(index, item.storage_location_id);
-    if (!path) continue;
-    const home = path.find((n) => n.type === "home");
-    const furniture = path.find((n) => n.type === "furniture");
-    if (home) itemsByHome.set(home.id, (itemsByHome.get(home.id) ?? 0) + 1);
-    if (furniture) itemsByFurniture.set(furniture.id, (itemsByFurniture.get(furniture.id) ?? 0) + 1);
-  }
-
-  const homeStats: HomeStats[] = homes.map((home) => ({
-    home,
-    roomCount: roomsByHome.get(home.id) ?? 0,
-    furnitureCount: furnitureByHome.get(home.id) ?? 0,
-    itemCount: itemsByHome.get(home.id) ?? 0,
-  }));
+  const topAreas: StorageAreaUsage[] = topAreaRows.map((row) => {
+    const furniture = furnitureById.get(row.furniture_id);
+    return {
+      furnitureId: row.furniture_id,
+      furnitureName: furniture?.name ?? "Unknown",
+      roomName: furniture ? (roomNameById.get(furniture.room_id) ?? "") : "",
+      icon: furniture?.icon ?? "Package",
+      itemCount: row.item_count,
+    };
+  });
 
   const recentItems: RecentItem[] = [];
-  for (const item of items.slice(0, 8)) {
-    const path = pathForStorageLocation(index, item.storage_location_id);
+  for (const item of recentItemsData) {
+    const path = pathForStorageLocation(scopedIndex, item.storage_location_id);
     if (path) recentItems.push({ item, path });
   }
 
-  const topAreas: StorageAreaUsage[] = Array.from(itemsByFurniture.entries())
-    .map(([furnitureId, itemCount]) => {
-      const furniture = index.furniture.get(furnitureId);
-      const room = furniture ? index.rooms.get(furniture.room_id) : undefined;
-      return {
-        furnitureId,
-        furnitureName: furniture?.name ?? "Unknown",
-        roomName: room?.name ?? "",
-        icon: furniture?.icon ?? "Package",
-        itemCount,
-      };
-    })
-    .sort((a, b) => b.itemCount - a.itemCount)
-    .slice(0, 5);
-
-  const categories = new Set(items.map((i) => i.category));
-
   return {
-    homes: homeStats,
+    hasHomes: (homesCountRes.count ?? 0) > 0,
     recentItems,
     topAreas,
     totals: {
-      rooms: index.rooms.size,
-      furniture: index.furniture.size,
-      items: items.length,
-      categories: categories.size,
-      noPhoto: items.filter((i) => !i.photo_url).length,
+      rooms: roomsCountRes.count ?? 0,
+      items: itemsCountRes.count ?? 0,
+      noPhoto: noPhotoCountRes.count ?? 0,
     },
   };
 }
