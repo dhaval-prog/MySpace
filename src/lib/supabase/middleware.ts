@@ -5,12 +5,21 @@ import type { Database } from "./types";
 const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth/callback"];
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const path = request.nextUrl.pathname;
+  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  let supabaseResponse = NextResponse.next({ request });
+  let user = null;
+
+  try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("Supabase env vars are not configured");
+    }
+
+    const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -23,22 +32,16 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
-    }
-  );
+    });
 
-  let user = null;
-  try {
     const {
       data: { user: fetchedUser },
     } = await supabase.auth.getUser();
     user = fetchedUser;
   } catch {
     // Supabase unreachable/misconfigured — fall back to "unauthenticated"
-    // instead of 500ing every request.
+    // instead of crashing every request.
   }
-
-  const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
 
   if (!user && !isPublic && path !== "/") {
     const url = request.nextUrl.clone();
