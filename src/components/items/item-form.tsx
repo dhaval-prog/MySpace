@@ -1,12 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Pencil, Star, AlertTriangle, ImagePlus } from "lucide-react";
+import { Pencil, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LocationPicker } from "@/components/items/location-picker";
@@ -192,19 +191,6 @@ export function ItemForm({
             if (file) setPhotoPreview(URL.createObjectURL(file));
           }}
         />
-      </div>
-
-      <div className="flex flex-wrap gap-6">
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <Switch name="isFavorite" defaultChecked={item?.is_favorite} />
-          <Star className="size-4 text-amber-500" />
-          Favorite
-        </label>
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <Switch name="isImportant" defaultChecked={item?.is_important} />
-          <AlertTriangle className="size-4 text-red-500" />
-          Important
-        </label>
       </div>
 
       {state.error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{state.error}</p>}

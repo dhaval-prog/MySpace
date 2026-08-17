@@ -8,7 +8,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LocationPath } from "@/components/shared/location-path";
-import { ItemToggleButtons } from "@/components/items/item-toggle-buttons";
 import { MoveItemDialog } from "@/components/items/move-item-dialog";
 import { ItemDeleteButton } from "@/components/items/item-delete-button";
 import { getIcon } from "@/lib/icon-map";
@@ -54,10 +53,7 @@ export function ItemDetailSheet({
           <div className="space-y-6 px-4 pb-4">
             <SheetHeader className="p-0">
               <div className="flex items-start justify-between gap-4">
-                <SheetTitle className="flex items-center gap-2">
-                  {item.name}
-                  {item.is_important && <Badge variant="destructive">Important</Badge>}
-                </SheetTitle>
+                <SheetTitle>{item.name}</SheetTitle>
                 <Button
                   size="sm"
                   variant="outline"
@@ -115,8 +111,6 @@ export function ItemDetailSheet({
                 </div>
               )}
             </div>
-
-            <ItemToggleButtons itemId={item.id} isFavorite={item.is_favorite} isImportant={item.is_important} />
 
             <div className="flex flex-wrap gap-2 border-t pt-4">
               <MoveItemDialog

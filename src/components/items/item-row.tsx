@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Star, AlertTriangle } from "lucide-react";
 import { getIcon } from "@/lib/icon-map";
 import { categoryIcon, categoryLabel, categoryBadgeClass } from "@/lib/constants";
 import type { Item } from "@/lib/supabase/types";
@@ -29,11 +28,7 @@ export function ItemRow({ item }: { item: Item }) {
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="truncate font-medium">{item.name}</p>
-          {item.is_favorite && <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />}
-          {item.is_important && <AlertTriangle className="size-3.5 shrink-0 fill-red-100 text-red-500" />}
-        </div>
+        <p className="truncate font-medium">{item.name}</p>
         <p className="truncate text-xs text-muted-foreground">
           {item.container ?? "—"}
           {item.quantity > 1 ? ` · Qty ${item.quantity}` : ""}

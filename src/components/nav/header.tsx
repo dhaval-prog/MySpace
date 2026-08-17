@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Home, Plus } from "lucide-react";
-import { HeaderSearch } from "@/components/search/header-search";
+import { Home, Plus, Search } from "lucide-react";
 import { UserMenu } from "@/components/nav/user-menu";
 import { QuickAddMenu } from "@/components/nav/quick-add-menu";
 import { NotificationBell } from "@/components/nav/notification-bell";
@@ -14,9 +13,17 @@ export function Header({ name, email }: { name: string; email: string }) {
         </span>
       </Link>
 
-      <HeaderSearch className="max-w-md flex-1 md:mx-auto" />
+      <div className="flex-1" />
 
       <NotificationBell />
+
+      <button
+        type="button"
+        aria-label="Search"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+      >
+        <Search className="size-4.5" />
+      </button>
 
       <QuickAddMenu
         trigger={

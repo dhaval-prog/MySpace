@@ -241,18 +241,3 @@ export async function moveItem(itemId: string, newStorageLocationId: string) {
   redirect(`/items/${itemId}`);
 }
 
-export async function toggleFavorite(itemId: string, value: boolean) {
-  const supabase = await createClient();
-  await supabase.from("items").update({ is_favorite: value }).eq("id", itemId);
-  revalidatePath("/favorites");
-  revalidatePath(`/items/${itemId}`);
-  revalidatePath("/items");
-}
-
-export async function toggleImportant(itemId: string, value: boolean) {
-  const supabase = await createClient();
-  await supabase.from("items").update({ is_important: value }).eq("id", itemId);
-  revalidatePath("/important");
-  revalidatePath(`/items/${itemId}`);
-  revalidatePath("/items");
-}

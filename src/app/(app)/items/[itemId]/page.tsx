@@ -10,7 +10,6 @@ import { LocationPath } from "@/components/shared/location-path";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ItemToggleButtons } from "@/components/items/item-toggle-buttons";
 import { MoveItemDialog } from "@/components/items/move-item-dialog";
 import { ItemDeleteButton } from "@/components/items/item-delete-button";
 
@@ -34,10 +33,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
     <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{item.name}</h1>
-            {item.is_important && <Badge variant="destructive">Important</Badge>}
-          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">{item.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">📍 Found here</p>
         </div>
         <Button
@@ -100,8 +96,6 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
           )}
         </CardContent>
       </Card>
-
-      <ItemToggleButtons itemId={item.id} isFavorite={item.is_favorite} isImportant={item.is_important} />
 
       <div className="flex flex-wrap gap-2 border-t pt-4">
         <MoveItemDialog

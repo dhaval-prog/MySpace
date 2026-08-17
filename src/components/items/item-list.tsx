@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Star, AlertTriangle } from "lucide-react";
 import { getIcon } from "@/lib/icon-map";
 import { categoryIcon, categoryLabel } from "@/lib/constants";
 import { LocationPath } from "@/components/shared/location-path";
@@ -34,11 +33,7 @@ export function ItemList({ results }: { results: { item: Item; path: LocationNod
               </span>
             )}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <p className="truncate font-medium">{item.name}</p>
-                {item.is_favorite && <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />}
-                {item.is_important && <AlertTriangle className="size-3.5 shrink-0 fill-red-100 text-red-500" />}
-              </div>
+              <p className="truncate font-medium">{item.name}</p>
               <LocationPath nodes={path} container={item.container} className="mt-0.5" />
             </div>
             <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">

@@ -10,7 +10,7 @@ import { RenameHomeDialog } from "@/components/home/rename-home-dialog";
 import { DeleteHomeDialog } from "@/components/home/delete-home-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { Plus, Star, AlertTriangle } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export default async function HomePage({
   searchParams,
@@ -69,19 +69,6 @@ export default async function HomePage({
         </Link>
         <AddRoomDialog homeId={homeId} />
         {homes.length > 1 && <DeleteHomeDialog homeId={homeId} homeName={home.name} roomCount={rooms.length} />}
-        <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
-        <Link href="/favorites">
-          <Button variant="outline" size="sm" className="bg-card">
-            <Star className="size-4" />
-            Favorites
-          </Button>
-        </Link>
-        <Link href="/important">
-          <Button variant="outline" size="sm" className="bg-card">
-            <AlertTriangle className="size-4" />
-            Important
-          </Button>
-        </Link>
       </div>
 
       {rooms.length === 0 ? (
