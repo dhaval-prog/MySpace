@@ -17,14 +17,14 @@ import { relativeDay } from "@/lib/utils";
 import type { RecentItem, StorageAreaUsage } from "@/lib/dashboard-data";
 
 const ICON_BADGE_GRADIENTS = [
-  "from-[#E4E9FA] to-[#6B85D0]",
-  "from-[#FBE0E8] to-[#EF7EA6]",
-  "from-[#A8DDEE] to-[#6B85D0]",
+  "from-[#E1E8E1] to-[#2C4A3E]",
+  "from-[#F3E4CB] to-[#C8813A]",
+  "from-[#DCE6EC] to-[#5B7FA6]",
 ];
 
 const STORAGE_BADGE_STYLES = [
   "bg-primary text-primary-foreground",
-  "bg-gradient-to-br from-[#EF7EA6] to-[#6B85D0] text-white",
+  "bg-gradient-to-br from-[#C8813A] to-[#5B7FA6] text-white",
   "bg-muted text-foreground",
 ];
 

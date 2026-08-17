@@ -19,16 +19,16 @@
 </script>
 <style>
   :root{
-    --bg:#F2EDEE;
-    --ink:#211A1E;
-    --ink-dim:#7C6E74;
-    --ink-faint:#A2949A;
-    --line:rgba(33,26,30,.09);
-    --line-strong:rgba(33,26,30,.18);
-    --glass:rgba(255,255,255,.72);
-    --brass:#4759A6;
-    --pos:#1F5B75;
-    --neg:#C6446F;
+    --bg:#F5F1EA;
+    --ink:#1C1917;
+    --ink-dim:#7C7569;
+    --ink-faint:#A39C8F;
+    --line:rgba(28,25,23,.09);
+    --line-strong:rgba(28,25,23,.18);
+    --glass:rgba(253,250,245,.78);
+    --brass:#2C4A3E;
+    --pos:#5B7FA6;
+    --neg:#C0392B;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -86,7 +86,7 @@
   #lockCard.show{opacity:1;pointer-events:auto;transform:translateY(-50%)}
   #pinDots{display:flex;gap:9px;margin:14px 0 4px}
   #pinDots i{width:10px;height:10px;border-radius:50%;border:1px solid var(--line-strong);transition:.2s}
-  #pinDots i.on{background:var(--brass);border-color:var(--brass);box-shadow:0 0 14px rgba(71,89,166,.5)}
+  #pinDots i.on{background:var(--brass);border-color:var(--brass);box-shadow:0 0 14px rgba(44,74,62,.5)}
   #pinDots.err i{border-color:var(--neg)}
   #keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
   #keys button{aspect-ratio:1/1;min-height:44px;border:1px solid var(--line);background:rgba(33,26,30,.03);
@@ -152,10 +152,10 @@
     position:relative;cursor:pointer;flex:0 0 auto;transition:.22s}
   .tog:after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
     background:var(--ink-dim);transition:.22s}
-  .tog.on{background:rgba(71,89,166,.16);border-color:var(--brass)}
+  .tog.on{background:rgba(44,74,62,.16);border-color:var(--brass)}
   .tog.on:after{left:21px;background:var(--brass)}
-  .info{padding:13px 14px;border-radius:11px;background:rgba(71,89,166,.08);border:1px solid rgba(71,89,166,.22);
-    font-size:12px;color:#33407a;line-height:1.55;margin-bottom:14px}
+  .info{padding:13px 14px;border-radius:11px;background:rgba(44,74,62,.08);border:1px solid rgba(44,74,62,.22);
+    font-size:12px;color:#1f3a30;line-height:1.55;margin-bottom:14px}
 
   /* history */
   .filters{display:flex;gap:7px;margin-bottom:6px}

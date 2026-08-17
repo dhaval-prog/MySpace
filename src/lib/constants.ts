@@ -183,8 +183,8 @@ export function categoryLabel(value: string): string {
 
 const CATEGORY_BADGE_STYLES = [
   "bg-accent text-accent-foreground",
-  "bg-[#FBE0E8] text-[#C6446F]",
-  "bg-[#A8DDEE] text-[#1F5B75]",
+  "bg-[#F3E4CB] text-[#8A5A22]",
+  "bg-[#DCE6EC] text-[#3E5F78]",
 ];
 
 /** Rotates through the design's badge palette by category so item cards get consistent, varied color-coding without a manual per-category mapping. */
