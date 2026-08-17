@@ -180,3 +180,15 @@ export function categoryIcon(value: string): string {
 export function categoryLabel(value: string): string {
   return ITEM_CATEGORIES.find((c) => c.value === value)?.label ?? "Other";
 }
+
+const CATEGORY_BADGE_STYLES = [
+  "bg-accent text-accent-foreground",
+  "bg-[#FBE0E8] text-[#C6446F]",
+  "bg-[#A8DDEE] text-[#1F5B75]",
+];
+
+/** Rotates through the design's badge palette by category so item cards get consistent, varied color-coding without a manual per-category mapping. */
+export function categoryBadgeClass(value: string): string {
+  const index = ITEM_CATEGORIES.findIndex((c) => c.value === value);
+  return CATEGORY_BADGE_STYLES[(index < 0 ? 0 : index) % CATEGORY_BADGE_STYLES.length];
+}

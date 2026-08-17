@@ -47,9 +47,9 @@ export function SplitChatButton({
 
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+      <Button size="sm" variant="ghost" className="rounded-xl text-muted-foreground" onClick={() => setOpen(true)}>
         <MessageCircle className="size-4" />
-        Split Chat
+        Chat
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="flex flex-col p-0 sm:max-w-md">

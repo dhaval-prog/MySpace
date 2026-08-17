@@ -85,19 +85,21 @@ export function GoalCard({
   return (
     <>
       <div className="relative">
-        <button onClick={() => setOpen(true)} className="w-full rounded-2xl border bg-card p-4 text-left transition hover:shadow-sm">
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2 font-medium">
-              <span className="text-xl">{goal.icon}</span>
-              {goal.name}
-            </span>
-            <span className="text-xs text-muted-foreground">{progressPct}%</span>
+        <button onClick={() => setOpen(true)} className="w-full rounded-2xl border bg-card p-5 text-left transition hover:shadow-sm">
+          <div className="flex items-start gap-3.5">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{goal.icon}</span>
+            <div className="min-w-0">
+              <p className="truncate font-semibold">{goal.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Created by {creatorName}</p>
+            </div>
           </div>
-          <p className="mt-0.5 text-[11px] text-muted-foreground/70">Created by {creatorName}</p>
-          <Progress value={progressPct} max={100} className="mt-3" />
-          <p className="mt-2 text-xs text-muted-foreground">
-            {inr(currentAmount)} of {inr(goal.target_amount)}
-          </p>
+          <Progress value={progressPct} max={100} className="mt-5" />
+          <div className="mt-3.5 flex items-baseline justify-between">
+            <span className="font-mono text-2xl text-foreground">{inr(currentAmount)}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {progressPct}% · {inr(goal.target_amount)}
+            </span>
+          </div>
         </button>
         {canDelete && (
           <button

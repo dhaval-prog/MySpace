@@ -37,20 +37,20 @@ export function RoomCard({
   return (
     <div className="group relative overflow-hidden rounded-2xl border bg-card">
       <Link href={`/home/rooms/${room.id}`} className="block p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Icon className="size-4.5" />
+        <div className="mb-4 flex items-center gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+            <Icon className="size-5" />
           </span>
           <div>
-            <h3 className="font-semibold uppercase tracking-wide">{room.name}</h3>
-            <p className="text-xs text-muted-foreground">
+            <h3 className="font-semibold">{room.name}</h3>
+            <p className="font-mono text-xs text-muted-foreground">
               {furniture.length} furniture · {itemCount} items
             </p>
           </div>
         </div>
 
         {furniture.length === 0 ? (
-          <p className="rounded-lg border border-dashed py-4 text-center text-xs text-muted-foreground">
+          <p className="rounded-xl border border-dashed py-4 text-center text-xs text-muted-foreground">
             No furniture yet
           </p>
         ) : (
@@ -60,7 +60,7 @@ export function RoomCard({
               return (
                 <span
                   key={f.id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1.5 text-xs font-medium"
                 >
                   <FIcon className="size-3.5" />
                   {f.name}
@@ -68,7 +68,7 @@ export function RoomCard({
               );
             })}
             {furniture.length > 6 && (
-              <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+              <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1.5 text-xs font-medium">
                 +{furniture.length - 6} more
               </span>
             )}

@@ -34,7 +34,7 @@ export function FurnitureCard({
   return (
     <div className="group relative overflow-hidden rounded-2xl border bg-card">
       <Link href={`/home/rooms/${roomId}/furniture/${furniture.id}`} className="flex flex-col items-center gap-2 px-4 py-6 text-center">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <span className="flex size-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
           <Icon className="size-7" />
         </span>
         <p className="font-semibold">{furniture.name}</p>

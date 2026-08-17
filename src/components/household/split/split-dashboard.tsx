@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BalancesSheet } from "@/components/household/split/balances-sheet";
 import { ExpenseDetailDialog } from "@/components/household/split/expense-detail-dialog";
@@ -39,25 +40,25 @@ export function SplitDashboard({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-xl bg-destructive/10 p-3">
+        <div className="rounded-2xl bg-destructive/10 p-3.5">
           <p className="text-xs text-muted-foreground">You owe</p>
-          <p className="mt-0.5 text-lg font-semibold text-destructive">{inr(summary.youOwe)}</p>
+          <p className="mt-0.5 font-mono text-lg text-destructive">{inr(summary.youOwe)}</p>
         </div>
-        <div className="rounded-xl bg-emerald-500/10 p-3">
+        <div className="rounded-2xl bg-accent p-3.5">
           <p className="text-xs text-muted-foreground">You are owed</p>
-          <p className="mt-0.5 text-lg font-semibold text-emerald-600">{inr(summary.youAreOwed)}</p>
+          <p className="mt-0.5 font-mono text-lg text-primary">{inr(summary.youAreOwed)}</p>
         </div>
-        <div className="rounded-xl bg-muted p-3">
+        <div className="rounded-2xl bg-muted p-3.5">
           <p className="text-xs text-muted-foreground">Net</p>
-          <p className={`mt-0.5 text-lg font-semibold ${summary.net >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+          <p className={`mt-0.5 font-mono text-lg ${summary.net >= 0 ? "text-primary" : "text-destructive"}`}>
             {summary.net >= 0 ? "+" : "-"}
             {inr(Math.abs(summary.net))}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button size="sm" variant="outline" onClick={() => setBalancesOpen(true)}>
+      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-accent p-1">
+        <Button size="sm" variant="ghost" className="rounded-xl bg-card shadow-sm" onClick={() => setBalancesOpen(true)}>
           Balances
         </Button>
         <SplitChatButton householdId={householdId} groupId={summary.groupId} currentUserId={currentUserId} members={members} />
@@ -78,29 +79,37 @@ export function SplitDashboard({
         {summary.recentExpenses.length === 0 ? (
           <p className="text-sm text-muted-foreground">No expenses yet — add one to start splitting.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
             {summary.recentExpenses.map((e) => (
               <li key={e.id}>
-                <button
-                  onClick={() => setDetailId(e.id)}
-                  className="w-full rounded-xl border bg-card p-3 text-left transition hover:shadow-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{e.description}</span>
-                    <span className="font-medium">{inr(e.amount)}</span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
+                <button onClick={() => setDetailId(e.id)} className="flex w-full items-center gap-3.5 p-3.5 text-left transition hover:bg-muted/50">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted">
+                    <Receipt className="size-4.5 text-primary" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{e.description}</span>
+                    <span className="mt-0.5 block font-mono text-xs text-muted-foreground">
                       {e.payerName} paid · {e.participantCount} {e.participantCount === 1 ? "person" : "people"}
                     </span>
-                    <span className={e.settled ? "text-emerald-600" : ""}>{e.settled ? "Settled" : "Pending"}</span>
-                  </div>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block font-mono text-base">{inr(e.amount)}</span>
+                    <span className={`block text-[11px] ${e.settled ? "text-primary" : "text-muted-foreground"}`}>
+                      {e.settled ? "Settled" : "Pending"}
+                    </span>
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {summary.net !== 0 && (
+        <Button className="w-full rounded-2xl" onClick={() => setBalancesOpen(true)}>
+          Settle up · {inr(Math.abs(summary.net))}
+        </Button>
+      )}
 
       <BalancesSheet householdId={householdId} open={balancesOpen} onOpenChange={setBalancesOpen} memberBalances={summary.memberBalances} />
 
