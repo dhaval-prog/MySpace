@@ -73,7 +73,7 @@ export function HomeItemsBrowser({ rooms, items }: { rooms: RoomFilter[]; items:
           description={query ? "No items match your search." : "This space doesn't have any items yet."}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => (
             <ItemGridCard key={item.id} item={item} />
           ))}

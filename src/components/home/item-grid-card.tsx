@@ -61,7 +61,7 @@ export function ItemGridCard({ item }: { item: Item }) {
   const CategoryIcon = getIcon(categoryIcon(item.category));
 
   return (
-    <div className="relative h-52" style={{ perspective: "1600px" }}>
+    <div className="relative h-48" style={{ perspective: "1600px" }}>
       <div
         className="relative h-full w-full transition-transform duration-500 ease-out"
         style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
