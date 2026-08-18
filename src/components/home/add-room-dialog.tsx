@@ -10,22 +10,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ROOM_TYPE_META, type RoomType } from "@/lib/constants";
 import { addRoom } from "@/lib/actions/homes";
 
-export function AddRoomDialog({ homeId }: { homeId: string }) {
-  const [open, setOpen] = useState(false);
+/**
+ * Uncontrolled by default (renders its own "Add Room" trigger button).
+ * Pass `open`/`onOpenChange` to drive it from elsewhere instead — e.g. a
+ * dropdown menu item — in which case no trigger is rendered.
+ */
+export function AddRoomDialog({
+  homeId,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: {
+  homeId: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = controlledOnOpenChange ?? setUncontrolledOpen;
   const [name, setName] = useState("");
   const [type, setType] = useState<RoomType>("bedroom");
   const [pending, startTransition] = useTransition();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button variant="outline">
-            <Plus className="size-4" />
-            Add Room
-          </Button>
-        }
-      />
+      {controlledOpen === undefined && (
+        <DialogTrigger
+          render={
+            <Button variant="outline">
+              <Plus className="size-4" />
+              Add Room
+            </Button>
+          }
+        />
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add a room</DialogTitle>

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { HomeItemsBrowser } from "@/components/home/home-items-browser";
 import { AddRoomDialog } from "@/components/home/add-room-dialog";
 import { AddItemDialog } from "@/components/home/add-item-dialog";
-import { RenameHomeDialog } from "@/components/home/rename-home-dialog";
+import { HomeActionsMenu } from "@/components/home/home-actions-menu";
 import { NewHomeSetup } from "@/components/home/new-home-setup";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -53,7 +53,7 @@ export default async function HomePage({
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Inventory</p>
           <div className="flex items-center gap-1.5">
             <h1 className="font-heading text-4xl text-foreground md:text-5xl">{home.name}</h1>
-            <RenameHomeDialog homeId={homeId} currentName={home.name} />
+            <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {totals.items} item{totals.items === 1 ? "" : "s"} across {totals.rooms} space{totals.rooms === 1 ? "" : "s"}
@@ -62,18 +62,15 @@ export default async function HomePage({
         <AddItemDialog homeId={homeId} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {homes.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            {homes.map((h) => (
-              <Link key={h.id} href={`/home?id=${h.id}`}>
-                <Badge variant={h.id === homeId ? "default" : "outline"}>{h.name}</Badge>
-              </Link>
-            ))}
-          </div>
-        )}
-        <AddRoomDialog homeId={homeId} />
-      </div>
+      {homes.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          {homes.map((h) => (
+            <Link key={h.id} href={`/home?id=${h.id}`}>
+              <Badge variant={h.id === homeId ? "default" : "outline"}>{h.name}</Badge>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {rooms.length === 0 ? (
         <EmptyState

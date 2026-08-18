@@ -8,26 +8,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { deleteHome } from "@/lib/actions/homes";
 
+/**
+ * Uncontrolled by default (renders its own "Delete Home" trigger button,
+ * used in Settings). Pass `open`/`onOpenChange` to drive it from elsewhere
+ * instead — e.g. a dropdown menu item — in which case no trigger is
+ * rendered.
+ */
 export function DeleteHomeDialog({
   homeId,
   homeName,
   roomCount,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: {
   homeId: string;
   homeName: string;
   roomCount: number;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = controlledOnOpenChange ?? setUncontrolledOpen;
   const [confirmText, setConfirmText] = useState("");
   const [pending, startTransition] = useTransition();
   const canDelete = confirmText.trim() === homeName;
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setOpen(true)}>
-        <Trash2 className="size-4" />
-        Delete Home
-      </Button>
+      {controlledOpen === undefined && (
+        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setOpen(true)}>
+          <Trash2 className="size-4" />
+          Delete Home
+        </Button>
+      )}
       <Dialog
         open={open}
         onOpenChange={(v) => {
