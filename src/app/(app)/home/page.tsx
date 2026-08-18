@@ -27,7 +27,7 @@ export default async function HomePage({
 
   if (!homes || homes.length === 0) {
     return (
-      <div className="min-h-full bg-[#D76F8D]">
+      <div className="min-h-full bg-[#FAF3F2]">
         <div className="mx-auto max-w-3xl p-4 md:p-8">
           <NewHomeSetup />
         </div>
@@ -39,7 +39,7 @@ export default async function HomePage({
   const data = await getHomeItemsView(supabase, homeId);
   if (!data) {
     return (
-      <div className="min-h-full bg-[#D76F8D]">
+      <div className="min-h-full bg-[#FAF3F2]">
         <div className="mx-auto max-w-3xl p-4 md:p-8">
           <EmptyState icon="Home" title="Couldn't load this home" description="Something went wrong loading this home's data. Please try again." />
         </div>
@@ -50,7 +50,7 @@ export default async function HomePage({
   const { home, rooms, items, totals } = data;
 
   return (
-    <div className="min-h-full bg-[#D76F8D]">
+    <div className="min-h-full bg-[#FAF3F2]">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
         <div>
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Inventory</p>
