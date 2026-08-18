@@ -5,7 +5,6 @@ import { getHomeItemsView } from "@/lib/home-data";
 import { Badge } from "@/components/ui/badge";
 import { HomeItemsBrowser } from "@/components/home/home-items-browser";
 import { AddRoomDialog } from "@/components/home/add-room-dialog";
-import { AddItemDialog } from "@/components/home/add-item-dialog";
 import { HomeActionsMenu } from "@/components/home/home-actions-menu";
 import { NewHomeSetup } from "@/components/home/new-home-setup";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -48,18 +47,15 @@ export default async function HomePage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Inventory</p>
-          <div className="flex items-center gap-1.5">
-            <h1 className="font-heading text-4xl text-foreground md:text-5xl">{home.name}</h1>
-            <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {totals.items} item{totals.items === 1 ? "" : "s"} across {totals.rooms} space{totals.rooms === 1 ? "" : "s"}
-          </p>
+      <div>
+        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Inventory</p>
+        <div className="flex items-center gap-1.5">
+          <h1 className="font-heading text-4xl text-foreground md:text-5xl">{home.name}</h1>
+          <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
         </div>
-        <AddItemDialog homeId={homeId} />
+        <p className="mt-1 text-sm text-muted-foreground">
+          {totals.items} item{totals.items === 1 ? "" : "s"} across {totals.rooms} space{totals.rooms === 1 ? "" : "s"}
+        </p>
       </div>
 
       {homes.length > 1 && (

@@ -38,30 +38,43 @@ export function SplitGroupSwitcher({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        {groups.map((g) => {
-          const active = g.id === currentGroupId;
-          return (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => router.push(`/split?id=${householdId}&group=${g.id}`)}
-              className={cn(
-                "flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition",
-                active ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:bg-muted"
-              )}
-            >
-              <span>{g.icon}</span>
-              {g.name}
-              <span className={cn("rounded-full px-1.5 py-0.5 text-xs", active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground")}>
-                {g.memberCount}
-              </span>
-            </button>
-          );
-        })}
+        {/* Grouped as one segmented control (bordered, padded pill) rather
+            than loose individual chips, matching the toggle treatment used
+            elsewhere (e.g. My Home's All/Add Items switch) — reads as one
+            intentional "which group am I in" control. */}
+        <div className="inline-flex flex-wrap items-center gap-1 rounded-full border bg-card p-1">
+          {groups.map((g) => {
+            const active = g.id === currentGroupId;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => router.push(`/split?id=${householdId}&group=${g.id}`)}
+                className={cn(
+                  "flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition",
+                  active ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-muted"
+                )}
+              >
+                <span className={cn("flex size-6 items-center justify-center rounded-full text-sm", active ? "bg-primary-foreground/15" : "bg-muted")}>
+                  {g.icon}
+                </span>
+                {g.name}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 font-mono text-[11px]",
+                    active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {g.memberCount}
+                </span>
+              </button>
+            );
+          })}
+        </div>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1.5 rounded-full border border-dashed px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
+          className="flex items-center gap-1.5 rounded-full border border-dashed px-3.5 py-2 text-sm font-medium text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
         >
           <Plus className="size-3.5" />
           New Group

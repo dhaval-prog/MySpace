@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { UserPlus, Copy, Check, Lock, Mail, MessageSquare, Send } from "lucide-react";
+import { UserPlus, Copy, Check, Lock, Mail, MessageSquare, Send, KeyRound, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -140,14 +140,22 @@ export function InviteMemberDialog({
         </DialogHeader>
 
         {token ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Share this code — whoever enters it joins as <span className="font-medium capitalize">{role.replace("_", " ")}</span>. It
-              expires in 7 days.
-            </p>
+          <div className="space-y-5">
+            <div className="flex items-start gap-3 rounded-xl bg-primary/5 px-3 py-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <UserPlus className="size-4" />
+              </span>
+              <p className="text-sm text-muted-foreground">
+                Share this code — whoever enters it joins as <span className="font-medium text-foreground capitalize">{role.replace("_", " ")}</span>.
+                It expires in 7 days.
+              </p>
+            </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Invite code</Label>
+              <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <KeyRound className="size-3.5" />
+                Invite code
+              </Label>
               <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5">
                 <code className="min-w-0 flex-1 truncate text-xs">{token}</code>
                 <Button
@@ -158,13 +166,16 @@ export function InviteMemberDialog({
                     setCopied(true);
                   }}
                 >
-                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  {copied ? <Check className="size-4 text-positive" /> : <Copy className="size-4" />}
                 </Button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Direct link</Label>
+              <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Link2 className="size-3.5" />
+                Direct link
+              </Label>
               <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteLink}</span>
                 <Button
@@ -175,28 +186,35 @@ export function InviteMemberDialog({
                     setLinkCopied(true);
                   }}
                 >
-                  {linkCopied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  {linkCopied ? <Check className="size-4 text-positive" /> : <Copy className="size-4" />}
                 </Button>
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
-                size="sm"
-                className="flex-1"
+                className="h-auto flex-col gap-1.5 py-3"
                 render={<a href={`mailto:?subject=${encodeURIComponent("Join me on My Space")}&body=${encodeURIComponent(shareMessage)}`} />}
               >
-                <Mail className="size-4" />
-                Email
+                <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Mail className="size-4" />
+                </span>
+                <span className="text-xs font-medium">Email</span>
               </Button>
-              <Button variant="outline" size="sm" className="flex-1" render={<a href={`sms:?body=${encodeURIComponent(shareMessage)}`} />}>
-                <MessageSquare className="size-4" />
-                Messages
+              <Button
+                variant="outline"
+                className="h-auto flex-col gap-1.5 py-3"
+                render={<a href={`sms:?body=${encodeURIComponent(shareMessage)}`} />}
+              >
+                <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <MessageSquare className="size-4" />
+                </span>
+                <span className="text-xs font-medium">Messages</span>
               </Button>
             </div>
 
-            <div className="space-y-2 border-t pt-4">
+            <div className="space-y-2 rounded-xl border bg-muted/20 p-3">
               <Label htmlFor="invite-sms-phone" className="text-xs text-muted-foreground">
                 Or text it directly to a phone number
               </Label>
@@ -210,10 +228,10 @@ export function InviteMemberDialog({
                     setSmsError(null);
                   }}
                   placeholder="Phone number"
-                  className="flex-1"
+                  className="flex-1 bg-background"
                 />
                 <Button
-                  variant="outline"
+                  variant={smsSent ? "outline" : "default"}
                   size="sm"
                   disabled={smsPending || !phone.trim() || smsSent}
                   onClick={() =>

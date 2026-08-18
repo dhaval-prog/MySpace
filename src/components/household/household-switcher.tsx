@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown, Plus, UserPlus, Users } from "lucide-react";
+import { Check, ChevronDown, Plus, UserPlus, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -50,37 +51,54 @@ export function HouseholdSwitcher({
             </Button>
           }
         />
-        <DropdownMenuContent align="start" className="w-64">
+        <DropdownMenuContent align="start" className="w-72 p-1.5">
           {/* Menu.GroupLabel (DropdownMenuLabel) requires a Menu.Group ancestor to register its
               label id — used bare, Base UI throws error #31 the instant the menu opens. */}
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Your households</DropdownMenuLabel>
-            {households.map((h) => (
-              <DropdownMenuItem
-                key={h.household.id}
-                className={h.household.id === currentId ? "bg-accent" : undefined}
-                render={
-                  <Link href={`${basePath}?id=${h.household.id}`}>
-                    🏠 {h.household.name}
-                    <span className="ml-auto text-xs text-muted-foreground capitalize">{h.role}</span>
-                  </Link>
-                }
-              />
-            ))}
+            <DropdownMenuLabel className="px-2 pt-1 pb-1.5">Your households</DropdownMenuLabel>
+            {households.map((h) => {
+              const active = h.household.id === currentId;
+              return (
+                <DropdownMenuItem
+                  key={h.household.id}
+                  className={cn("gap-3 rounded-lg px-2 py-2", active && "bg-primary/10")}
+                  render={
+                    <Link href={`${basePath}?id=${h.household.id}`}>
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-base">🏠</span>
+                      <span className="min-w-0 flex-1">
+                        <span className={cn("block truncate text-sm", active ? "font-semibold text-foreground" : "font-medium text-foreground")}>
+                          {h.household.name}
+                        </span>
+                      </span>
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground capitalize">
+                        {h.role}
+                      </span>
+                      {active && <Check className="size-4 shrink-0 text-primary" />}
+                    </Link>
+                  }
+                />
+              );
+            })}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           {canInvite && (
-            <DropdownMenuItem onClick={() => setInviteOpen(true)}>
-              <UserPlus className="size-4" />
+            <DropdownMenuItem className="gap-3 rounded-lg px-2 py-2" onClick={() => setInviteOpen(true)}>
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <UserPlus className="size-4" />
+              </span>
               Invite
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
+          <DropdownMenuItem className="gap-3 rounded-lg px-2 py-2" onClick={() => setCreateOpen(true)}>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Plus className="size-4" />
+            </span>
             Create Your Own
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setJoinOpen(true)}>
-            <Users className="size-4" />
+          <DropdownMenuItem className="gap-3 rounded-lg px-2 py-2" onClick={() => setJoinOpen(true)}>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Users className="size-4" />
+            </span>
             Join with a code
           </DropdownMenuItem>
         </DropdownMenuContent>
