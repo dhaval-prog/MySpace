@@ -27,9 +27,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Independent reads — run together instead of one after another. Every
   // authenticated page renders through this layout, so trimming a
   // sequential chain to a single round trip here matters on every navigation.
-  const [{ data: profile }, { data: homes }, memberships] = await Promise.all([
+  const [{ data: profile }, memberships] = await Promise.all([
     supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
-    supabase.from("homes").select("id, name").order("created_at", { ascending: true }).limit(1),
     listMyHouseholds(),
   ]);
 
@@ -40,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-svh bg-background text-foreground">
-      <Sidebar homeName={homes?.[0]?.name} members={sidebarMembers} />
+      <Sidebar members={sidebarMembers} />
       <div className="flex min-w-0 flex-1 flex-col md:pl-64">
         <Header name={name} email={user.email ?? ""} />
         <main className="flex-1 pb-28 md:pb-8">{children}</main>

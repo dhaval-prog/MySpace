@@ -45,6 +45,9 @@ export function PersonalPiggyPage({
   const [mood, setMood] = useState<PiggyMood>(initialBalance <= 0 ? "empty" : "idle");
   const [coinEvent, setCoinEvent] = useState<PiggyCoinEvent>(null);
   const [balancePop, setBalancePop] = useState(false);
+  // Only one of Add Money / Take Money Out can be expanded at a time —
+  // both inline panels are driven from this single piece of state.
+  const [expandedPanel, setExpandedPanel] = useState<"add" | "take" | null>(null);
 
   const displayBalance = useCountUp(balance);
 
@@ -121,8 +124,17 @@ export function PersonalPiggyPage({
               </div>
             )}
             <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
-              <AddMoneyDialog onAdded={handleAdded} />
-              <TakeMoneyDialog balance={balance} onTaken={handleTaken} />
+              <AddMoneyDialog
+                onAdded={handleAdded}
+                open={expandedPanel === "add"}
+                onOpenChange={(v) => setExpandedPanel(v ? "add" : null)}
+              />
+              <TakeMoneyDialog
+                balance={balance}
+                onTaken={handleTaken}
+                open={expandedPanel === "take"}
+                onOpenChange={(v) => setExpandedPanel(v ? "take" : null)}
+              />
             </div>
           </Card>,
 

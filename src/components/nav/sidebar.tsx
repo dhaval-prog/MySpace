@@ -40,7 +40,7 @@ export interface SidebarMember {
   role: HouseholdRole;
 }
 
-export function Sidebar({ homeName, members = [] }: { homeName?: string; members?: SidebarMember[] }) {
+export function Sidebar({ members = [] }: { members?: SidebarMember[] }) {
   const pathname = usePathname();
 
   return (
@@ -69,7 +69,7 @@ export function Sidebar({ homeName, members = [] }: { homeName?: string; members
               )}
             >
               <Icon className="size-4" />
-              {item.label === "My Home" && homeName ? homeName : item.label}
+              {item.label}
             </Link>
           );
         })}
