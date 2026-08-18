@@ -126,15 +126,16 @@ export function HomeItemsBrowser({
       </div>
 
       {/* Both panels share one grid cell so the container's height tracks
-          whichever is on screen, and the crossfade + opposite-direction
-          slide reads as a single panel opening/closing rather than two
-          independent transitions. overflow-x-hidden here (not on the sticky
-          wrapper above) keeps the slide from ever causing page scroll. */}
+          whichever is on screen. The outgoing panel fades out quickly with
+          no delay so it's gone before the incoming one starts sliding in —
+          otherwise the outgoing Add Items form is still visibly fading
+          while the room cards are opening, which reads as an extra "form
+          column" step in what should be a single clean reveal. */}
       <div className="grid overflow-x-hidden">
         <div
           className={cn(
-            "col-start-1 row-start-1 transition-all duration-500 ease-out motion-reduce:transition-none",
-            mode === "all" ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-6 opacity-0"
+            "col-start-1 row-start-1 transition-all ease-out motion-reduce:transition-none motion-reduce:delay-0 motion-reduce:duration-0",
+            mode === "all" ? "translate-x-0 opacity-100 delay-200 duration-500" : "pointer-events-none translate-x-6 opacity-0 delay-0 duration-150"
           )}
           aria-hidden={mode !== "all"}
         >
@@ -155,8 +156,8 @@ export function HomeItemsBrowser({
 
         <div
           className={cn(
-            "col-start-1 row-start-1 transition-all duration-500 ease-out motion-reduce:transition-none",
-            mode === "add" ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-6 opacity-0"
+            "col-start-1 row-start-1 transition-all ease-out motion-reduce:transition-none motion-reduce:delay-0 motion-reduce:duration-0",
+            mode === "add" ? "translate-x-0 opacity-100 delay-200 duration-500" : "pointer-events-none -translate-x-6 opacity-0 delay-0 duration-150"
           )}
           aria-hidden={mode !== "add"}
         >
