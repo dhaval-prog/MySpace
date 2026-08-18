@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { UserMenu } from "@/components/nav/user-menu";
 import { NotificationBell } from "@/components/nav/notification-bell";
 
@@ -7,9 +7,8 @@ export function Header({ name, email }: { name: string; email: string }) {
   return (
     <header className="sticky top-0 z-30 flex items-center gap-2 border-b bg-card px-4 py-3 md:gap-3 md:py-4 md:pr-6">
       <Link href="/home" className="flex items-center gap-2 font-semibold md:hidden">
-        <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <Home className="size-4" />
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon.svg" alt="My Space" className="size-8 shrink-0" />
       </Link>
 
       <div className="flex-1" />
