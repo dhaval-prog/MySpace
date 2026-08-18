@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { Home, ShieldCheck, Target, Receipt, Crown, User, type LucideIcon } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/nav/nav-items";
-import { QuickAddMenu } from "@/components/nav/quick-add-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { HouseholdRole } from "@/lib/supabase/types";
 
@@ -52,8 +51,6 @@ export function Sidebar({ homeName, members = [] }: { homeName?: string; members
           <p className="truncate text-[11px] text-muted-foreground">Everything in one place</p>
         </div>
       </div>
-
-      <QuickAddMenu className="w-full justify-start rounded-full px-4" />
 
       <nav className="flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => {

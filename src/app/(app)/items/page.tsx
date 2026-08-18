@@ -22,7 +22,7 @@ export default async function AllItemsPage() {
         <Button
           size="sm"
           render={
-            <Link href="/quick-add?type=item">
+            <Link href="/items/new">
               <Plus className="size-4" />
               Add Item
             </Link>

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Home, Plus, Search } from "lucide-react";
+import { Home, Search } from "lucide-react";
 import { UserMenu } from "@/components/nav/user-menu";
-import { QuickAddMenu } from "@/components/nav/quick-add-menu";
 import { NotificationBell } from "@/components/nav/notification-bell";
 
 export function Header({ name, email }: { name: string; email: string }) {
@@ -24,17 +23,6 @@ export function Header({ name, email }: { name: string; email: string }) {
       >
         <Search className="size-4.5" />
       </button>
-
-      <QuickAddMenu
-        trigger={
-          <button
-            aria-label="Quick add"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border text-muted-foreground hover:text-foreground md:hidden"
-          >
-            <Plus className="size-4.5" />
-          </button>
-        }
-      />
 
       <UserMenu name={name} email={email} />
     </header>
