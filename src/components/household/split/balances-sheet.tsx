@@ -46,7 +46,7 @@ export function BalancesSheet({
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{m.name}</p>
-                      <p className={`text-xs ${m.netAmount > 0.01 ? "text-emerald-600" : m.netAmount < -0.01 ? "text-destructive" : "text-muted-foreground"}`}>
+                      <p className={`text-xs ${m.netAmount > 0.01 ? "text-positive" : m.netAmount < -0.01 ? "text-destructive" : "text-muted-foreground"}`}>
                         {Math.abs(m.netAmount) < 0.01
                           ? "Settled up"
                           : m.netAmount > 0
