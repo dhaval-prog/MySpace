@@ -26,6 +26,7 @@ import type { HouseholdMemberLite } from "@/components/household/finance-toggle"
  */
 export function AddExpenseDialog({
   householdId,
+  groupId,
   members,
   currentUserId,
   open: controlledOpen,
@@ -34,6 +35,8 @@ export function AddExpenseDialog({
   onCreated,
 }: {
   householdId: string;
+  /** Defaults to the household's one default group (createExpense's own fallback) when omitted. */
+  groupId?: string;
   members: HouseholdMemberLite[];
   currentUserId: string;
   open?: boolean;
@@ -87,7 +90,7 @@ export function AddExpenseDialog({
           onCancel={() => setOpen(false)}
           onSubmit={(input: CreateExpenseInput) =>
             startTransition(async () => {
-              const result = await createExpense(householdId, input);
+              const result = await createExpense(householdId, input, groupId);
               if ("error" in result) {
                 setError(result.error);
                 return;

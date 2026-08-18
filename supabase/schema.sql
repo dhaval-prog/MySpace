@@ -1153,6 +1153,7 @@ create table if not exists public.split_groups (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households (id) on delete cascade,
   name text not null,
+  icon text,
   is_default boolean not null default false,
   created_by uuid not null references auth.users (id) on delete cascade,
   created_at timestamptz not null default now()
@@ -1254,9 +1255,13 @@ as $$
   select exists (select 1 from split_members where group_id = p_group_id and user_id = p_user_id);
 $$;
 
+-- Same RETURNING-vs-SELECT-policy issue as household_vaults_select_goal —
+-- create_split_group() below inserts this row `returning id` before the
+-- creator's own split_members row exists, so the creator must be visible to
+-- their own just-created group independent of split_members membership.
 drop policy if exists "split_groups_select_member" on public.split_groups;
 create policy "split_groups_select_member" on public.split_groups for select
-  using (is_split_group_member(id));
+  using (is_split_group_member(id) or created_by = auth.uid());
 drop policy if exists "split_groups_insert_household_member" on public.split_groups;
 create policy "split_groups_insert_household_member" on public.split_groups for insert
   with check (can_contribute_to_household(household_id) and created_by = auth.uid() and not is_default);
@@ -1360,6 +1365,38 @@ create policy "split_members_insert_manager" on public.split_members for insert
 drop policy if exists "split_members_delete_manager_or_self" on public.split_members;
 create policy "split_members_delete_manager_or_self" on public.split_members for delete
   using (can_manage_split_group(group_id) or user_id = auth.uid());
+
+-- Creates a new (non-default) split group and adds the creator as its first
+-- member in one transaction — mirrors create_household_goal()'s shape
+-- exactly (permission check, insert, membership seed).
+create or replace function public.create_split_group(
+  p_household_id uuid,
+  p_name text,
+  p_icon text default null
+)
+returns jsonb
+language plpgsql
+security invoker set search_path = public
+as $$
+declare
+  v_group_id uuid;
+begin
+  if not can_contribute_to_household(p_household_id) then
+    raise exception 'You do not have permission to create split groups in this household';
+  end if;
+  if p_name is null or trim(p_name) = '' then
+    raise exception 'Give the group a name';
+  end if;
+
+  insert into split_groups (household_id, name, icon, created_by)
+    values (p_household_id, trim(p_name), coalesce(p_icon, '🤝'), auth.uid())
+    returning id into v_group_id;
+
+  insert into split_members (group_id, user_id) values (v_group_id, auth.uid());
+
+  return jsonb_build_object('ok', true, 'group_id', v_group_id);
+end;
+$$;
 
 -- Adds an existing household member to a specific split group — Let's
 -- Split's own "Invite Members" action. Deliberately not a token/invite flow

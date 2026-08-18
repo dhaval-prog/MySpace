@@ -279,6 +279,7 @@ export type SplitGroup = {
   id: string;
   household_id: string;
   name: string;
+  icon: string | null;
   is_default: boolean;
   created_by: string;
   created_at: string;
@@ -647,6 +648,10 @@ export type Database = {
       remove_goal_member: {
         Args: { p_goal_id: string; p_user_id: string };
         Returns: { ok: boolean };
+      };
+      create_split_group: {
+        Args: { p_household_id: string; p_name: string; p_icon?: string | null };
+        Returns: { ok: boolean; group_id: string };
       };
       add_split_group_member: {
         Args: { p_group_id: string; p_user_id: string };

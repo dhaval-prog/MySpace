@@ -25,20 +25,25 @@ const METHODS: { value: SplitSettlementMethod; label: string }[] = [
  */
 export function SettleUpDialog({
   householdId,
+  groupId,
   open,
   onOpenChange,
   otherUserId,
   otherName,
   iPaid,
   suggestedAmount,
+  onSettled,
 }: {
   householdId: string;
+  /** Defaults to the household's one default group (recordSettlement's own fallback) when omitted. */
+  groupId?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   otherUserId: string;
   otherName: string;
   iPaid: boolean;
   suggestedAmount: number;
+  onSettled?: () => void;
 }) {
   const router = useRouter();
   const [amount, setAmount] = useState(suggestedAmount.toFixed(2));
@@ -90,12 +95,13 @@ export function SettleUpDialog({
             disabled={pending || !canSubmit}
             onClick={() =>
               startTransition(async () => {
-                const result = await recordSettlement(householdId, { otherUserId, amount: parsedAmount, method, comment, iPaid });
+                const result = await recordSettlement(householdId, { otherUserId, amount: parsedAmount, method, comment, iPaid }, groupId);
                 if ("error" in result) {
                   setError(result.error);
                   return;
                 }
                 onOpenChange(false);
+                onSettled?.();
                 router.refresh();
               })
             }

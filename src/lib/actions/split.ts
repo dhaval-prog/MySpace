@@ -110,6 +110,82 @@ export async function getDefaultGroupId(householdId: string): Promise<string | n
   return data?.id ?? null;
 }
 
+export interface SplitGroupSummary {
+  id: string;
+  name: string;
+  icon: string;
+  isDefault: boolean;
+  memberCount: number;
+  memberPreview: { userId: string; name: string; avatarUrl: string | null }[];
+  totalSpent: number;
+}
+
+/**
+ * Every split group the caller belongs to within this household — RLS
+ * (split_groups_select_member) already scopes this to groups the caller is
+ * actually a member of, same as everywhere else in Let's Split. Powers the
+ * group switcher; a household can have any number of groups now (the
+ * default "Household Expenses" one, plus whatever named groups members
+ * create), not just the single implicit group most of this file still
+ * defaults to when no groupId is given.
+ */
+export async function listSplitGroups(householdId: string): Promise<SplitGroupSummary[]> {
+  const supabase = await createClient();
+  const { data: groups } = await supabase
+    .from("split_groups")
+    .select("*")
+    .eq("household_id", householdId)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true });
+  if (!groups || groups.length === 0) return [];
+
+  const groupIds = groups.map((g) => g.id);
+  const [{ data: members }, { data: expenses }] = await Promise.all([
+    supabase.from("split_members").select("group_id, user_id").in("group_id", groupIds),
+    supabase.from("split_expenses").select("group_id, amount").in("group_id", groupIds),
+  ]);
+
+  const memberIdsByGroup = new Map<string, string[]>();
+  for (const m of members ?? []) {
+    const arr = memberIdsByGroup.get(m.group_id) ?? [];
+    arr.push(m.user_id);
+    memberIdsByGroup.set(m.group_id, arr);
+  }
+  const totalByGroup = new Map<string, number>();
+  for (const e of expenses ?? []) {
+    totalByGroup.set(e.group_id, (totalByGroup.get(e.group_id) ?? 0) + e.amount);
+  }
+
+  const allMemberIds = new Set<string>();
+  for (const ids of memberIdsByGroup.values()) for (const id of ids) allMemberIds.add(id);
+  const { data: profiles } = allMemberIds.size ? await supabase.from("profiles").select("*").in("id", Array.from(allMemberIds)) : { data: [] };
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  return groups.map((g) => {
+    const memberIds = memberIdsByGroup.get(g.id) ?? [];
+    return {
+      id: g.id,
+      name: g.name,
+      icon: g.icon ?? (g.is_default ? "🏠" : "🤝"),
+      isDefault: g.is_default,
+      memberCount: memberIds.length,
+      memberPreview: memberIds.slice(0, 4).map((id) => ({ userId: id, name: displayName(profileById.get(id)), avatarUrl: profileById.get(id)?.avatar_url ?? null })),
+      totalSpent: Math.round((totalByGroup.get(g.id) ?? 0) * 100) / 100,
+    };
+  });
+}
+
+/** Creates a new named split group (e.g. "Weekend in Austin") beyond the household's one default group, and adds the caller as its first member. */
+export async function createSplitGroup(householdId: string, name: string, icon?: string | null): Promise<{ groupId: string } | { error: string }> {
+  if (!name.trim()) return { error: "Give the group a name." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_split_group", { p_household_id: householdId, p_name: name.trim(), p_icon: icon ?? null });
+  if (error || !data?.ok) return { error: error?.message ?? "Failed to create group" };
+
+  revalidatePath("/split");
+  return { groupId: data.group_id };
+}
+
 export interface SplitGroupMemberInfo {
   userId: string;
   name: string;
@@ -199,13 +275,13 @@ export interface SplitActivityEntry {
  * goal/contribution noise mixed in here either — this feed is scoped by
  * kind for everyone, not just by what RLS happens to allow a given role.
  */
-export async function getSplitActivity(householdId: string): Promise<SplitActivityEntry[]> {
+export async function getSplitActivity(householdId: string, groupId?: string): Promise<SplitActivityEntry[]> {
   const supabase = await createClient();
-  const groupId = await getDefaultGroupId(householdId);
-  if (!groupId) return [];
+  const resolvedGroupId = groupId ?? (await getDefaultGroupId(householdId));
+  if (!resolvedGroupId) return [];
 
   const [splitMembers, { data: activityRows }] = await Promise.all([
-    getSplitGroupMembers(groupId),
+    getSplitGroupMembers(resolvedGroupId),
     supabase.from("household_activity").select("*").eq("household_id", householdId).order("created_at", { ascending: false }).limit(20),
   ]);
 
@@ -277,7 +353,7 @@ function overallNetByUser(owes: OwesMap, memberIds: string[]): Map<string, numbe
 
 const EPSILON = 0.01;
 
-export async function getSplitSummary(householdId: string): Promise<SplitSummary | null> {
+export async function getSplitSummary(householdId: string, groupId?: string): Promise<SplitSummary | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -286,8 +362,9 @@ export async function getSplitSummary(householdId: string): Promise<SplitSummary
 
   const context = await getHouseholdContext(householdId);
   if (!context) return null;
-  const groupId = await getDefaultGroupId(householdId);
-  if (!groupId) return null;
+  const resolvedGroupId = groupId ?? (await getDefaultGroupId(householdId));
+  if (!resolvedGroupId) return null;
+  groupId = resolvedGroupId;
 
   // Split group membership is no longer implied by household membership (see
   // supabase/schema.sql's "Let's Split membership is deliberately NOT
@@ -367,10 +444,11 @@ export async function getSplitSummary(householdId: string): Promise<SplitSummary
   };
 }
 
-export async function getSimplifiedBalances(householdId: string): Promise<SimplifiedTransferWithNames[]> {
+export async function getSimplifiedBalances(householdId: string, groupId?: string): Promise<SimplifiedTransferWithNames[]> {
   const supabase = await createClient();
-  const groupId = await getDefaultGroupId(householdId);
-  if (!groupId) return [];
+  const resolvedGroupId = groupId ?? (await getDefaultGroupId(householdId));
+  if (!resolvedGroupId) return [];
+  groupId = resolvedGroupId;
 
   const [{ data: expenses }, { data: settlements }, splitMembers] = await Promise.all([
     supabase.from("split_expenses").select("*").eq("group_id", groupId),
@@ -462,7 +540,11 @@ function toRpcParticipants(split: ReturnType<typeof computeSplit>) {
  * supabase/schema.sql, which doesn't even accept a payer parameter anymore).
  * A manipulated client request has no field left to override this through.
  */
-export async function createExpense(householdId: string, input: CreateExpenseInput): Promise<{ expenseId: string } | { error: string }> {
+export async function createExpense(
+  householdId: string,
+  input: CreateExpenseInput,
+  groupId?: string
+): Promise<{ expenseId: string } | { error: string }> {
   if (!input.description.trim()) return { error: "Give the expense a description." };
   if (!Number.isFinite(input.amount) || input.amount <= 0) return { error: "Amount must be greater than zero." };
 
@@ -470,8 +552,9 @@ export async function createExpense(householdId: string, input: CreateExpenseInp
   const rpcParticipants = toRpcParticipants(split);
   if ("error" in rpcParticipants) return rpcParticipants;
 
-  const groupId = await getDefaultGroupId(householdId);
-  if (!groupId) return { error: "This household doesn't have a split group yet." };
+  const resolvedGroupId = groupId ?? (await getDefaultGroupId(householdId));
+  if (!resolvedGroupId) return { error: "This household doesn't have a split group yet." };
+  groupId = resolvedGroupId;
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("record_split_expense", {
@@ -525,11 +608,16 @@ export async function deleteExpense(expenseId: string): Promise<{ ok: true } | {
   return { ok: true };
 }
 
-export async function recordSettlement(householdId: string, input: RecordSettlementInput): Promise<{ ok: true } | { error: string }> {
+export async function recordSettlement(
+  householdId: string,
+  input: RecordSettlementInput,
+  groupId?: string
+): Promise<{ ok: true } | { error: string }> {
   if (!Number.isFinite(input.amount) || input.amount <= 0) return { error: "Amount must be greater than zero." };
 
-  const groupId = await getDefaultGroupId(householdId);
-  if (!groupId) return { error: "This household doesn't have a split group yet." };
+  const resolvedGroupId = groupId ?? (await getDefaultGroupId(householdId));
+  if (!resolvedGroupId) return { error: "This household doesn't have a split group yet." };
+  groupId = resolvedGroupId;
 
   const supabase = await createClient();
   const {

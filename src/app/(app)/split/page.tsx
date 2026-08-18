@@ -1,20 +1,18 @@
 import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
-import { getSplitSummary, getSplitGroupMembers, getSplitActivity, getDefaultGroupId } from "@/lib/actions/split";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, getSplitActivity, listSplitGroups, getDefaultGroupId } from "@/lib/actions/split";
 import { EmptyState } from "@/components/shared/empty-state";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { AddExpenseDialog } from "@/components/household/split/add-expense-dialog";
-import { SplitDashboard } from "@/components/household/split/split-dashboard";
+import { SplitGroupSwitcher } from "@/components/household/split/split-group-switcher";
+import { SplitGroupWorkspace } from "@/components/household/split/split-group-workspace";
 import { SplitOnlyWorkspace } from "@/components/household/split/split-only-workspace";
-import { initials } from "@/lib/utils";
 
-export default async function SplitPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
-  const { id } = await searchParams;
+export default async function SplitPage({ searchParams }: { searchParams: Promise<{ id?: string; group?: string }> }) {
+  const { id, group } = await searchParams;
   const memberships = await listMyHouseholds();
 
   if (memberships.length === 0) {
@@ -39,15 +37,15 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   const context = await getHouseholdContext(householdId);
   if (!context) redirect(`/split?id=${memberships[0].household.id}`);
 
-  const groupId = await getDefaultGroupId(householdId);
-  const [splitSummary, splitMembers, activity] = await Promise.all([
-    getSplitSummary(householdId),
-    groupId ? getSplitGroupMembers(groupId) : Promise.resolve([]),
-    getSplitActivity(householdId),
-  ]);
   const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
 
   if (context.myRole === "split_only") {
+    const groupId = await getDefaultGroupId(householdId);
+    const [splitSummary, splitMembers, activity] = await Promise.all([
+      getSplitSummary(householdId),
+      groupId ? getSplitGroupMembers(groupId) : Promise.resolve([]),
+      getSplitActivity(householdId),
+    ]);
     return (
       <SplitOnlyWorkspace
         householdId={householdId}
@@ -61,8 +59,16 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  const isOwner = context.myRole === "owner";
+  const groups = await listSplitGroups(householdId);
+  const groupId = group && groups.some((g) => g.id === group) ? group : (groups.find((g) => g.isDefault)?.id ?? groups[0]?.id);
+
   const canInvite = context.myRole === "owner" || context.myRole === "co_owner";
+
+  const [splitSummary, splitMembers, simplifiedBalances] = groupId
+    ? await Promise.all([getSplitSummary(householdId, groupId), getSplitGroupMembers(groupId), getSimplifiedBalances(householdId, groupId)])
+    : [null, [], []];
+
+  const activeGroup = groups.find((g) => g.id === groupId);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
@@ -75,68 +81,28 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-wrap items-center gap-2">
           <HouseholdSwitcher households={memberships} currentId={householdId} basePath="/split" />
           <InviteMemberDialog householdId={householdId} canInvite={canInvite} />
-          {splitSummary && <AddExpenseDialog householdId={householdId} members={splitMembers} currentUserId={myUserId} />}
+          {splitSummary && groupId && <AddExpenseDialog householdId={householdId} groupId={groupId} members={splitMembers} currentUserId={myUserId} />}
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-2">
-        <div className="space-y-5">
-          <Card className="p-5">
-            <CardHeader className="p-0">
-              <h3 className="text-[17px] font-semibold tracking-tight">My Balance</h3>
-            </CardHeader>
-            <CardContent className="mt-3 p-0">
-              {splitSummary ? (
-                <SplitDashboard householdId={householdId} summary={splitSummary} members={splitMembers} currentUserId={myUserId} isOwner={isOwner} />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  You haven&apos;t been added to this household&apos;s split group yet — ask an owner to invite you.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {groups.length > 0 && <SplitGroupSwitcher householdId={householdId} groups={groups} currentGroupId={groupId ?? ""} />}
 
-        <div className="space-y-5">
-          <Card className="p-5">
-            <CardHeader className="flex-row items-baseline p-0">
-              <h3 className="text-[17px] font-semibold tracking-tight">Split Group Members</h3>
-            </CardHeader>
-            <CardContent className="mt-3 p-0">
-              <ul className="space-y-3">
-                {splitMembers.map((m) => (
-                  <li key={m.userId} className="flex items-center gap-2.5 text-sm">
-                    <Avatar size="sm">
-                      <AvatarFallback>{initials(m.name)}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate font-medium">{m.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="p-5">
-            <CardHeader className="p-0">
-              <h3 className="text-[17px] font-semibold tracking-tight">Activity</h3>
-            </CardHeader>
-            <CardContent className="mt-3 p-0">
-              {activity.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing yet — activity will show up here as expenses are added and settled.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {activity.map((a) => (
-                    <li key={a.id} className="text-sm">
-                      <p>{a.message}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(a.createdAt).toLocaleString("en-IN")}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+      {splitSummary && activeGroup ? (
+        <SplitGroupWorkspace
+          householdId={householdId}
+          group={activeGroup}
+          summary={splitSummary}
+          simplifiedBalances={simplifiedBalances}
+          members={splitMembers}
+          currentUserId={myUserId}
+        />
+      ) : (
+        <div className="rounded-2xl border bg-card p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            You haven&apos;t been added to this split group yet — ask its owner or creator to invite you.
+          </p>
         </div>
-      </div>
+      )}
     </div>
   );
 }
