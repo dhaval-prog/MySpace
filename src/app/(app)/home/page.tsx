@@ -80,7 +80,7 @@ export default async function HomePage({
           action={<AddRoomDialog homeId={homeId} />}
         />
       ) : (
-        <HomeItemsBrowser rooms={rooms} items={items} />
+        <HomeItemsBrowser homeId={homeId} rooms={rooms} items={items} />
       )}
     </div>
   );
