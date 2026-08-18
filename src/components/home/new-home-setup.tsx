@@ -13,13 +13,19 @@ import { cn } from "@/lib/utils";
 
 const TYPES: HomeType[] = ["1bhk", "2bhk", "3bhk", "custom"];
 
-export default function NewHomePage() {
+/**
+ * First-home onboarding — lives directly on /home (rendered whenever the
+ * signed-in user has no home yet, whether that's a brand-new account or
+ * right after deleting their only home from Settings), rather than a
+ * separate /home/new route to redirect through.
+ */
+export function NewHomeSetup() {
   const [name, setName] = useState("My Home");
   const [selected, setSelected] = useState<HomeType>("2bhk");
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 p-4 md:p-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Create your home</h1>
         <p className="mt-1 text-muted-foreground">

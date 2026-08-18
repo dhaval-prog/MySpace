@@ -1,15 +1,13 @@
-import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { buildLocationIndex, pathForStorageLocation } from "@/lib/location";
 import { getIcon } from "@/lib/icon-map";
 import { categoryIcon, categoryLabel } from "@/lib/constants";
 import { LocationPath } from "@/components/shared/location-path";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EditItemButton } from "@/components/items/edit-item-button";
 import { MoveItemDialog } from "@/components/items/move-item-dialog";
 import { ItemDeleteButton } from "@/components/items/item-delete-button";
 
@@ -36,16 +34,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
           <h1 className="text-2xl font-semibold tracking-tight">{item.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">📍 Found here</p>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          render={
-            <Link href={`/items/${item.id}/edit`}>
-              <Pencil className="size-4" />
-              Edit
-            </Link>
-          }
-        />
+        <EditItemButton item={{ id: item.id, name: item.name, category: item.category }} />
       </div>
 
       <Card>

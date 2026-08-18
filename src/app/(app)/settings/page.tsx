@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
+import { DeleteHomeDialog } from "@/components/home/delete-home-dialog";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -11,6 +12,8 @@ export default async function SettingsPage() {
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  const { data: home } = await supabase.from("homes").select("id, name").order("created_at", { ascending: true }).limit(1).maybeSingle();
+  const roomCount = home ? (await supabase.from("rooms").select("id", { count: "exact", head: true }).eq("home_id", home.id)).count ?? 0 : 0;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-8">
@@ -45,6 +48,21 @@ export default async function SettingsPage() {
           <ChangePasswordForm />
         </CardContent>
       </Card>
+
+      {home && (
+        <Card className="border-destructive/30 p-5">
+          <CardHeader className="p-0">
+            <CardTitle className="text-base text-destructive">Danger zone</CardTitle>
+            <CardDescription>
+              Deleting your home removes every room, piece of furniture, storage location, and item inside it. You&apos;ll
+              be able to set up a new home from scratch afterward.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="mt-4 p-0">
+            <DeleteHomeDialog homeId={home.id} homeName={home.name} roomCount={roomCount} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

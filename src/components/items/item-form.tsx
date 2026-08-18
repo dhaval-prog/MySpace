@@ -10,28 +10,24 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LocationPicker } from "@/components/items/location-picker";
 import { ITEM_CATEGORIES, SUGGESTED_TAGS, categoryLabel } from "@/lib/constants";
-import type { Item } from "@/lib/supabase/types";
 import type { ItemFormState } from "@/lib/actions/items";
 import { cn } from "@/lib/utils";
 
 type ItemAction = (state: ItemFormState, formData: FormData) => Promise<ItemFormState>;
 
+/** Always a "create" form — editing an existing item is deliberately limited to name + category, via the separate, much smaller EditItemDialog. */
 export function ItemForm({
   action,
-  item,
   initialLocation,
   initialName,
   locationLabel,
   submitLabel,
-  allowLocationChange = true,
 }: {
   action: ItemAction;
-  item?: Item;
   initialLocation?: { roomId?: string; furnitureId?: string; storageLocationId?: string; homeId?: string };
   initialName?: string;
   locationLabel?: string;
   submitLabel: string;
-  allowLocationChange?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<ItemFormState, FormData>(action, {});
   const [showPicker, setShowPicker] = useState(!initialLocation?.storageLocationId);
@@ -44,9 +40,9 @@ export function ItemForm({
         }
       : null
   );
-  const [tags, setTags] = useState<string[]>(item?.tags ?? []);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(item?.photo_url ?? null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   function addTag(tag: string) {
     const trimmed = tag.trim();
@@ -66,12 +62,10 @@ export function ItemForm({
         {!showPicker && locationLabel ? (
           <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-sm">
             <span>{locationLabel}</span>
-            {allowLocationChange && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setShowPicker(true)}>
-                <Pencil className="size-3.5" />
-                Change
-              </Button>
-            )}
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowPicker(true)}>
+              <Pencil className="size-3.5" />
+              Change
+            </Button>
           </div>
         ) : (
           <LocationPicker
@@ -86,13 +80,13 @@ export function ItemForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="name">Item Name</Label>
-        <Input id="name" name="name" defaultValue={item?.name ?? initialName} placeholder="Passport" required />
+        <Input id="name" name="name" defaultValue={initialName} placeholder="Passport" required />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Category</Label>
-          <Select name="category" defaultValue={item?.category ?? "other"}>
+          <Select name="category" defaultValue="other">
             <SelectTrigger className="w-full">
               <SelectValue>{(v) => categoryLabel(v)}</SelectValue>
             </SelectTrigger>
@@ -107,7 +101,7 @@ export function ItemForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="quantity">Quantity</Label>
-          <Input id="quantity" name="quantity" type="number" min={1} defaultValue={item?.quantity ?? 1} />
+          <Input id="quantity" name="quantity" type="number" min={1} defaultValue={1} />
         </div>
       </div>
 
@@ -116,7 +110,6 @@ export function ItemForm({
         <Textarea
           id="description"
           name="description"
-          defaultValue={item?.description ?? ""}
           placeholder="Blue passport inside a black folder."
           rows={3}
         />
@@ -124,7 +117,7 @@ export function ItemForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="container">Container (optional)</Label>
-        <Input id="container" name="container" defaultValue={item?.container ?? ""} placeholder="Blue Folder" />
+        <Input id="container" name="container" placeholder="Blue Folder" />
       </div>
 
       <div className="space-y-1.5">

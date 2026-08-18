@@ -7,7 +7,7 @@ import { HomeItemsBrowser } from "@/components/home/home-items-browser";
 import { AddRoomDialog } from "@/components/home/add-room-dialog";
 import { AddItemDialog } from "@/components/home/add-item-dialog";
 import { RenameHomeDialog } from "@/components/home/rename-home-dialog";
-import { DeleteHomeDialog } from "@/components/home/delete-home-dialog";
+import { NewHomeSetup } from "@/components/home/new-home-setup";
 import { EmptyState } from "@/components/shared/empty-state";
 
 export default async function HomePage({
@@ -27,12 +27,22 @@ export default async function HomePage({
   const { data: homes } = await supabase.from("homes").select("id, name").order("created_at", { ascending: true });
 
   if (!homes || homes.length === 0) {
-    redirect("/home/new");
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-8">
+        <NewHomeSetup />
+      </div>
+    );
   }
 
   const homeId = id && homes.some((h) => h.id === id) ? id : homes[0].id;
   const data = await getHomeItemsView(supabase, homeId);
-  if (!data) redirect("/home/new");
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-8">
+        <EmptyState icon="Home" title="Couldn't load this home" description="Something went wrong loading this home's data. Please try again." />
+      </div>
+    );
+  }
 
   const { home, rooms, items, totals } = data;
 
@@ -63,7 +73,6 @@ export default async function HomePage({
           </div>
         )}
         <AddRoomDialog homeId={homeId} />
-        {homes.length > 1 && <DeleteHomeDialog homeId={homeId} homeName={home.name} roomCount={rooms.length} />}
       </div>
 
       {rooms.length === 0 ? (

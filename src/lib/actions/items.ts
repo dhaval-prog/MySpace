@@ -152,43 +152,23 @@ export async function createItemFromVoice(
   return { itemId: result.id };
 }
 
-export async function updateItem(
+/** Item editing is deliberately limited to name + category — see EditItemDialog. Every other field is set once at creation and changed by its own dedicated action instead (moveItem for location, deleteItem to remove). */
+export async function updateItemNameCategory(
   itemId: string,
-  roomId: string,
-  furnitureId: string,
-  _prevState: ItemFormState,
-  formData: FormData
-): Promise<ItemFormState> {
+  name: string,
+  category: string
+): Promise<{ ok: true } | { error: string }> {
+  const trimmedName = name.trim();
+  if (!trimmedName) return { error: "Please give the item a name." };
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated." };
-
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { error: "Please give the item a name." };
-
-  const { url, error: uploadError } = await uploadPhotoIfPresent(supabase, user.id, formData);
-  if (uploadError) return { error: uploadError };
-
-  const update: Partial<Item> = {
-    name,
-    category: String(formData.get("category") ?? "other"),
-    description: String(formData.get("description") ?? "") || null,
-    quantity: Number(formData.get("quantity") ?? 1) || 1,
-    container: String(formData.get("container") ?? "") || null,
-    tags: parseTags(String(formData.get("tags") ?? "")),
-    is_favorite: formData.get("isFavorite") === "on",
-    is_important: formData.get("isImportant") === "on",
-  };
-  if (url) update.photo_url = url;
-
-  const { error } = await supabase.from("items").update(update).eq("id", itemId);
+  const { error } = await supabase.from("items").update({ name: trimmedName, category }).eq("id", itemId);
   if (error) return { error: "Something went wrong while saving this item. Please try again." };
 
   revalidatePath(`/items/${itemId}`);
-  revalidatePath(`/home/rooms/${roomId}/furniture/${furnitureId}`);
-  redirect(`/items/${itemId}`);
+  revalidatePath("/items");
+  revalidatePath("/home");
+  return { ok: true };
 }
 
 export interface ItemDetail {

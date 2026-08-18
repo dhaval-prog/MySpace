@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
 import { MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +12,7 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { LocationPath } from "@/components/shared/location-path";
+import { EditItemDialog } from "@/components/items/edit-item-dialog";
 import { MoveItemDialog } from "@/components/items/move-item-dialog";
 import { ItemDeleteButton } from "@/components/items/item-delete-button";
 import { getIcon } from "@/lib/icon-map";
@@ -48,6 +48,7 @@ function BackDetail({ label, children }: { label: string; children: React.ReactN
  */
 export function ItemGridCard({ item }: { item: Item }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [pending, startTransition] = useTransition();
@@ -60,7 +61,7 @@ export function ItemGridCard({ item }: { item: Item }) {
   const CategoryIcon = getIcon(categoryIcon(item.category));
 
   return (
-    <div className="relative h-64" style={{ perspective: "1600px" }}>
+    <div className="relative h-52" style={{ perspective: "1600px" }}>
       <div
         className="relative h-full w-full transition-transform duration-500 ease-out"
         style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
@@ -88,7 +89,7 @@ export function ItemGridCard({ item }: { item: Item }) {
                 }
               />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem render={<Link href={`/items/${item.id}/edit`} />}>
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
                   <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>
@@ -155,16 +156,9 @@ export function ItemGridCard({ item }: { item: Item }) {
 
           {detail && (
             <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3" onClick={(e) => e.stopPropagation()}>
-              <Button
-                size="icon"
-                variant="secondary"
-                className="rounded-xl"
-                render={
-                  <Link href={`/items/${item.id}/edit`}>
-                    <Pencil className="size-4" />
-                  </Link>
-                }
-              />
+              <Button size="icon" variant="secondary" className="rounded-xl" onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" />
+              </Button>
               <div className="flex gap-2">
                 <MoveItemDialog
                   itemId={item.id}
@@ -179,6 +173,8 @@ export function ItemGridCard({ item }: { item: Item }) {
           )}
         </div>
       </div>
+
+      <EditItemDialog item={{ id: item.id, name: item.name, category: item.category }} open={editOpen} onOpenChange={setEditOpen} />
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>
