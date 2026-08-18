@@ -41,33 +41,38 @@ export function HomeItemsBrowser({
           room pills, and search stay put, cards below them scroll on.
           Desktop keeps its normal flow (md:static). */}
       <div className="sticky top-[61px] z-20 -mx-4 space-y-3 bg-background px-4 pt-1 pb-3 md:static md:mx-0 md:space-y-5 md:px-0 md:pt-0 md:pb-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setMode("all");
-              setRoomId("all");
-            }}
-            className={cn(
-              "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
-              mode === "all" ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
-            )}
-          >
-            All
-            <span className={cn("font-mono text-[11px]", mode === "all" ? "text-primary-foreground/70" : "text-muted-foreground")}>
-              {items.length}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("add")}
-            className={cn(
-              "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
-              mode === "add" ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
-            )}
-          >
-            Add Items
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* A grouped segmented control (not just two more pills in the
+              row) so the All/Add Items toggle reads as one intentional
+              control at a glance, distinct from the room filter chips. */}
+          <div className="inline-flex shrink-0 items-center gap-1 rounded-full border bg-card p-1">
+            <button
+              type="button"
+              onClick={() => setMode("add")}
+              className={cn(
+                "flex h-[30px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+                mode === "add" ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+              )}
+            >
+              Add Items
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("all");
+                setRoomId("all");
+              }}
+              className={cn(
+                "flex h-[30px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+                mode === "all" ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+              )}
+            >
+              All
+              <span className={cn("font-mono text-[11px]", mode === "all" ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                {items.length}
+              </span>
+            </button>
+          </div>
 
           {/* Grid-template-columns 0fr/1fr animates the group's width without
               a JS measurement; the inner translate/opacity gives it the feel
