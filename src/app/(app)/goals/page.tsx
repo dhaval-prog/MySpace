@@ -3,6 +3,7 @@ import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { listGoals } from "@/lib/actions/household-goals";
 import { EmptyState } from "@/components/shared/empty-state";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
+import { HouseholdCardRow } from "@/components/household/household-card-row";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
@@ -58,7 +59,9 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <HouseholdCardRow households={memberships} currentId={householdId} />
+
+      <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {activeGoals.length === 0 ? (
           <p className="col-span-full text-sm text-muted-foreground">
             No goals yet — create one to start saving toward something together.

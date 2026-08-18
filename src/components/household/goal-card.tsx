@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { X, Clock, ChevronLeft } from "lucide-react";
+import { X, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,11 +38,15 @@ function monthYear(iso: string): string {
 }
 
 /**
- * A goal's progress card — clicking it opens a sheet with the full contributor
- * breakdown and a Contribute form, mirroring spec §8/§9 exactly (amount +
- * source, then per-contributor amount + percentage). `canDelete` is computed
- * by the server (household owner or the goal's creator) — the icon below only
- * hides itself for everyone else, the real gate lives in delete_household_goal().
+ * A goal's progress card — clicking it expands a panel directly below with
+ * the full contributor breakdown and a Contribute form, mirroring spec
+ * §8/§9 exactly (amount + source, then per-contributor amount +
+ * percentage). Inline rather than a modal so it reads as part of the card
+ * itself, matching the same grid-template-rows expand used elsewhere
+ * (Regular Savings' Add Money panel, My Home's sticky filters). `canDelete`
+ * is computed by the server (household owner or the goal's creator) — the
+ * icon below only hides itself for everyone else, the real gate lives in
+ * delete_household_goal().
  */
 export function GoalCard({
   summary,
@@ -112,129 +116,96 @@ export function GoalCard({
   });
 
   return (
-    <>
-      <div className="relative">
-        <button onClick={() => setOpen(true)} className="w-full rounded-2xl border bg-card p-5 text-left transition hover:shadow-sm">
-          <div className="flex items-start gap-3.5">
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{goal.icon}</span>
-            <div className="min-w-0">
-              <p className="truncate font-semibold">{goal.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Created by {summary.creatorName}</p>
-            </div>
+    <div className="relative self-start">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="w-full rounded-2xl border bg-card p-5 text-left transition-all duration-200 ease-out hover:z-10 hover:scale-[1.02] hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100"
+      >
+        <div className="flex items-start gap-3.5">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{goal.icon}</span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold">{goal.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Created by {summary.creatorName}</p>
           </div>
-          <Progress value={progressPct} max={100} className="mt-5" />
-          <div className="mt-3.5 flex items-baseline justify-between">
-            <span className="font-mono text-2xl text-foreground">{inr(currentAmount)}</span>
-            <span className="font-mono text-xs text-muted-foreground">
-              {progressPct}% · {inr(goal.target_amount)}
+        </div>
+        <Progress value={progressPct} max={100} className="mt-5" />
+        <div className="mt-3.5 flex items-baseline justify-between">
+          <span className="font-mono text-2xl text-foreground">{inr(currentAmount)}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {progressPct}% · {inr(goal.target_amount)}
+          </span>
+        </div>
+        <div className="mt-4 flex items-center justify-between border-t pt-3.5">
+          {cardMembers.length > 0 ? (
+            <AvatarGroup>
+              {cardMembers.slice(0, 3).map((m, i) => (
+                <Avatar key={m.userId} size="sm">
+                  <AvatarFallback className={memberAccentClass(i)}>{initials(m.name)}</AvatarFallback>
+                </Avatar>
+              ))}
+              {cardMembers.length > 3 && (
+                <AvatarGroupCount className="size-6 text-xs">+{cardMembers.length - 3}</AvatarGroupCount>
+              )}
+            </AvatarGroup>
+          ) : (
+            <span />
+          )}
+          {goal.deadline && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="size-3.5" />
+              {monthYear(goal.deadline)}
             </span>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t pt-3.5">
-            {cardMembers.length > 0 ? (
-              <AvatarGroup>
-                {cardMembers.slice(0, 3).map((m, i) => (
-                  <Avatar key={m.userId} size="sm">
-                    <AvatarFallback className={memberAccentClass(i)}>{initials(m.name)}</AvatarFallback>
-                  </Avatar>
-                ))}
-                {cardMembers.length > 3 && (
-                  <AvatarGroupCount className="size-6 text-xs">+{cardMembers.length - 3}</AvatarGroupCount>
-                )}
-              </AvatarGroup>
-            ) : (
-              <span />
-            )}
-            {goal.deadline && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="size-3.5" />
-                {monthYear(goal.deadline)}
-              </span>
-            )}
-          </div>
+          )}
+        </div>
+      </button>
+
+      {canDelete && (
+        <button
+          type="button"
+          title={`Delete "${goal.name}"`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleteError(null);
+            setDeleteOpen(true);
+          }}
+          className="absolute -top-2 -right-2 z-20 flex size-6 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm transition hover:border-destructive/40 hover:text-destructive"
+        >
+          <X className="size-3.5" />
+          <span className="sr-only">Delete &ldquo;{goal.name}&rdquo; goal</span>
         </button>
-        {canDelete && (
-          <button
-            type="button"
-            title={`Delete "${goal.name}"`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteError(null);
-              setDeleteOpen(true);
-            }}
-            className="absolute -top-2 -right-2 z-10 flex size-6 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm transition hover:border-destructive/40 hover:text-destructive"
-          >
-            <X className="size-3.5" />
-            <span className="sr-only">Delete &ldquo;{goal.name}&rdquo; goal</span>
-          </button>
-        )}
-      </div>
+      )}
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete &ldquo;{goal.name}&rdquo;?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This removes the goal along with its contribution progress and history. This can&apos;t be undone.
-          </p>
-          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleting}
-              onClick={() =>
-                startDeleteTransition(async () => {
-                  const result = await deleteGoal(goal.id);
-                  if ("error" in result) {
-                    setDeleteError(result.error);
-                    return;
-                  }
-                  setDeleteOpen(false);
-                  router.refresh();
-                })
-              }
-            >
-              Delete Goal
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent showCloseButton={false} className="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
-          <div className="flex items-start justify-between gap-2 border-b p-4">
-            <div className="min-w-0">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-              >
-                <ChevronLeft className="size-3.5" />
-                Back to Goals
-              </button>
-              <DialogTitle className="flex items-center gap-2 text-xl">
-                <span className="text-2xl">{goal.icon}</span> {goal.name}
-              </DialogTitle>
-              {goal.deadline && <p className="mt-1 text-xs text-muted-foreground">Due {monthYear(goal.deadline)}</p>}
+      {/* Expands directly below the card instead of opening a modal — the
+          grid-template-rows 0fr/1fr trick used for other inline panels in
+          the app (no JS height measurement needed to animate it). */}
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
+        style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <div className="mt-2 space-y-5 rounded-2xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              {canManageMembers ? (
+                <MemberManagerDialog
+                  title={`Members of "${goal.name}"`}
+                  members={members}
+                  fetchEligible={() => listEligibleGoalMembers(goal.id, goal.household_id)}
+                  onAdd={(userId) => addGoalMember(goal.id, userId)}
+                  onRemove={(userId) => removeGoalMember(goal.id, userId)}
+                  householdId={goal.household_id}
+                  currentUserId={currentUserId}
+                />
+              ) : (
+                <span />
+              )}
+              <Button size="icon-sm" variant="ghost" className="shrink-0" onClick={() => setOpen(false)}>
+                <X className="size-4" />
+              </Button>
             </div>
-            {canManageMembers && (
-              <MemberManagerDialog
-                title={`Members of "${goal.name}"`}
-                members={members}
-                fetchEligible={() => listEligibleGoalMembers(goal.id, goal.household_id)}
-                onAdd={(userId) => addGoalMember(goal.id, userId)}
-                onRemove={(userId) => removeGoalMember(goal.id, userId)}
-                householdId={goal.household_id}
-                currentUserId={currentUserId}
-              />
-            )}
-          </div>
 
-          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
-            <div className="rounded-2xl border bg-card p-4">
+            <div className="rounded-2xl border bg-muted/30 p-4">
               <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                 <span>Saved</span>
                 <span>Target</span>
@@ -307,12 +278,12 @@ export function GoalCard({
                   )}
                 </div>
 
-                <div className="space-y-3 rounded-xl border p-3">
+                <div className="space-y-3 rounded-xl border bg-background p-3">
                   <p className="text-sm font-medium">Contribute</p>
                   <div className="space-y-2">
-                    <Label htmlFor="contribute-amount">Amount (₹)</Label>
+                    <Label htmlFor={`contribute-amount-${goal.id}`}>Amount (₹)</Label>
                     <Input
-                      id="contribute-amount"
+                      id={`contribute-amount-${goal.id}`}
                       type="number"
                       min={1}
                       value={amount}
@@ -360,7 +331,7 @@ export function GoalCard({
                 </div>
               </div>
             ) : (
-              <div className="-mx-4 flex h-[380px] flex-col border-t">
+              <div className="-mx-4 -mb-4 flex h-[380px] flex-col border-t">
                 {chatMessages ? (
                   <GoalChatPanel goalId={goal.id} currentUserId={currentUserId} initialMessages={chatMessages} />
                 ) : (
@@ -369,8 +340,42 @@ export function GoalCard({
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete &ldquo;{goal.name}&rdquo;?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This removes the goal along with its contribution progress and history. This can&apos;t be undone.
+          </p>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={() =>
+                startDeleteTransition(async () => {
+                  const result = await deleteGoal(goal.id);
+                  if ("error" in result) {
+                    setDeleteError(result.error);
+                    return;
+                  }
+                  setDeleteOpen(false);
+                  router.refresh();
+                })
+              }
+            >
+              Delete Goal
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
