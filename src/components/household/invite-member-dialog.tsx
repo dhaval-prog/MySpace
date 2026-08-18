@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { UserPlus, Copy, Check, Lock, Mail, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -24,24 +24,38 @@ const ROLE_OPTIONS: { value: HouseholdInviteRole; label: string; description: st
 
 /**
  * `canInvite` is computed server-side from the caller's role in THIS
- * household (owner/co-owner) and only ever hides the trigger — the real gate
- * is the household_invites_insert_inviter RLS policy (see supabase/schema.sql),
- * so a locked-out member can't just call generateInvite() directly either.
+ * household (owner/co-owner, or — for a split group invite — that group's
+ * own creator) and only ever hides the trigger — the real gate is the
+ * household_invites_insert_inviter RLS policy (see supabase/schema.sql), so
+ * a locked-out member can't just call generateInvite() directly either.
  */
 export function InviteMemberDialog({
   householdId,
   canInvite,
   groupId,
   defaultRole = "member",
+  /** Split-group invites (see split-group-workspace.tsx) skip the role picker entirely — a Let's Split invite is always Split Only, so there's nothing to choose. The code generates the moment the dialog opens. */
+  lockToSplitOnly = false,
+  /** Renders with no trigger button of its own — for embedding inside another control (e.g. HouseholdSwitcher's dropdown), which owns `open`/`onOpenChange` instead. */
+  hideTrigger = false,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: {
   householdId: string;
   canInvite: boolean;
   /** When set, a Split Only invite joins this specific split group instead of the household's default one — see create_split_group()/redeem_household_invite() in supabase/schema.sql. */
   groupId?: string;
   defaultRole?: HouseholdInviteRole;
+  lockToSplitOnly?: boolean;
+  hideTrigger?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [role, setRole] = useState<HouseholdInviteRole>(defaultRole);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = onOpenChangeProp ?? setOpenState;
+
+  const [role, setRole] = useState<HouseholdInviteRole>(lockToSplitOnly ? "split_only" : defaultRole);
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -60,13 +74,30 @@ export function InviteMemberDialog({
     setSmsError(null);
     setSmsSent(false);
     setError(null);
-    setRole(defaultRole);
+    setRole(lockToSplitOnly ? "split_only" : defaultRole);
   }
+
+  // A split-group invite never asks "which role?" — it's always Split Only
+  // — so as soon as the dialog opens, generate the code right away instead
+  // of making the user click through an extra step.
+  useEffect(() => {
+    if (!open || !lockToSplitOnly || token || pending) return;
+    startTransition(async () => {
+      const result = await generateInvite(householdId, "split_only", groupId);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setToken(result.token);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, lockToSplitOnly]);
 
   const inviteLink = token && typeof window !== "undefined" ? `${window.location.origin}/join?token=${token}` : "";
   const shareMessage = `Join me on My Space — use this link: ${inviteLink}`;
 
   if (!canInvite) {
+    if (hideTrigger) return null;
     // Deliberately not the native `disabled` attribute — that sets
     // pointer-events:none, which would also swallow hover and hide the
     // tooltip explaining *why* it's locked. There's no onClick here, so it's
@@ -93,42 +124,48 @@ export function InviteMemberDialog({
         if (!next) reset();
       }}
     >
-      <DialogTrigger
-        render={
-          <Button size="sm" variant="outline">
-            <UserPlus className="size-4" />
-            Invite
-          </Button>
-        }
-      />
-      <DialogContent>
+      {!hideTrigger && (
+        <DialogTrigger
+          render={
+            <Button size="sm" variant="outline">
+              <UserPlus className="size-4" />
+              Invite
+            </Button>
+          }
+        />
+      )}
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Invite a member</DialogTitle>
         </DialogHeader>
 
         {token ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Share this code — whoever enters it joins as <span className="font-medium capitalize">{role.replace("_", " ")}</span>. It
               expires in 7 days.
             </p>
-            <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
-              <code className="min-w-0 flex-1 truncate text-xs">{token}</code>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                onClick={() => {
-                  navigator.clipboard.writeText(token);
-                  setCopied(true);
-                }}
-              >
-                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-              </Button>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Invite code</Label>
+              <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5">
+                <code className="min-w-0 flex-1 truncate text-xs">{token}</code>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={() => {
+                    navigator.clipboard.writeText(token);
+                    setCopied(true);
+                  }}
+                >
+                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
             </div>
 
-            <div>
-              <Label className="text-xs text-muted-foreground">Or send the direct link</Label>
-              <div className="mt-1.5 flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Direct link</Label>
+              <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteLink}</span>
                 <Button
                   size="icon-sm"
@@ -155,11 +192,11 @@ export function InviteMemberDialog({
               </Button>
               <Button variant="outline" size="sm" className="flex-1" render={<a href={`sms:?body=${encodeURIComponent(shareMessage)}`} />}>
                 <MessageSquare className="size-4" />
-                Open in Messages
+                Messages
               </Button>
             </div>
 
-            <div className="space-y-2 border-t pt-3">
+            <div className="space-y-2 border-t pt-4">
               <Label htmlFor="invite-sms-phone" className="text-xs text-muted-foreground">
                 Or text it directly to a phone number
               </Label>
@@ -198,6 +235,10 @@ export function InviteMemberDialog({
               {smsError && <p className="text-xs text-destructive">{smsError}</p>}
             </div>
           </div>
+        ) : lockToSplitOnly ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            {error ? <p className="text-sm text-destructive">{error}</p> : <p className="text-sm text-muted-foreground">Generating your invite code…</p>}
+          </div>
         ) : (
           <div className="space-y-2">
             <Label>Role</Label>
@@ -218,28 +259,37 @@ export function InviteMemberDialog({
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            {token ? "Done" : "Cancel"}
-          </Button>
-          {!token && (
-            <Button
-              disabled={pending}
-              onClick={() =>
-                startTransition(async () => {
-                  const result = await generateInvite(householdId, role, groupId);
-                  if ("error" in result) {
-                    setError(result.error);
-                    return;
-                  }
-                  setToken(result.token);
-                })
-              }
-            >
-              Generate Code
+        {!lockToSplitOnly && (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {token ? "Done" : "Cancel"}
             </Button>
-          )}
-        </DialogFooter>
+            {!token && (
+              <Button
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await generateInvite(householdId, role, groupId);
+                    if ("error" in result) {
+                      setError(result.error);
+                      return;
+                    }
+                    setToken(result.token);
+                  })
+                }
+              >
+                Generate Code
+              </Button>
+            )}
+          </DialogFooter>
+        )}
+        {lockToSplitOnly && token && (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

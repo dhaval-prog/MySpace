@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
 import { initials } from "@/lib/utils";
+import { useHouseholdPresence } from "@/lib/hooks/use-presence";
 
 export interface ManagedMember {
   userId: string;
@@ -31,18 +32,24 @@ export function MemberManagerDialog({
   fetchEligible,
   onAdd,
   onRemove,
+  householdId,
+  currentUserId,
 }: {
   title: string;
   members: ManagedMember[];
   fetchEligible: () => Promise<ManagedMember[]>;
   onAdd: (userId: string) => Promise<{ ok: true } | { error: string }>;
   onRemove: (userId: string) => Promise<{ ok: true } | { error: string }>;
+  /** When both are given, shows a green "active now" dot on members currently connected elsewhere in the app — see useHouseholdPresence. Omit either to skip presence entirely. */
+  householdId?: string;
+  currentUserId?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [eligible, setEligible] = useState<ManagedMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const onlineUserIds = useHouseholdPresence(householdId ?? "", currentUserId ?? "");
 
   useEffect(() => {
     if (!open) return;
@@ -74,6 +81,7 @@ export function MemberManagerDialog({
                 <li key={m.userId} className="flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-sm">
                   <Avatar size="sm">
                     <AvatarFallback>{initials(m.name)}</AvatarFallback>
+                    {onlineUserIds.has(m.userId) && <AvatarBadge className="bg-emerald-500" title="Active now" />}
                   </Avatar>
                   <span className="min-w-0 flex-1 truncate">
                     {m.name}

@@ -227,6 +227,8 @@ export function GoalCard({
                 fetchEligible={() => listEligibleGoalMembers(goal.id, goal.household_id)}
                 onAdd={(userId) => addGoalMember(goal.id, userId)}
                 onRemove={(userId) => removeGoalMember(goal.id, userId)}
+                householdId={goal.household_id}
+                currentUserId={currentUserId}
               />
             )}
           </div>

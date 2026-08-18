@@ -41,6 +41,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
   const activeGoals = await listGoals(householdId, { status: "active" });
 
   const isOwner = context.myRole === "owner";
+  const canInvite = context.myRole === "owner" || context.myRole === "co_owner";
   const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
 
   return (
@@ -52,7 +53,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm text-muted-foreground">Track progress toward what matters most</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <HouseholdSwitcher households={memberships} currentId={householdId} />
+          <HouseholdSwitcher households={memberships} currentId={householdId} canInvite={canInvite} />
           <CreateGoalDialog householdId={householdId} />
         </div>
       </div>

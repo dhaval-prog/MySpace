@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown, Plus, Users } from "lucide-react";
+import { ChevronDown, Plus, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,21 +18,26 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createHousehold, joinHousehold } from "@/lib/actions/household";
+import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
 import type { HouseholdListEntry } from "@/lib/actions/household";
 
 export function HouseholdSwitcher({
   households,
   currentId,
   basePath = "/goals",
+  canInvite = false,
 }: {
   households: HouseholdListEntry[];
   currentId: string;
   basePath?: string;
+  /** Shows an "Invite" item above "Create Your Own" for the current household — hidden entirely (not just disabled) when the caller can't invite, since a split_only viewer of this menu has nothing to do with it. */
+  canInvite?: boolean;
 }) {
   const router = useRouter();
   const current = households.find((h) => h.household.id === currentId);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   return (
     <>
@@ -64,6 +69,12 @@ export function HouseholdSwitcher({
             ))}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
+          {canInvite && (
+            <DropdownMenuItem onClick={() => setInviteOpen(true)}>
+              <UserPlus className="size-4" />
+              Invite
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             Create Your Own
@@ -77,6 +88,7 @@ export function HouseholdSwitcher({
 
       <CreateHouseholdDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => router.push(`${basePath}?id=${id}`)} />
       <JoinHouseholdDialog open={joinOpen} onOpenChange={setJoinOpen} onJoined={(id) => router.push(`${basePath}?id=${id}`)} />
+      {canInvite && <InviteMemberDialog householdId={currentId} canInvite={canInvite} hideTrigger open={inviteOpen} onOpenChange={setInviteOpen} />}
     </>
   );
 }

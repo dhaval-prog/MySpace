@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { Receipt, Check } from "lucide-react";
 import { cn, initials, memberAccentClass } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
+import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ExpenseDetailDialog } from "@/components/household/split/expense-detail-dialog";
 import { SettleUpDialog } from "@/components/household/split/settle-up-dialog";
 import { SplitChatPanel } from "@/components/household/split/split-chat-panel";
 import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
+import { useHouseholdPresence } from "@/lib/hooks/use-presence";
 import { listSplitMessages, type SplitChatMessageWithSender } from "@/lib/actions/split-chat";
 import type { SplitGroupSummary, SplitSummary, SimplifiedTransferWithNames } from "@/lib/actions/split";
 import type { HouseholdMemberLite } from "@/components/household/finance-toggle";
@@ -44,6 +45,7 @@ export function SplitGroupWorkspace({
   const [tab, setTab] = useState<Tab>("expenses");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<SplitChatMessageWithSender[] | null>(null);
+  const onlineUserIds = useHouseholdPresence(householdId, currentUserId);
 
   useEffect(() => {
     if (tab !== "chat") return;
@@ -60,12 +62,13 @@ export function SplitGroupWorkspace({
           <div>
             <div className="flex items-center gap-2">
               <p className="font-semibold">{group.name}</p>
-              <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={group.id} defaultRole="split_only" />
+              <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={group.id} lockToSplitOnly />
             </div>
             <AvatarGroup className="mt-1.5">
               {group.memberPreview.map((m, i) => (
                 <Avatar key={m.userId} size="sm">
                   <AvatarFallback className={memberAccentClass(i)}>{initials(m.name)}</AvatarFallback>
+                  {onlineUserIds.has(m.userId) && <AvatarBadge className="bg-emerald-500" title="Active now" />}
                 </Avatar>
               ))}
             </AvatarGroup>

@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, getSplitActivity, listSplitGroups, getDefaultGroupId } from "@/lib/actions/split";
 import { EmptyState } from "@/components/shared/empty-state";
-import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
 import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
@@ -81,7 +80,6 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm text-muted-foreground">Fair and simple expense splitting</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={groupId} defaultRole="split_only" />
           <JoinWithCodeDialog />
           {splitSummary && groupId && <AddExpenseDialog householdId={householdId} groupId={groupId} members={splitMembers} currentUserId={myUserId} />}
         </div>

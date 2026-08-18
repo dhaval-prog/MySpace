@@ -71,6 +71,8 @@ export function SplitDashboard({
           fetchEligible={() => listEligibleSplitGroupMembers(summary.groupId, householdId)}
           onAdd={(userId) => addSplitGroupMember(summary.groupId, userId)}
           onRemove={(userId) => removeSplitGroupMember(summary.groupId, userId)}
+          householdId={householdId}
+          currentUserId={currentUserId}
         />
       )}
 
