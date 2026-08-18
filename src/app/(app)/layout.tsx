@@ -8,9 +8,19 @@ import { listMyHouseholds, listHouseholdMembersLite } from "@/lib/actions/househ
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
+  // Middleware already called auth.getUser() (a verified round trip to
+  // Supabase's Auth server) for this exact request and redirected
+  // unauthenticated visitors before this layout ever ran — every
+  // authenticated page renders through here, so a second network round
+  // trip on every single navigation is pure duplicated latency. Reading
+  // the session from the request's cookies is a local, no-network check;
+  // it isn't a security boundary (Postgres RLS enforces that independently
+  // on every actual data query below), it's only used to pick a display
+  // name and redirect-guard this shell.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
 
   if (!user) redirect("/login");
 

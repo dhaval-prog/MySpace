@@ -19,10 +19,13 @@ export default async function HomePage({
 }) {
   const { id } = await searchParams;
   const supabase = await createClient();
+  // Middleware + the (app) layout already verified this request's session —
+  // see the comment in (app)/layout.tsx. Reading it locally here avoids a
+  // third auth network round trip on the app's most-visited page.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user) redirect("/login");
   const { data: homes } = await supabase.from("homes").select("id, name").order("created_at", { ascending: true });
 
   if (!homes || homes.length === 0) {
