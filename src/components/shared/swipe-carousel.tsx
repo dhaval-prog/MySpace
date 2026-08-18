@@ -27,16 +27,23 @@ const DRAG_COMMIT_PX = 8;
  * immediately on drag release (optimistic), then reconciles once the new
  * `activeIndex` prop lands, so a controlled carousel doesn't feel laggy
  * while waiting on that round trip.
+ *
+ * `peek` narrows each slide so the next one's left edge shows at the right
+ * of the viewport (left-aligned, not centered) as a hint there's more to
+ * swipe to — off by default, since not every carousel using this wants it.
  */
 export function SwipeCarousel({
   slides,
   activeIndex: activeIndexProp,
   onActiveIndexChange,
+  peek = false,
 }: {
   slides: ReactNode[];
   activeIndex?: number;
   onActiveIndexChange?: (index: number) => void;
+  peek?: boolean;
 }) {
+  const slideWidthPct = peek ? 90 : 100;
   const trackRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [active, setActive] = useState(activeIndexProp ?? 0);
@@ -123,7 +130,7 @@ export function SwipeCarousel({
             "flex touch-pan-y ease-out motion-reduce:transition-none",
             dragging ? "transition-none" : "transition-transform duration-300"
           )}
-          style={{ transform: `translateX(calc(-${active * 100}% + ${dragX}px))` }}
+          style={{ transform: `translateX(calc(-${active * slideWidthPct}% + ${dragX}px))` }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={endDrag}
@@ -135,7 +142,8 @@ export function SwipeCarousel({
               ref={(el) => {
                 slideRefs.current[i] = el;
               }}
-              className="w-full shrink-0 self-start"
+              style={{ width: `${slideWidthPct}%` }}
+              className="shrink-0 self-start"
             >
               <div className="p-1.5 transition-transform duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100">
                 {slide}

@@ -95,6 +95,7 @@ export function PersonalPiggyPage({
       </div>
 
       <SwipeCarousel
+        peek
         slides={[
           <Card key="balance" className="p-6 sm:p-8">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
