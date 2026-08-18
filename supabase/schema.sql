@@ -923,13 +923,23 @@ drop policy if exists "household_vaults_select_member" on public.household_vault
 drop policy if exists "household_vaults_select_shared" on public.household_vaults;
 create policy "household_vaults_select_shared" on public.household_vaults for select
   using (vault_type = 'shared' and has_home_access(household_id));
+-- The creator must always be able to see (RETURNING-select) a goal vault
+-- they just created, even before household_goals has a row for it — Postgres
+-- requires RETURNING output to satisfy SELECT policies too, and
+-- create_household_goal() inserts this vault, RETURNING its id, BEFORE the
+-- matching household_goals row exists (see create_household_goal below).
+-- Without the `created_by = auth.uid()` clause, that insert fails with a
+-- generic RLS violation despite passing household_vaults_insert_goal.
 drop policy if exists "household_vaults_select_goal" on public.household_vaults;
 create policy "household_vaults_select_goal" on public.household_vaults for select
   using (
     vault_type = 'goal'
-    and exists (
-      select 1 from household_goals g
-      where g.vault_id = household_vaults.id and (is_goal_member(g.id) or is_household_owner(household_vaults.household_id))
+    and (
+      created_by = auth.uid()
+      or exists (
+        select 1 from household_goals g
+        where g.vault_id = household_vaults.id and (is_goal_member(g.id) or is_household_owner(household_vaults.household_id))
+      )
     )
   );
 drop policy if exists "household_vaults_insert_goal" on public.household_vaults;
