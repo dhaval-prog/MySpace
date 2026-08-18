@@ -116,6 +116,8 @@ export interface SplitGroupSummary {
   icon: string;
   isDefault: boolean;
   createdBy: string;
+  createdByName: string;
+  createdByAvatarUrl: string | null;
   memberCount: number;
   memberPreview: { userId: string; name: string; avatarUrl: string | null }[];
   totalSpent: number;
@@ -170,6 +172,8 @@ export async function listSplitGroups(householdId: string): Promise<SplitGroupSu
       icon: g.icon ?? (g.is_default ? "🏠" : "🤝"),
       isDefault: g.is_default,
       createdBy: g.created_by,
+      createdByName: displayName(profileById.get(g.created_by)),
+      createdByAvatarUrl: profileById.get(g.created_by)?.avatar_url ?? null,
       memberCount: memberIds.length,
       memberPreview: memberIds.slice(0, 4).map((id) => ({ userId: id, name: displayName(profileById.get(id)), avatarUrl: profileById.get(id)?.avatar_url ?? null })),
       totalSpent: Math.round((totalByGroup.get(g.id) ?? 0) * 100) / 100,
@@ -257,6 +261,16 @@ export async function removeSplitGroupMember(groupId: string, userId: string): P
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("remove_split_group_member", { p_group_id: groupId, p_user_id: userId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to remove member" };
+
+  revalidatePath("/split");
+  return { ok: true };
+}
+
+/** Deletes a non-default split group — RLS (split_groups_delete_owner_or_creator) restricts this to the group's creator or the household owner, and excludes the default "Household Expenses" group entirely (every household must always have one). Cascades to its members, expenses, and settlements. */
+export async function deleteSplitGroup(groupId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("split_groups").delete().eq("id", groupId);
+  if (error) return { error: "Something went wrong. Only the group's creator or the household owner can delete it." };
 
   revalidatePath("/split");
   return { ok: true };

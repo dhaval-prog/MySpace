@@ -66,6 +66,10 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   // to that group) even without being the household owner/co-owner — mirrors
   // household_invites_insert_inviter's widened check in supabase/schema.sql.
   const canInvite = context.myRole === "owner" || context.myRole === "co_owner" || activeGroup?.createdBy === myUserId;
+  // Deleting is narrower than inviting — mirrors split_groups_delete_owner_or_creator
+  // exactly (household owner or the group's own creator; co-owner alone isn't
+  // enough), and the default "Household Expenses" group can never be deleted.
+  const canDeleteGroup = !activeGroup?.isDefault && (context.myRole === "owner" || activeGroup?.createdBy === myUserId);
 
   const [splitSummary, splitMembers, simplifiedBalances] = groupId
     ? await Promise.all([getSplitSummary(householdId, groupId), getSplitGroupMembers(groupId), getSimplifiedBalances(householdId, groupId)])
@@ -98,6 +102,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           members={splitMembers}
           currentUserId={myUserId}
           canInvite={canInvite}
+          canDeleteGroup={canDeleteGroup}
         />
       ) : (
         <div className="rounded-2xl border bg-card p-8 text-center">

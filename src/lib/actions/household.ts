@@ -211,10 +211,56 @@ export async function joinHousehold(token: string): Promise<{ householdId: strin
   return { householdId: data.household_id };
 }
 
+/**
+ * Kicks a member out — RLS (household_members_delete_owner_or_self) already
+ * restricts the caller to the household owner (removing anyone) or the
+ * member themselves (see leaveHousehold below, which reuses this same
+ * delete). The owner-target guard here isn't a security boundary (RLS
+ * already allows the owner to delete their own row too) — it's stopping an
+ * owner from accidentally orphaning their own household through this call;
+ * deleteHousehold is the only way to get rid of an owned household.
+ */
 export async function removeMember(householdId: string, memberUserId: string): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  if (memberUserId === user.id) {
+    const { data: membership } = await supabase
+      .from("household_members")
+      .select("role")
+      .eq("household_id", householdId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (membership?.role === "owner") return { error: "As the owner, you can't remove yourself — delete the household instead." };
+  }
+
   const { error } = await supabase.from("household_members").delete().eq("household_id", householdId).eq("user_id", memberUserId);
   if (error) return { error: error.message };
+
+  revalidatePath("/goals");
+  revalidatePath("/split");
+  return { ok: true };
+}
+
+/** A member (never the owner — see removeMember's guard) leaves a household they don't own. */
+export async function leaveHousehold(householdId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  return removeMember(householdId, user.id);
+}
+
+/** Permanently deletes a household — RLS (households_delete_owner) restricts this to the household's owner. Cascades to members, invites, split groups/expenses, goals, and the shared vault (see the `on delete cascade` foreign keys in supabase/schema.sql). */
+export async function deleteHousehold(householdId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("households").delete().eq("id", householdId);
+  if (error) return { error: "Something went wrong. Only the household owner can delete it." };
 
   revalidatePath("/goals");
   revalidatePath("/split");

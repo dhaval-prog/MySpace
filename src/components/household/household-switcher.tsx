@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Check, ChevronDown, Plus, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createHousehold, joinHousehold } from "@/lib/actions/household";
 import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
+import { ManageHouseholdDialog, ManageHouseholdButton } from "@/components/household/manage-household-dialog";
+import { LeaveHouseholdDialog, LeaveHouseholdButton } from "@/components/household/leave-household-dialog";
 import type { HouseholdListEntry } from "@/lib/actions/household";
 
 export function HouseholdSwitcher({
@@ -36,13 +37,16 @@ export function HouseholdSwitcher({
 }) {
   const router = useRouter();
   const current = households.find((h) => h.household.id === currentId);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [manageTarget, setManageTarget] = useState<{ id: string; name: string } | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
           render={
             <Button variant="outline" className="gap-1.5 rounded-full bg-white">
@@ -58,25 +62,43 @@ export function HouseholdSwitcher({
             <DropdownMenuLabel className="px-2 pt-1 pb-1.5">Your households</DropdownMenuLabel>
             {households.map((h) => {
               const active = h.household.id === currentId;
+              const isOwner = h.role === "owner";
               return (
                 <DropdownMenuItem
                   key={h.household.id}
+                  closeOnClick={false}
                   className={cn("gap-3 rounded-lg px-2 py-2", active && "bg-primary/10")}
-                  render={
-                    <Link href={`${basePath}?id=${h.household.id}`}>
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-base">🏠</span>
-                      <span className="min-w-0 flex-1">
-                        <span className={cn("block truncate text-sm", active ? "font-semibold text-foreground" : "font-medium text-foreground")}>
-                          {h.household.name}
-                        </span>
-                      </span>
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground capitalize">
-                        {h.role}
-                      </span>
-                      {active && <Check className="size-4 shrink-0 text-primary" />}
-                    </Link>
-                  }
-                />
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push(`${basePath}?id=${h.household.id}`);
+                  }}
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-base">🏠</span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn("block truncate text-sm", active ? "font-semibold text-foreground" : "font-medium text-foreground")}>
+                      {h.household.name}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground capitalize">
+                    {h.role}
+                  </span>
+                  {active && <Check className="size-4 shrink-0 text-primary" />}
+                  {isOwner ? (
+                    <ManageHouseholdButton
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setManageTarget({ id: h.household.id, name: h.household.name });
+                      }}
+                    />
+                  ) : (
+                    <LeaveHouseholdButton
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setLeaveTarget({ id: h.household.id, name: h.household.name });
+                      }}
+                    />
+                  )}
+                </DropdownMenuItem>
               );
             })}
           </DropdownMenuGroup>
@@ -107,6 +129,29 @@ export function HouseholdSwitcher({
       <CreateHouseholdDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => router.push(`${basePath}?id=${id}`)} />
       <JoinHouseholdDialog open={joinOpen} onOpenChange={setJoinOpen} onJoined={(id) => router.push(`${basePath}?id=${id}`)} />
       {canInvite && <InviteMemberDialog householdId={currentId} canInvite={canInvite} hideTrigger open={inviteOpen} onOpenChange={setInviteOpen} />}
+
+      {manageTarget && (
+        <ManageHouseholdDialog
+          householdId={manageTarget.id}
+          householdName={manageTarget.name}
+          open={!!manageTarget}
+          onOpenChange={(v) => {
+            if (!v) setManageTarget(null);
+          }}
+          onDeleted={() => router.push(basePath)}
+        />
+      )}
+      {leaveTarget && (
+        <LeaveHouseholdDialog
+          householdId={leaveTarget.id}
+          householdName={leaveTarget.name}
+          open={!!leaveTarget}
+          onOpenChange={(v) => {
+            if (!v) setLeaveTarget(null);
+          }}
+          onLeft={() => router.push(basePath)}
+        />
+      )}
     </>
   );
 }
