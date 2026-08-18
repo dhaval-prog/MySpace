@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { UserPlus, Copy, Check, Lock } from "lucide-react";
+import { UserPlus, Copy, Check, Lock, Mail, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -26,19 +26,36 @@ const ROLE_OPTIONS: { value: HouseholdInviteRole; label: string; description: st
  * is the household_invites_insert_inviter RLS policy (see supabase/schema.sql),
  * so a locked-out member can't just call generateInvite() directly either.
  */
-export function InviteMemberDialog({ householdId, canInvite }: { householdId: string; canInvite: boolean }) {
+export function InviteMemberDialog({
+  householdId,
+  canInvite,
+  groupId,
+  defaultRole = "member",
+}: {
+  householdId: string;
+  canInvite: boolean;
+  /** When set, a Split Only invite joins this specific split group instead of the household's default one — see create_split_group()/redeem_household_invite() in supabase/schema.sql. */
+  groupId?: string;
+  defaultRole?: HouseholdInviteRole;
+}) {
   const [open, setOpen] = useState(false);
-  const [role, setRole] = useState<HouseholdInviteRole>("member");
+  const [role, setRole] = useState<HouseholdInviteRole>(defaultRole);
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function reset() {
     setToken(null);
     setCopied(false);
+    setLinkCopied(false);
     setError(null);
+    setRole(defaultRole);
   }
+
+  const inviteLink = token && typeof window !== "undefined" ? `${window.location.origin}/join?token=${token}` : "";
+  const shareMessage = `Join me on My Space — use this link: ${inviteLink}`;
 
   if (!canInvite) {
     // Deliberately not the native `disabled` attribute — that sets
@@ -99,6 +116,39 @@ export function InviteMemberDialog({ householdId, canInvite }: { householdId: st
                 {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
               </Button>
             </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Or send the direct link</Label>
+              <div className="mt-1.5 flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteLink}</span>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={() => {
+                    navigator.clipboard.writeText(inviteLink);
+                    setLinkCopied(true);
+                  }}
+                >
+                  {linkCopied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                render={<a href={`mailto:?subject=${encodeURIComponent("Join me on My Space")}&body=${encodeURIComponent(shareMessage)}`} />}
+              >
+                <Mail className="size-4" />
+                Email
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1" render={<a href={`sms:?body=${encodeURIComponent(shareMessage)}`} />}>
+                <MessageSquare className="size-4" />
+                Text message
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -129,7 +179,7 @@ export function InviteMemberDialog({ householdId, canInvite }: { householdId: st
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  const result = await generateInvite(householdId, role);
+                  const result = await generateInvite(householdId, role, groupId);
                   if ("error" in result) {
                     setError(result.error);
                     return;

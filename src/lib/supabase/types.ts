@@ -163,6 +163,8 @@ export type HouseholdInvite = {
   token: string;
   created_by: string;
   role: HouseholdInviteRole;
+  /** Only meaningful when role === 'split_only' — which split group the invite joins the recipient to. Null falls back to the household's default group. */
+  group_id: string | null;
   status: HouseholdInviteStatus;
   expires_at: string;
   created_at: string;

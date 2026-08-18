@@ -192,10 +192,11 @@ function BalancesTab({
 
   const key = (t: SimplifiedTransferWithNames) => `${t.fromUserId}:${t.toUserId}`;
 
-  // Server-confirmed empty state, not client-tracked — a just-settled row
-  // stays in the DOM (collapsing via the transition below) until
-  // router.refresh() brings back a shorter `transfers` list, so its
-  // fade-out gets to actually play instead of being yanked away instantly.
+  // Server-confirmed empty state, not client-tracked — settling a pair
+  // removes it from getSimplifiedBalances() entirely (net debt hits zero),
+  // so this stays accurate once router.refresh() brings back a shorter
+  // `transfers` list. The `settled` set below only smooths over the moment
+  // right after clicking Settle, before that refresh has landed.
   if (transfers.length === 0) {
     return (
       <div className="rounded-2xl border bg-card p-8 text-center">
@@ -214,8 +215,8 @@ function BalancesTab({
             <li
               key={key(t)}
               className={cn(
-                "flex items-center justify-between gap-3 overflow-hidden rounded-2xl border bg-card px-4 py-3 transition-all duration-500",
-                isSettled ? "max-h-0 scale-95 border-transparent p-0 opacity-0" : "max-h-24 opacity-100"
+                "flex items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 transition-opacity duration-500",
+                isSettled && "opacity-50"
               )}
             >
               <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
@@ -230,12 +231,21 @@ function BalancesTab({
                 </Avatar>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className="font-mono text-sm font-semibold text-destructive">{inr(t.amount)}</span>
-                {iAmParty && (
-                  <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setSettleTarget(t)}>
+                <span className={cn("font-mono text-sm font-semibold", isSettled ? "text-muted-foreground line-through" : "text-destructive")}>
+                  {inr(t.amount)}
+                </span>
+                {isSettled ? (
+                  <span className="flex items-center gap-1 rounded-full bg-positive/10 px-3 py-1.5 text-xs font-medium text-positive">
                     <Check className="size-3.5" />
-                    Settle
-                  </Button>
+                    Settled
+                  </span>
+                ) : (
+                  iAmParty && (
+                    <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setSettleTarget(t)}>
+                      <Check className="size-3.5" />
+                      Settle
+                    </Button>
+                  )
                 )}
               </div>
             </li>

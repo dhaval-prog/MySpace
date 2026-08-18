@@ -178,7 +178,8 @@ export async function listHouseholdMembersLite(householdId: string): Promise<{ u
 
 export async function generateInvite(
   householdId: string,
-  role: HouseholdInviteRole
+  role: HouseholdInviteRole,
+  groupId?: string
 ): Promise<{ token: string; expiresAt: string } | { error: string }> {
   const supabase = await createClient();
   const {
@@ -189,7 +190,7 @@ export async function generateInvite(
   const token = randomBytes(24).toString("base64url");
   const { data, error } = await supabase
     .from("household_invites")
-    .insert({ household_id: householdId, token, created_by: user.id, role })
+    .insert({ household_id: householdId, token, created_by: user.id, role, group_id: role === "split_only" ? (groupId ?? null) : null })
     .select()
     .single();
   if (error || !data)

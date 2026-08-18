@@ -2,25 +2,34 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Copy, Check, Mail, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createSplitGroup, type SplitGroupSummary } from "@/lib/actions/split";
+import { createSplitGroup, createExpense, type SplitGroupSummary } from "@/lib/actions/split";
+import { generateInvite } from "@/lib/actions/household";
+import type { SplitShareType } from "@/lib/supabase/types";
 
 const ICON_OPTIONS = ["🤝", "🏠", "✈️", "🎉", "🍽️", "🚗", "🏕️", "🎓"];
+const SPLIT_METHODS: { value: SplitShareType; label: string }[] = [
+  { value: "equal", label: "Equal" },
+  { value: "exact", label: "Exact Amount" },
+  { value: "shares", label: "Shares" },
+];
 
 /** Every split group the caller belongs to, as a row of pills — clicking one switches ?group= without touching ?id=, matching how HouseholdSwitcher already swaps ?id= for households. */
 export function SplitGroupSwitcher({
   householdId,
   groups,
   currentGroupId,
+  currentUserId,
 }: {
   householdId: string;
   groups: SplitGroupSummary[];
   currentGroupId: string;
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
@@ -60,9 +69,10 @@ export function SplitGroupSwitcher({
 
       <CreateSplitGroupDialog
         householdId={householdId}
+        currentUserId={currentUserId}
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onCreated={(groupId) => {
+        onDone={(groupId) => {
           setCreateOpen(false);
           router.push(`/split?id=${householdId}&group=${groupId}`);
         }}
@@ -71,86 +81,255 @@ export function SplitGroupSwitcher({
   );
 }
 
+type Step = "form" | "invite-share";
+
 function CreateSplitGroupDialog({
   householdId,
+  currentUserId,
   open,
   onOpenChange,
-  onCreated,
+  onDone,
 }: {
   householdId: string;
+  currentUserId: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onCreated: (groupId: string) => void;
+  onDone: (groupId: string) => void;
 }) {
+  const [step, setStep] = useState<Step>("form");
   const [name, setName] = useState("");
   const [icon, setIcon] = useState(ICON_OPTIONS[0]);
+  const [amount, setAmount] = useState("");
+  const [splitMethod, setSplitMethod] = useState<SplitShareType>("equal");
+  const [inviteContact, setInviteContact] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const [newGroupId, setNewGroupId] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function resetAll() {
+    setStep("form");
+    setName("");
+    setIcon(ICON_OPTIONS[0]);
+    setAmount("");
+    setSplitMethod("equal");
+    setInviteContact("");
+    setError(null);
+    setNewGroupId(null);
+    setInviteLink(null);
+    setLinkCopied(false);
+  }
+
+  const looksLikeEmail = inviteContact.includes("@");
+  const shareMessage = inviteLink ? `Join me on My Space — use this link: ${inviteLink}` : "";
 
   return (
     <Dialog
       open={open}
       onOpenChange={(v) => {
         onOpenChange(v);
-        if (!v) {
-          setName("");
-          setIcon(ICON_OPTIONS[0]);
-          setError(null);
-        }
+        if (!v) resetAll();
       }}
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create a split group</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-1.5">
-            {ICON_OPTIONS.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => setIcon(opt)}
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-full border text-lg transition",
-                  icon === opt ? "border-primary bg-primary/10" : "border-border"
-                )}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="split-group-name">Group name</Label>
-            <Input
-              id="split-group-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Weekend in Austin"
-              autoFocus
-            />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancel
-          </Button>
-          <Button
-            disabled={pending || !name.trim()}
-            onClick={() =>
-              startTransition(async () => {
-                const result = await createSplitGroup(householdId, name.trim(), icon);
-                if ("error" in result) {
-                  setError(result.error);
-                  return;
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        {step === "form" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Create a split group</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-1.5">
+                {ICON_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setIcon(opt)}
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-full border text-lg transition",
+                      icon === opt ? "border-primary bg-primary/10" : "border-border"
+                    )}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="split-group-name">Group name</Label>
+                <Input
+                  id="split-group-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Weekend in Austin"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2 border-t pt-4">
+                <Label htmlFor="split-group-amount">Log a first expense (optional)</Label>
+                <Input
+                  id="split-group-amount"
+                  type="number"
+                  min={1}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Total spent so far (₹)"
+                />
+                <p className="text-xs text-muted-foreground">Paid by you.</p>
+              </div>
+
+              {amount && (
+                <div className="space-y-1.5">
+                  <Label>Split method</Label>
+                  <div className="flex gap-2">
+                    {SPLIT_METHODS.map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => setSplitMethod(m.value)}
+                        className={cn(
+                          "flex-1 rounded-lg border px-3 py-2 text-xs font-medium",
+                          splitMethod === m.value ? "border-primary bg-primary/10" : "border-border"
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    You&apos;re the only member so far, so this logs the full amount as yours until others join.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2 border-t pt-4">
+                <Label htmlFor="split-group-invite">Invite someone (Split Only access, optional)</Label>
+                <Input
+                  id="split-group-invite"
+                  value={inviteContact}
+                  onChange={(e) => setInviteContact(e.target.value)}
+                  placeholder="Phone number or email address"
+                />
+              </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
+                Cancel
+              </Button>
+              <Button
+                disabled={pending || !name.trim()}
+                onClick={() =>
+                  startTransition(async () => {
+                    const groupResult = await createSplitGroup(householdId, name.trim(), icon);
+                    if ("error" in groupResult) {
+                      setError(groupResult.error);
+                      return;
+                    }
+                    const groupId = groupResult.groupId;
+
+                    const spent = Number(amount);
+                    if (Number.isFinite(spent) && spent > 0) {
+                      // Only the creator is a member at this point, so the
+                      // chosen split method can't change the outcome yet —
+                      // it's logged fully owed by the creator until others
+                      // join; splitMethod becomes meaningful for expenses
+                      // added after that.
+                      const expenseResult = await createExpense(
+                        householdId,
+                        {
+                          description: name.trim(),
+                          amount: spent,
+                          category: null,
+                          paidBy: currentUserId,
+                          splitMethod: "equal",
+                          participants: [{ userId: currentUserId }],
+                        },
+                        groupId
+                      );
+                      if ("error" in expenseResult) {
+                        setError(expenseResult.error);
+                        return;
+                      }
+                    }
+
+                    if (inviteContact.trim()) {
+                      const inviteResult = await generateInvite(householdId, "split_only", groupId);
+                      if (!("error" in inviteResult)) {
+                        const link = `${window.location.origin}/join?token=${inviteResult.token}`;
+                        setNewGroupId(groupId);
+                        setInviteLink(link);
+                        setStep("invite-share");
+                        return;
+                      }
+                    }
+
+                    onDone(groupId);
+                  })
                 }
-                onCreated(result.groupId);
-              })
-            }
-          >
-            Create Group
-          </Button>
-        </DialogFooter>
+              >
+                Create Group
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Invite sent — share the link</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Send this link to {inviteContact || "them"} — opening it joins them straight into &ldquo;{name}&rdquo; with Split Only access.
+              </p>
+              <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteLink}</span>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={() => {
+                    if (inviteLink) navigator.clipboard.writeText(inviteLink);
+                    setLinkCopied(true);
+                  }}
+                >
+                  {linkCopied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  render={
+                    <a
+                      href={
+                        looksLikeEmail
+                          ? `mailto:${inviteContact}?subject=${encodeURIComponent("Join me on My Space")}&body=${encodeURIComponent(shareMessage)}`
+                          : `mailto:?subject=${encodeURIComponent("Join me on My Space")}&body=${encodeURIComponent(shareMessage)}`
+                      }
+                    />
+                  }
+                >
+                  <Mail className="size-4" />
+                  Email
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  render={<a href={`sms:${looksLikeEmail ? "" : inviteContact}?body=${encodeURIComponent(shareMessage)}`} />}
+                >
+                  <MessageSquare className="size-4" />
+                  Text message
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => newGroupId && onDone(newGroupId)}>Done</Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

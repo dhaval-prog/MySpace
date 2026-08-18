@@ -904,7 +904,10 @@ create policy "household_invites_select_member" on public.household_invites for 
   using (has_home_access(household_id));
 -- Owner or co-owner may generate an invite — see can_invite_to_household()
 -- above. This is the real permission gate; generateInvite()/InviteMemberDialog
--- only ever hide the UI for everyone else.
+-- only ever hide the UI for everyone else. (Widened further down, in the
+-- Let's Split section, once group_id/can_manage_split_group exist — a
+-- split_only invite scoped to one split group may also be issued by that
+-- group's own creator, not just an owner/co-owner.)
 drop policy if exists "household_invites_insert_owner" on public.household_invites;
 drop policy if exists "household_invites_insert_inviter" on public.household_invites;
 create policy "household_invites_insert_inviter" on public.household_invites for insert
@@ -1395,6 +1398,65 @@ begin
   insert into split_members (group_id, user_id) values (v_group_id, auth.uid());
 
   return jsonb_build_object('ok', true, 'group_id', v_group_id);
+end;
+$$;
+
+-- Split-only invites can now target one specific split group, not just the
+-- household's default one — so someone who just created a new group (e.g.
+-- "Weekend in Austin") can invite people straight into it. Widens
+-- household_invites_insert_inviter (defined earlier, before split_groups
+-- existed) to also allow that group's own creator, not just an owner/
+-- co-owner, and updates redeem_household_invite() to honor the target group.
+alter table public.household_invites add column if not exists group_id uuid references public.split_groups(id) on delete cascade;
+
+drop policy if exists "household_invites_insert_inviter" on public.household_invites;
+create policy "household_invites_insert_inviter" on public.household_invites for insert
+  with check (
+    created_by = auth.uid()
+    and (
+      can_invite_to_household(household_id)
+      or (role = 'split_only' and group_id is not null and can_manage_split_group(group_id))
+    )
+  );
+
+create or replace function public.redeem_household_invite(p_token text)
+returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_invite record;
+  v_target_group uuid;
+begin
+  select * into v_invite from household_invites
+    where token = p_token and status = 'pending' and expires_at > now();
+
+  if v_invite is null then
+    raise exception 'This invite is invalid or has expired';
+  end if;
+  if exists (select 1 from household_members where household_id = v_invite.household_id and user_id = auth.uid()) then
+    raise exception 'You are already a member of this household';
+  end if;
+
+  insert into household_members (household_id, user_id, role)
+    values (v_invite.household_id, auth.uid(), v_invite.role);
+
+  if v_invite.role = 'split_only' then
+    v_target_group := v_invite.group_id;
+    if v_target_group is null then
+      select id into v_target_group from split_groups where household_id = v_invite.household_id and is_default;
+    end if;
+    if v_target_group is not null then
+      insert into split_members (group_id, user_id) values (v_target_group, auth.uid()) on conflict do nothing;
+    end if;
+  end if;
+
+  update household_invites set status = 'accepted' where id = v_invite.id;
+
+  insert into household_activity (household_id, actor_user_id, kind, payload)
+    values (v_invite.household_id, auth.uid(), 'member_joined', '{}');
+
+  return jsonb_build_object('ok', true, 'household_id', v_invite.household_id);
 end;
 $$;
 

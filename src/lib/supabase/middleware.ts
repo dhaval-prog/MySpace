@@ -44,9 +44,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!user && !isPublic && path !== "/") {
+    // Preserve the full path *and* query string (e.g. /join?token=...) —
+    // losing the query here would silently drop invite tokens/other params
+    // on the way through login.
+    const fullPath = path + request.nextUrl.search;
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirectTo", path);
+    url.search = "";
+    url.searchParams.set("redirectTo", fullPath);
     return NextResponse.redirect(url);
   }
 

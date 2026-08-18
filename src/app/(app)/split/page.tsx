@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, getSplitActivity, listSplitGroups, getDefaultGroupId } from "@/lib/actions/split";
 import { EmptyState } from "@/components/shared/empty-state";
-import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
+import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { AddExpenseDialog } from "@/components/household/split/add-expense-dialog";
@@ -62,13 +62,15 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   const groups = await listSplitGroups(householdId);
   const groupId = group && groups.some((g) => g.id === group) ? group : (groups.find((g) => g.isDefault)?.id ?? groups[0]?.id);
 
-  const canInvite = context.myRole === "owner" || context.myRole === "co_owner";
+  const activeGroup = groups.find((g) => g.id === groupId);
+  // A group's own creator can invite people into it (Split Only role, scoped
+  // to that group) even without being the household owner/co-owner — mirrors
+  // household_invites_insert_inviter's widened check in supabase/schema.sql.
+  const canInvite = context.myRole === "owner" || context.myRole === "co_owner" || activeGroup?.createdBy === myUserId;
 
   const [splitSummary, splitMembers, simplifiedBalances] = groupId
     ? await Promise.all([getSplitSummary(householdId, groupId), getSplitGroupMembers(groupId), getSimplifiedBalances(householdId, groupId)])
     : [null, [], []];
-
-  const activeGroup = groups.find((g) => g.id === groupId);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
@@ -79,13 +81,15 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm text-muted-foreground">Fair and simple expense splitting</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <HouseholdSwitcher households={memberships} currentId={householdId} basePath="/split" />
-          <InviteMemberDialog householdId={householdId} canInvite={canInvite} />
+          <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={groupId} defaultRole="split_only" />
+          <JoinWithCodeDialog />
           {splitSummary && groupId && <AddExpenseDialog householdId={householdId} groupId={groupId} members={splitMembers} currentUserId={myUserId} />}
         </div>
       </div>
 
-      {groups.length > 0 && <SplitGroupSwitcher householdId={householdId} groups={groups} currentGroupId={groupId ?? ""} />}
+      {groups.length > 0 && (
+        <SplitGroupSwitcher householdId={householdId} groups={groups} currentGroupId={groupId ?? ""} currentUserId={myUserId} />
+      )}
 
       {splitSummary && activeGroup ? (
         <SplitGroupWorkspace
