@@ -33,3 +33,9 @@ export function displayName(profile: { name?: string | null; email?: string | nu
   const emailPrefix = profile?.email?.split("@")[0]?.trim();
   return emailPrefix || "Member";
 }
+
+/** Rotating avatar background per member position (1st/2nd/3rd/…) — indigo, blush, periwinkle, matching the palette spec's "Avatar 1/2/3" roles. Purely a visual distinguisher, never tied to a specific person's identity. */
+const MEMBER_ACCENT_CLASSES = ["bg-primary text-primary-foreground", "bg-blush text-white", "bg-secondary text-white"];
+export function memberAccentClass(index: number): string {
+  return MEMBER_ACCENT_CLASSES[index % MEMBER_ACCENT_CLASSES.length];
+}

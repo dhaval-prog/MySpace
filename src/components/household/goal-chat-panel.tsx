@@ -126,7 +126,7 @@ function ChatBubble({
   );
 }
 
-/** Goal Chat's message list + composer — the New Goal mirror of SplitChatPanel, scoped to one goal instead of one split group. Fills the height of whatever container renders it (see GoalChatButton's Sheet). */
+/** Goal Chat's message list + composer — the New Goal mirror of SplitChatPanel, scoped to one goal instead of one split group. Fills the height of whatever container renders it (see GoalCard's Members/Chat toggle). */
 export function GoalChatPanel({
   goalId,
   currentUserId,

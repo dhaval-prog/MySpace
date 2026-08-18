@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { displayName } from "@/lib/utils";
 import type { HouseholdGoal, HouseholdGoalStatus, HouseholdVaultTransactionSource } from "@/lib/supabase/types";
 
+export interface GoalMemberBrief {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
 export interface HouseholdGoalSummary {
   goal: HouseholdGoal;
   /** Always derived live by summing household_vault_transactions — never trusted from a cached column, mirroring getVaultSummary's approach for the personal vault. */
@@ -12,6 +18,8 @@ export interface HouseholdGoalSummary {
   progressPct: number;
   /** The goal creator's display name — dynamic from their profile (see displayName()), never a hardcoded label, and shown to every household member regardless of who's logged in. */
   creatorName: string;
+  /** This goal's own member list (household_goal_members) — for the card's participant avatars. Same source listGoalMembers() reads, batched here so the goal grid doesn't pay for one query per card. */
+  members: GoalMemberBrief[];
 }
 
 export interface GoalContributor {
@@ -43,7 +51,11 @@ export async function listGoals(householdId: string, opts?: { status?: Household
   if (!goals || goals.length === 0) return [];
 
   const vaultIds = goals.map((g) => g.vault_id);
-  const { data: txns } = await supabase.from("household_vault_transactions").select("vault_id, type, amount").in("vault_id", vaultIds);
+  const goalIds = goals.map((g) => g.id);
+  const [{ data: txns }, { data: goalMembers }] = await Promise.all([
+    supabase.from("household_vault_transactions").select("vault_id, type, amount").in("vault_id", vaultIds),
+    supabase.from("household_goal_members").select("goal_id, user_id").in("goal_id", goalIds),
+  ]);
 
   const totalsByVault = new Map<string, number>();
   for (const t of txns ?? []) {
@@ -51,10 +63,16 @@ export async function listGoals(householdId: string, opts?: { status?: Household
     totalsByVault.set(t.vault_id, (totalsByVault.get(t.vault_id) ?? 0) + delta);
   }
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("*")
-    .in("id", Array.from(new Set(goals.map((g) => g.created_by))));
+  const memberIdsByGoal = new Map<string, string[]>();
+  for (const m of goalMembers ?? []) {
+    const arr = memberIdsByGoal.get(m.goal_id) ?? [];
+    arr.push(m.user_id);
+    memberIdsByGoal.set(m.goal_id, arr);
+  }
+
+  const profileIds = new Set(goals.map((g) => g.created_by));
+  for (const ids of memberIdsByGoal.values()) for (const id of ids) profileIds.add(id);
+  const { data: profiles } = await supabase.from("profiles").select("*").in("id", Array.from(profileIds));
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
   return goals.map((goal) => {
@@ -64,6 +82,11 @@ export async function listGoals(householdId: string, opts?: { status?: Household
       currentAmount,
       progressPct: computeProgress(currentAmount, goal.target_amount),
       creatorName: displayName(profileById.get(goal.created_by)),
+      members: (memberIdsByGoal.get(goal.id) ?? []).map((id) => ({
+        userId: id,
+        name: displayName(profileById.get(id)),
+        avatarUrl: profileById.get(id)?.avatar_url ?? null,
+      })),
     };
   });
 }
@@ -128,10 +151,13 @@ export async function getGoalDetail(goalId: string): Promise<HouseholdGoalDetail
     byUser.set(t.user_id, existing);
   }
 
+  const { data: goalMembers } = await supabase.from("household_goal_members").select("user_id").eq("goal_id", goalId);
+  const memberIds = (goalMembers ?? []).map((m) => m.user_id);
+
   const { data: profiles } = await supabase
     .from("profiles")
     .select("*")
-    .in("id", Array.from(new Set([...byUser.keys(), goal.created_by])));
+    .in("id", Array.from(new Set([...byUser.keys(), ...memberIds, goal.created_by])));
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
   const contributors: GoalContributor[] = Array.from(byUser.entries())
@@ -151,6 +177,11 @@ export async function getGoalDetail(goalId: string): Promise<HouseholdGoalDetail
     currentAmount,
     progressPct: computeProgress(currentAmount, goal.target_amount),
     creatorName: displayName(profileById.get(goal.created_by)),
+    members: memberIds.map((id) => ({
+      userId: id,
+      name: displayName(profileById.get(id)),
+      avatarUrl: profileById.get(id)?.avatar_url ?? null,
+    })),
     contributors,
   };
 }
