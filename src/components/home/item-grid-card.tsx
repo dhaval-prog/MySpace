@@ -45,7 +45,7 @@ function BackDetail({ label, children }: { label: string; children: React.ReactN
  * are absolutely stacked inside a fixed-height, 3D-perspective wrapper so
  * the flip never shifts anything else in the grid.
  */
-export function ItemGridCard({ item }: { item: Item }) {
+export function ItemGridCard({ item }: { item: Item & { furnitureName: string } }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [flipped, setFlipped] = useState(false);
@@ -102,6 +102,9 @@ export function ItemGridCard({ item }: { item: Item }) {
 
           <button type="button" onClick={() => setFlipped(true)} className="mt-3 block w-full text-left">
             <p className="truncate font-semibold">{item.name}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {categoryLabel(item.category)} · Qty {item.quantity} · {item.furnitureName}
+            </p>
             <div className="mt-3 border-t pt-3">
               <p className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
                 <Clock className="size-3.5" />

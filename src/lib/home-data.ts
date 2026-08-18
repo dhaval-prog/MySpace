@@ -10,7 +10,7 @@ export interface RoomFilter {
 export interface HomeItemsView {
   home: Home;
   rooms: RoomFilter[];
-  items: (Item & { roomId: string; roomName: string })[];
+  items: (Item & { roomId: string; roomName: string; furnitureName: string })[];
   totals: { items: number; rooms: number };
 }
 
@@ -32,8 +32,8 @@ export async function getHomeItemsView(
 
   const roomIds = (rooms ?? []).map((r) => r.id);
   const { data: furniture } = roomIds.length
-    ? await supabase.from("furniture").select("id, room_id").in("room_id", roomIds)
-    : { data: [] as { id: string; room_id: string }[] };
+    ? await supabase.from("furniture").select("id, room_id, name").in("room_id", roomIds)
+    : { data: [] as { id: string; room_id: string; name: string }[] };
 
   const furnitureIds = (furniture ?? []).map((f) => f.id);
   const { data: storageLocations } = furnitureIds.length
@@ -51,14 +51,16 @@ export async function getHomeItemsView(
 
   const storageToFurniture = new Map((storageLocations ?? []).map((s) => [s.id, s.furniture_id]));
   const furnitureToRoom = new Map((furniture ?? []).map((f) => [f.id, f.room_id]));
+  const furnitureNameById = new Map((furniture ?? []).map((f) => [f.id, f.name]));
   const roomNameById = new Map((rooms ?? []).map((r) => [r.id, r.name]));
 
   const items = (rawItems ?? []).flatMap((item) => {
     const furnitureId = storageToFurniture.get(item.storage_location_id);
     const roomId = furnitureId ? furnitureToRoom.get(furnitureId) : undefined;
     const roomName = roomId ? roomNameById.get(roomId) : undefined;
-    if (!roomId || !roomName) return [];
-    return [{ ...item, roomId, roomName }];
+    const furnitureName = furnitureId ? furnitureNameById.get(furnitureId) : undefined;
+    if (!roomId || !roomName || !furnitureName) return [];
+    return [{ ...item, roomId, roomName, furnitureName }];
   });
 
   const itemCountByRoom = new Map<string, number>();
