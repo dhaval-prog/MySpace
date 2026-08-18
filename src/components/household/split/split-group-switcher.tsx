@@ -50,7 +50,6 @@ export function SplitGroupSwitcher({
   myRole: HouseholdRole;
 }) {
   const router = useRouter();
-  const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SplitGroupSummary | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletePending, startDeleteTransition] = useTransition();
@@ -114,28 +113,6 @@ export function SplitGroupSwitcher({
         })}
       />
 
-      <div className="mt-3 flex justify-center">
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1.5 rounded-full border border-dashed px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
-        >
-          <Plus className="size-3.5" />
-          New Group
-        </button>
-      </div>
-
-      <CreateSplitGroupDialog
-        householdId={householdId}
-        currentUserId={currentUserId}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onDone={(groupId) => {
-          setCreateOpen(false);
-          router.push(`/split?id=${householdId}&group=${groupId}`);
-        }}
-      />
-
       {deleteTarget && (
         <Dialog
           open={!!deleteTarget}
@@ -180,6 +157,31 @@ export function SplitGroupSwitcher({
           </DialogContent>
         </Dialog>
       )}
+    </>
+  );
+}
+
+/** Standalone "New Group" trigger — lives beside Join with a Code in the page header rather than next to the group carousel, so it's self-contained (own open state) instead of coordinating with SplitGroupSwitcher. */
+export function CreateSplitGroupButton({ householdId, currentUserId }: { householdId: string; currentUserId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Plus className="size-4" />
+        New Group
+      </Button>
+      <CreateSplitGroupDialog
+        householdId={householdId}
+        currentUserId={currentUserId}
+        open={open}
+        onOpenChange={setOpen}
+        onDone={(groupId) => {
+          setOpen(false);
+          router.push(`/split?id=${householdId}&group=${groupId}`);
+        }}
+      />
     </>
   );
 }

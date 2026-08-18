@@ -48,7 +48,7 @@ export function ItemGridCard({
   const FurnitureIcon = getIcon(item.furnitureIcon);
 
   return (
-    <div className="rounded-2xl border bg-card p-5">
+    <div className="rounded-2xl border bg-card p-5 transition-transform duration-200 ease-out hover:z-10 hover:scale-[1.03] hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100">
       <div className="flex items-start justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <CategoryIcon className="size-4 text-primary" />

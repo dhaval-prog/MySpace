@@ -6,7 +6,7 @@ import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { AddExpenseDialog } from "@/components/household/split/add-expense-dialog";
-import { SplitGroupSwitcher } from "@/components/household/split/split-group-switcher";
+import { SplitGroupSwitcher, CreateSplitGroupButton } from "@/components/household/split/split-group-switcher";
 import { SplitGroupWorkspace } from "@/components/household/split/split-group-workspace";
 import { SplitOnlyWorkspace } from "@/components/household/split/split-only-workspace";
 
@@ -77,6 +77,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <JoinWithCodeDialog />
+          {groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} />}
           {splitSummary && groupId && <AddExpenseDialog householdId={householdId} groupId={groupId} members={splitMembers} currentUserId={myUserId} />}
         </div>
       </div>

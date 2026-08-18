@@ -27,8 +27,10 @@ export default async function HomePage({
 
   if (!homes || homes.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl p-4 md:p-8">
-        <NewHomeSetup />
+      <div className="min-h-full bg-[#D76F8D]">
+        <div className="mx-auto max-w-3xl p-4 md:p-8">
+          <NewHomeSetup />
+        </div>
       </div>
     );
   }
@@ -37,8 +39,10 @@ export default async function HomePage({
   const data = await getHomeItemsView(supabase, homeId);
   if (!data) {
     return (
-      <div className="mx-auto max-w-3xl p-4 md:p-8">
-        <EmptyState icon="Home" title="Couldn't load this home" description="Something went wrong loading this home's data. Please try again." />
+      <div className="min-h-full bg-[#D76F8D]">
+        <div className="mx-auto max-w-3xl p-4 md:p-8">
+          <EmptyState icon="Home" title="Couldn't load this home" description="Something went wrong loading this home's data. Please try again." />
+        </div>
       </div>
     );
   }
@@ -46,38 +50,40 @@ export default async function HomePage({
   const { home, rooms, items, totals } = data;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-      <div>
-        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Inventory</p>
-        <div className="flex items-center gap-1.5">
-          <h1 className="font-heading text-4xl text-foreground md:text-5xl">{home.name}</h1>
-          <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
+    <div className="min-h-full bg-[#D76F8D]">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+        <div>
+          <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Inventory</p>
+          <div className="flex items-center gap-1.5">
+            <h1 className="font-heading text-4xl text-foreground md:text-5xl">{home.name}</h1>
+            <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {totals.items} item{totals.items === 1 ? "" : "s"} across {totals.rooms} space{totals.rooms === 1 ? "" : "s"}
+          </p>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {totals.items} item{totals.items === 1 ? "" : "s"} across {totals.rooms} space{totals.rooms === 1 ? "" : "s"}
-        </p>
+
+        {homes.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            {homes.map((h) => (
+              <Link key={h.id} href={`/home?id=${h.id}`}>
+                <Badge variant={h.id === homeId ? "default" : "outline"}>{h.name}</Badge>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {rooms.length === 0 ? (
+          <EmptyState
+            icon="DoorOpen"
+            title="No rooms yet"
+            description="Add your first room to start mapping out this home."
+            action={<AddRoomDialog homeId={homeId} />}
+          />
+        ) : (
+          <HomeItemsBrowser homeId={homeId} rooms={rooms} items={items} />
+        )}
       </div>
-
-      {homes.length > 1 && (
-        <div className="flex flex-wrap gap-1.5">
-          {homes.map((h) => (
-            <Link key={h.id} href={`/home?id=${h.id}`}>
-              <Badge variant={h.id === homeId ? "default" : "outline"}>{h.name}</Badge>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {rooms.length === 0 ? (
-        <EmptyState
-          icon="DoorOpen"
-          title="No rooms yet"
-          description="Add your first room to start mapping out this home."
-          action={<AddRoomDialog homeId={homeId} />}
-        />
-      ) : (
-        <HomeItemsBrowser homeId={homeId} rooms={rooms} items={items} />
-      )}
     </div>
   );
 }
