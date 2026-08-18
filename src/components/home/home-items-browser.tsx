@@ -24,46 +24,51 @@ export function HomeItemsBrowser({ rooms, items }: { rooms: RoomFilter[]; items:
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setRoomId("all")}
-          className={cn(
-            "flex h-[34px] items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
-            roomId === "all" ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
-          )}
-        >
-          All
-          <span className={cn("font-mono text-[11px]", roomId === "all" ? "text-primary-foreground/70" : "text-muted-foreground")}>
-            {items.length}
-          </span>
-        </button>
-        {rooms.map((r) => (
+      {/* Sticks below the app header while scrolling on mobile — the room
+          pills and search stay put, cards below them scroll on. Desktop
+          keeps its normal flow (md:static). */}
+      <div className="sticky top-[61px] z-20 -mx-4 space-y-3 bg-background px-4 pt-1 pb-3 md:static md:mx-0 md:space-y-5 md:px-0 md:pt-0 md:pb-0">
+        <div className="flex flex-wrap gap-2">
           <button
-            key={r.id}
             type="button"
-            onClick={() => setRoomId(r.id)}
+            onClick={() => setRoomId("all")}
             className={cn(
               "flex h-[34px] items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
-              roomId === r.id ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
+              roomId === "all" ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
             )}
           >
-            {r.name}
-            <span className={cn("font-mono text-[11px]", roomId === r.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
-              {r.itemCount}
+            All
+            <span className={cn("font-mono text-[11px]", roomId === "all" ? "text-primary-foreground/70" : "text-muted-foreground")}>
+              {items.length}
             </span>
           </button>
-        ))}
-      </div>
+          {rooms.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setRoomId(r.id)}
+              className={cn(
+                "flex h-[34px] items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+                roomId === r.id ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
+              )}
+            >
+              {r.name}
+              <span className={cn("font-mono text-[11px]", roomId === r.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                {r.itemCount}
+              </span>
+            </button>
+          ))}
+        </div>
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
-          className="h-11 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary"
-        />
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
+            className="h-11 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary"
+          />
+        </div>
       </div>
 
       {filtered.length === 0 ? (

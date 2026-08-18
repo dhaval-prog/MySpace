@@ -15,16 +15,98 @@ function formatNextRun(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
+function clampDay(raw: string, fallback: number): number {
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(28, Math.max(1, n));
+}
+
+/**
+ * A schedule-mode pill that doubles as its own day-of-month entry point:
+ * first click picks this mode and shows a dimmed prompt in place of the
+ * label; a second click (while already the active mode) swaps the pill for
+ * a real number input; once a day has been set, the pill shows "Day N"
+ * instead of the prompt from then on.
+ */
+function ScheduleModeButton({
+  label,
+  prompt,
+  active,
+  editing,
+  day,
+  dayConfirmed,
+  onSelect,
+  onOpenEdit,
+  onDayChange,
+  onCloseEdit,
+}: {
+  label: string;
+  prompt: string;
+  active: boolean;
+  editing: boolean;
+  day: string;
+  dayConfirmed: boolean;
+  onSelect: () => void;
+  onOpenEdit: () => void;
+  onDayChange: (value: string) => void;
+  onCloseEdit: () => void;
+}) {
+  if (active && editing) {
+    return (
+      <Input
+        type="number"
+        min={1}
+        max={28}
+        autoFocus
+        value={day}
+        onChange={(e) => onDayChange(e.target.value)}
+        onBlur={onCloseEdit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onCloseEdit();
+        }}
+        placeholder="1–28"
+        className="flex-1 rounded-lg text-center text-xs font-medium"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={active ? onOpenEdit : onSelect}
+      className={cn(
+        "flex-1 rounded-lg border px-3 py-2 text-xs font-medium",
+        active ? "border-primary bg-primary/10" : ""
+      )}
+    >
+      {active ? (dayConfirmed ? <span>Day {day}</span> : <span className="text-muted-foreground/60">{prompt}</span>) : label}
+    </button>
+  );
+}
+
 /** Regular Savings — a plan/reminder the cron job (src/app/api/vault/cron/recurring-run) actually deposits on schedule, never a claim of moving real bank money. */
 export function RecurringSavingsCard({ plan }: { plan: VaultRecurringPlan | null }) {
   const [enabled, setEnabled] = useState(plan?.enabled ?? false);
   const [amount, setAmount] = useState(String(plan?.amount ?? 5000));
   const [scheduleMode, setScheduleMode] = useState<VaultRecurringScheduleMode>(plan?.schedule_mode ?? "salary");
   const [dayOfMonth, setDayOfMonth] = useState(String(plan?.day_of_month ?? 1));
+  const [dayConfirmed, setDayConfirmed] = useState(Boolean(plan));
+  const [editingDay, setEditingDay] = useState(false);
   const [nextRunDate, setNextRunDate] = useState(plan?.next_run_date ?? null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  function selectMode(mode: VaultRecurringScheduleMode) {
+    setScheduleMode(mode);
+    setEditingDay(false);
+  }
+
+  function closeDayEdit() {
+    setEditingDay(false);
+    setDayOfMonth((current) => String(clampDay(current, plan?.day_of_month ?? 1)));
+    setDayConfirmed(true);
+  }
 
   function save(next: { enabled: boolean }) {
     startTransition(async () => {
@@ -37,7 +119,7 @@ export function RecurringSavingsCard({ plan }: { plan: VaultRecurringPlan | null
       const result = await setPiggyRecurringPlan({
         amount: value,
         scheduleMode,
-        dayOfMonth: Number(dayOfMonth) || 1,
+        dayOfMonth: clampDay(dayOfMonth, 1),
         enabled: next.enabled,
       });
       if (!result.ok) {
@@ -71,38 +153,33 @@ export function RecurringSavingsCard({ plan }: { plan: VaultRecurringPlan | null
           <div className="space-y-1.5">
             <Label>Schedule</Label>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setScheduleMode("salary")}
-                className={cn("flex-1 rounded-lg border px-3 py-2 text-xs font-medium", scheduleMode === "salary" ? "border-primary bg-primary/10" : "")}
-              >
-                Salary day
-              </button>
-              <button
-                type="button"
-                onClick={() => setScheduleMode("date")}
-                className={cn("flex-1 rounded-lg border px-3 py-2 text-xs font-medium", scheduleMode === "date" ? "border-primary bg-primary/10" : "")}
-              >
-                Chosen date
-              </button>
+              <ScheduleModeButton
+                label="Salary day"
+                prompt="Enter Day Of Salary"
+                active={scheduleMode === "salary"}
+                editing={editingDay}
+                day={dayOfMonth}
+                dayConfirmed={dayConfirmed}
+                onSelect={() => selectMode("salary")}
+                onOpenEdit={() => setEditingDay(true)}
+                onDayChange={setDayOfMonth}
+                onCloseEdit={closeDayEdit}
+              />
+              <ScheduleModeButton
+                label="Chosen date"
+                prompt="Enter Day Of Month (1-28)"
+                active={scheduleMode === "date"}
+                editing={editingDay}
+                day={dayOfMonth}
+                dayConfirmed={dayConfirmed}
+                onSelect={() => selectMode("date")}
+                onOpenEdit={() => setEditingDay(true)}
+                onDayChange={setDayOfMonth}
+                onCloseEdit={closeDayEdit}
+              />
             </div>
           </div>
         </div>
-
-        {scheduleMode === "date" && (
-          <div className="space-y-1.5">
-            <Label htmlFor="recurring-day">Day of month (1–28)</Label>
-            <Input
-              id="recurring-day"
-              type="number"
-              min={1}
-              max={28}
-              value={dayOfMonth}
-              onChange={(e) => setDayOfMonth(e.target.value)}
-              className="w-28"
-            />
-          </div>
-        )}
 
         {enabled && nextRunDate && (
           <p className="text-sm text-muted-foreground">

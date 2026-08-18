@@ -10,10 +10,14 @@ export async function getRecurringPlan(
   return data ?? null;
 }
 
-/** Next occurrence strictly after `from` — "salary" mode always lands on the 1st, "date" mode on the chosen day. */
+/**
+ * Next occurrence strictly after `from`, on `dayOfMonth` — "salary" and
+ * "date" are now purely a label distinction for the UI (whether the day
+ * being asked for is "which day does your salary land on" or "which date
+ * do you want this to run"); both use the same day-of-month value.
+ */
 export function computeNextRunDate(from: Date, scheduleMode: VaultRecurringScheduleMode, dayOfMonth: number): Date {
-  const day = scheduleMode === "salary" ? 1 : dayOfMonth;
-  return new Date(from.getFullYear(), from.getMonth() + 1, day);
+  return new Date(from.getFullYear(), from.getMonth() + 1, dayOfMonth);
 }
 
 export interface UpsertRecurringPlanInput {
