@@ -1268,12 +1268,17 @@ create policy "split_groups_select_member" on public.split_groups for select
 drop policy if exists "split_groups_insert_household_member" on public.split_groups;
 create policy "split_groups_insert_household_member" on public.split_groups for insert
   with check (can_contribute_to_household(household_id) and created_by = auth.uid() and not is_default);
--- Non-default split groups may be deleted by their creator or the household
--- owner — the default group ("Household Expenses") is excluded since
--- getDefaultGroupId()/invite redemption assume one always exists.
+-- A group's creator or the household owner can delete it, including the
+-- default "Household Expenses" group — the only real invariant is never
+-- leaving a household with zero split groups (getDefaultGroupId()/invite
+-- redemption assume at least one exists), so this only blocks deleting a
+-- household's last remaining group, not specifically the default one.
 drop policy if exists "split_groups_delete_owner_or_creator" on public.split_groups;
 create policy "split_groups_delete_owner_or_creator" on public.split_groups for delete
-  using (not is_default and (is_household_owner(household_id) or created_by = auth.uid()));
+  using (
+    (is_household_owner(household_id) or created_by = auth.uid())
+    and (select count(*) from split_groups sg2 where sg2.household_id = split_groups.household_id) > 1
+  );
 
 drop policy if exists "split_members_select_group_member" on public.split_members;
 create policy "split_members_select_group_member" on public.split_members for select

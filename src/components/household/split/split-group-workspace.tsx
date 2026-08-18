@@ -69,16 +69,13 @@ export function SplitGroupWorkspace({
         <div className="flex items-center gap-3.5">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{group.icon}</span>
           <div>
-            <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              {group.createdByName}
+              <Crown className="size-3.5 text-amber-500" />
+            </span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2">
               <p className="font-semibold">{group.name}</p>
               <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={group.id} lockToSplitOnly />
-              <span className="flex items-center gap-1.5 rounded-full bg-muted py-0.5 pr-2.5 pl-0.5 text-xs">
-                <Avatar size="sm">
-                  <AvatarFallback>{initials(group.createdByName)}</AvatarFallback>
-                </Avatar>
-                <span className="font-medium text-foreground">{group.createdByName}</span>
-                <Crown className="size-3.5 text-amber-500" />
-              </span>
             </div>
             <AvatarGroup className="mt-1.5">
               {group.memberPreview.map((m, i) => (

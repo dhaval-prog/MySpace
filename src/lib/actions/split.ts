@@ -266,7 +266,7 @@ export async function removeSplitGroupMember(groupId: string, userId: string): P
   return { ok: true };
 }
 
-/** Deletes a non-default split group — RLS (split_groups_delete_owner_or_creator) restricts this to the group's creator or the household owner, and excludes the default "Household Expenses" group entirely (every household must always have one). Cascades to its members, expenses, and settlements. */
+/** Deletes a split group, including the default "Household Expenses" one — RLS (split_groups_delete_owner_or_creator) restricts this to the group's creator or the household owner, and blocks deleting a household's last remaining group. Cascades to its members, expenses, and settlements. */
 export async function deleteSplitGroup(groupId: string): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient();
   const { error } = await supabase.from("split_groups").delete().eq("id", groupId);

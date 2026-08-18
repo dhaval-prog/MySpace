@@ -68,8 +68,9 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   const canInvite = context.myRole === "owner" || context.myRole === "co_owner" || activeGroup?.createdBy === myUserId;
   // Deleting is narrower than inviting — mirrors split_groups_delete_owner_or_creator
   // exactly (household owner or the group's own creator; co-owner alone isn't
-  // enough), and the default "Household Expenses" group can never be deleted.
-  const canDeleteGroup = !activeGroup?.isDefault && (context.myRole === "owner" || activeGroup?.createdBy === myUserId);
+  // enough). Any group can be deleted, including the default "Household
+  // Expenses" one, as long as it isn't the household's last remaining group.
+  const canDeleteGroup = groups.length > 1 && (context.myRole === "owner" || activeGroup?.createdBy === myUserId);
 
   const [splitSummary, splitMembers, simplifiedBalances] = groupId
     ? await Promise.all([getSplitSummary(householdId, groupId), getSplitGroupMembers(groupId), getSimplifiedBalances(householdId, groupId)])
