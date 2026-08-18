@@ -168,7 +168,7 @@ export async function listHouseholdMessages(householdId: string, limit = 50): Pr
     const seenAt = seenByOthers ? otherReads.reduce((min, read) => (read.seen_at < min ? read.seen_at : min), otherReads[0].seen_at) : null;
     return {
       ...r,
-      senderName: r.kind === ("system" satisfies HouseholdChatMessageKind) ? "Vault Assistant" : (nameById.get(r.user_id) ?? "Member"),
+      senderName: r.kind === ("system" satisfies HouseholdChatMessageKind) ? "Piggy Assistant" : (nameById.get(r.user_id) ?? "Member"),
       seenByOthers,
       seenAt,
       editable: r.kind === "user" && r.user_id === user?.id && !seenByOthers,

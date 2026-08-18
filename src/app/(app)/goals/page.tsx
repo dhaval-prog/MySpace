@@ -18,7 +18,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
         <EmptyState
           icon="Home"
           title="My Money. Our Goals. Our Home."
-          description="Create a household to pool savings with the people you share a home with — everyone keeps a private vault, and you decide what to share."
+          description="Create a household to pool savings with the people you share a home with — everyone keeps a private Personal Piggy, and you decide what to share."
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <CreateHouseholdCta />

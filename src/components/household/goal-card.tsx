@@ -326,7 +326,7 @@ export function GoalCard({
                       onClick={() => setSource("personal_vault")}
                       className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${source === "personal_vault" ? "border-primary bg-primary/10" : ""}`}
                     >
-                      My Personal Vault
+                      My Personal Piggy
                     </button>
                     <button
                       type="button"

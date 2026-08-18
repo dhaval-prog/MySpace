@@ -168,4 +168,87 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Personal Piggy — 2D animation states. Plain CSS keyframes (no
+   animation library) applied to the SVG in src/components/vault/piggy.tsx
+   via data-state on the root <svg>. Every keyframe here is skipped
+   entirely under prefers-reduced-motion — state STILL changes (the piggy
+   still visibly reflects idle/adding/taking/empty), just without motion.
+   ───────────────────────────────────────────────────────────── */
+@keyframes piggy-breathe {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-2px) scale(1.008, 0.992); }
+}
+@keyframes piggy-bounce-happy {
+  0% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-10px) rotate(-3deg); }
+  55% { transform: translateY(0) rotate(2deg); }
+  75% { transform: translateY(-4px) rotate(-1deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes piggy-squash-down {
+  0% { transform: translateY(0) scaleY(1); }
+  35% { transform: translateY(3px) scaleY(0.94); }
+  70% { transform: translateY(0) scaleY(1.02); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+@keyframes piggy-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-4deg); }
+  75% { transform: rotate(4deg); }
+}
+@keyframes piggy-tail-swish {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(12deg); }
+}
+@keyframes piggy-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+@keyframes piggy-slot-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+@keyframes coin-drop-in {
+  0% { transform: translateY(-46px) scale(0.6); opacity: 0; }
+  55% { opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 0; }
+}
+@keyframes coin-drop-out {
+  0% { transform: translateY(0) translateX(0) rotate(0deg) scale(1); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateY(48px) translateX(var(--coin-x, 10px)) rotate(120deg) scale(0.7); opacity: 0; }
+}
+@keyframes balance-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.piggy-body-idle { animation: piggy-breathe 3.6s ease-in-out infinite; }
+.piggy-body-happy { animation: piggy-bounce-happy 0.7s ease-out 1; }
+.piggy-body-sad { animation: piggy-squash-down 0.6s ease-out 1; }
+.piggy-ear-wiggle { animation: piggy-wiggle 2.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.piggy-tail { animation: piggy-tail-swish 2.4s ease-in-out infinite; transform-origin: 0% 50%; }
+.piggy-eye-blink { animation: piggy-blink 4.5s ease-in-out infinite; transform-origin: 50% 50%; }
+.piggy-slot-active { animation: piggy-slot-glow 1.1s ease-in-out infinite; }
+.piggy-coin-in { animation: coin-drop-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 1; }
+.piggy-coin-out { animation: coin-drop-out 0.8s ease-in 1; }
+.piggy-balance-pop { animation: balance-pop 0.4s ease-out 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .piggy-body-idle,
+  .piggy-body-happy,
+  .piggy-body-sad,
+  .piggy-ear-wiggle,
+  .piggy-tail,
+  .piggy-eye-blink,
+  .piggy-slot-active,
+  .piggy-coin-in,
+  .piggy-coin-out,
+  .piggy-balance-pop {
+    animation: none !important;
+  }
+}
+
 

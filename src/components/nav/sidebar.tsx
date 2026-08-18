@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ShieldCheck, Target, Receipt, Crown, User, type LucideIcon } from "lucide-react";
+import { Home, ShieldCheck, Target, Receipt, PiggyBank, Crown, User, type LucideIcon } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/nav/nav-items";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,6 +13,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   Target,
   Receipt,
+  PiggyBank,
 };
 
 const ROLE_ICON: Record<HouseholdRole, LucideIcon> = {

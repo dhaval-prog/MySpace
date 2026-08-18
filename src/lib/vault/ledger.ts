@@ -74,7 +74,7 @@ export async function recordVaultTransaction(
   if (input.type === "deduct" && amount > summary.balance) {
     return {
       ok: false,
-      error: `Insufficient vault balance. You currently have ₹${Math.round(summary.balance).toLocaleString("en-IN")} available.`,
+      error: `Your Piggy only has ₹${Math.round(summary.balance).toLocaleString("en-IN")} saved right now.`,
       balance: summary.balance,
     };
   }
@@ -198,7 +198,7 @@ export async function updateVaultTransaction(
   if (projectedBalance < 0) {
     return {
       ok: false,
-      error: `That change would put your vault below zero (₹${Math.round(projectedBalance).toLocaleString("en-IN")}). Try a smaller amount.`,
+      error: `That change would put your Piggy below zero (₹${Math.round(projectedBalance).toLocaleString("en-IN")}). Try a smaller amount.`,
     };
   }
 

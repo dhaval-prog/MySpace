@@ -14,7 +14,7 @@ import type { HouseholdInviteRole } from "@/lib/supabase/types";
 const ROLE_OPTIONS: { value: HouseholdInviteRole; label: string; description: string }[] = [
   { value: "member", label: "Member", description: "Can contribute, create goals, and use the household chat." },
   { value: "viewer", label: "Viewer", description: "Can see shared savings and goals, but can't change anything." },
-  { value: "limited_member", label: "Limited Member", description: "For kids or restricted access — personal vault + limited visibility." },
+  { value: "limited_member", label: "Limited Member", description: "For kids or restricted access — personal piggy + limited visibility." },
   {
     value: "split_only",
     label: "Split Only",

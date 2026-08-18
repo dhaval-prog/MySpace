@@ -306,7 +306,7 @@ async function handleAddOrDeduct(
 
 async function handleCheckBalance(supabase: SupabaseClient<Database>, userId: string): Promise<VaultVoiceResult> {
   const summary = await getVaultSummary(supabase, userId);
-  return { kind: "vault-answer", intent: "check_balance", message: `You have ${inr(summary.balance)} in your vault.`, amount: summary.balance };
+  return { kind: "vault-answer", intent: "check_balance", message: `You have ${inr(summary.balance)} in your Piggy.`, amount: summary.balance };
 }
 
 async function handleCheckTotalSaved(
@@ -551,7 +551,7 @@ function handleHelp(): VaultVoiceResult {
     kind: "vault-answer",
     intent: "help",
     message:
-      'Just talk to me naturally — try "I spent 500 on groceries", "how much do I have?", "undo that", "how much did I spend this month?", or "add 5000 to my vault".',
+      'Just talk to me naturally — try "I spent 500 on groceries", "how much do I have?", "undo that", "how much did I spend this month?", or "add 5000 to my piggy".',
   };
 }
 
@@ -711,7 +711,7 @@ export async function processVaultVoiceCommand(
       }
       actions = [filled];
     } else {
-      return { kind: "vault-error", message: "I didn't catch a vault command there." };
+      return { kind: "vault-error", message: "I didn't catch a savings command there." };
     }
   }
 
