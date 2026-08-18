@@ -40,7 +40,7 @@ export function HomeItemsBrowser({
       {/* Sticks below the app header while scrolling on mobile — the toggle,
           room pills, and search stay put, cards below them scroll on.
           Desktop keeps its normal flow (md:static). */}
-      <div className="sticky top-[61px] z-20 -mx-4 space-y-3 bg-background px-4 pt-1 pb-3 md:static md:mx-0 md:space-y-5 md:px-0 md:pt-0 md:pb-0">
+      <div className="sticky top-[61px] z-20 -mx-4 space-y-3 overflow-x-hidden bg-background px-4 pt-1 pb-3 md:static md:mx-0 md:space-y-5 md:px-0 md:pt-0 md:pb-0">
         <div className="flex flex-wrap items-center gap-3">
           {/* A grouped segmented control (not just two more pills in the
               row) so the All/Add Items toggle reads as one intentional
@@ -74,17 +74,23 @@ export function HomeItemsBrowser({
             </button>
           </div>
 
-          {/* Grid-template-columns 0fr/1fr animates the group's width without
-              a JS measurement; the inner translate/opacity gives it the feel
-              of unfurling from behind the toggle rather than just growing. */}
+          {/* A max-width transition (not grid-template-columns) so pills
+              never get squeezed into a narrower row and re-wrap onto
+              multiple lines mid-animation — flex-nowrap keeps them on one
+              line always, and dir="rtl" on the clipping box (with dir="ltr"
+              restored on the actual row) makes the reveal uncover from the
+              right edge inward, so it reads as opening from the right
+              rather than growing from the left. */}
           <div
-            className="grid transition-[grid-template-columns] duration-500 ease-out motion-reduce:transition-none"
-            style={{ gridTemplateColumns: mode === "all" ? "1fr" : "0fr" }}
+            dir="rtl"
+            className="overflow-hidden transition-[max-width] duration-500 ease-out motion-reduce:transition-none"
+            style={{ maxWidth: mode === "all" ? "800px" : "0px" }}
           >
             <div
+              dir="ltr"
               className={cn(
-                "flex min-w-0 flex-wrap items-center gap-2 overflow-hidden transition-all duration-500 ease-out motion-reduce:transition-none",
-                mode === "all" ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"
+                "flex flex-nowrap items-center gap-2 transition-opacity duration-500 ease-out motion-reduce:transition-none",
+                mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
               )}
             >
               {rooms.map((r) => (
@@ -93,7 +99,7 @@ export function HomeItemsBrowser({
                   type="button"
                   onClick={() => setRoomId(r.id)}
                   className={cn(
-                    "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+                    "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors",
                     roomId === r.id ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
                   )}
                 >
