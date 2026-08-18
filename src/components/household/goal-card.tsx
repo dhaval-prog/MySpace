@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { X, Clock } from "lucide-react";
+import { X, Clock, ChevronLeft } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,27 +203,35 @@ export function GoalCard({
         </DialogContent>
       </Dialog>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="flex flex-col p-0 sm:max-w-md">
-          <SheetHeader className="gap-1 border-b pr-12">
-            <div className="flex items-center justify-between gap-2">
-              <SheetTitle className="text-xl">
-                {goal.icon} {goal.name}
-              </SheetTitle>
-              {canManageMembers && (
-                <MemberManagerDialog
-                  title={`Members of "${goal.name}"`}
-                  members={members}
-                  fetchEligible={() => listEligibleGoalMembers(goal.id, goal.household_id)}
-                  onAdd={(userId) => addGoalMember(goal.id, userId)}
-                  onRemove={(userId) => removeGoalMember(goal.id, userId)}
-                />
-              )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent showCloseButton={false} className="flex max-h-[88vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+          <div className="flex items-start justify-between gap-2 border-b p-4">
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+              >
+                <ChevronLeft className="size-3.5" />
+                Back to Goals
+              </button>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <span className="text-2xl">{goal.icon}</span> {goal.name}
+              </DialogTitle>
+              {goal.deadline && <p className="mt-1 text-xs text-muted-foreground">Due {monthYear(goal.deadline)}</p>}
             </div>
-            {goal.deadline && <p className="text-xs text-muted-foreground">Due {monthYear(goal.deadline)}</p>}
-          </SheetHeader>
+            {canManageMembers && (
+              <MemberManagerDialog
+                title={`Members of "${goal.name}"`}
+                members={members}
+                fetchEligible={() => listEligibleGoalMembers(goal.id, goal.household_id)}
+                onAdd={(userId) => addGoalMember(goal.id, userId)}
+                onRemove={(userId) => removeGoalMember(goal.id, userId)}
+              />
+            )}
+          </div>
 
-          <div className="flex-1 space-y-5 overflow-y-auto px-4 pb-4">
+          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
             <div className="rounded-2xl border bg-card p-4">
               <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                 <span>Saved</span>
@@ -360,8 +367,8 @@ export function GoalCard({
               </div>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

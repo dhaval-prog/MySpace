@@ -1,16 +1,12 @@
 import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { listGoals } from "@/lib/actions/household-goals";
-import { listHouseholdMessages } from "@/lib/actions/household-chat";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
-import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
 import { GoalCard } from "@/components/household/goal-card";
-import { ChatPanel } from "@/components/household/chat-panel";
 
 export default async function GoalsPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const { id } = await searchParams;
@@ -42,13 +38,9 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
     redirect(`/split?id=${householdId}`);
   }
 
-  const [activeGoals, messages] = await Promise.all([
-    listGoals(householdId, { status: "active" }),
-    listHouseholdMessages(householdId),
-  ]);
+  const activeGoals = await listGoals(householdId, { status: "active" });
 
   const isOwner = context.myRole === "owner";
-  const canInvite = context.myRole === "owner" || context.myRole === "co_owner";
   const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
 
   return (
@@ -61,35 +53,21 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <HouseholdSwitcher households={memberships} currentId={householdId} />
-          <InviteMemberDialog householdId={householdId} canInvite={canInvite} />
           <CreateGoalDialog householdId={householdId} />
         </div>
       </div>
 
-      <Tabs defaultValue="goals">
-        <TabsList>
-          <TabsTrigger value="goals">Goals</TabsTrigger>
-          <TabsTrigger value="chat">Chat</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="goals" className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {activeGoals.length === 0 ? (
-              <p className="col-span-full text-sm text-muted-foreground">
-                No goals yet — create one to start saving toward something together.
-              </p>
-            ) : (
-              activeGoals.map((g) => (
-                <GoalCard key={g.goal.id} summary={g} canDelete={isOwner || g.goal.created_by === myUserId} currentUserId={myUserId} />
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="chat">
-          <ChatPanel householdId={householdId} currentUserId={myUserId} initialMessages={messages} />
-        </TabsContent>
-      </Tabs>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {activeGoals.length === 0 ? (
+          <p className="col-span-full text-sm text-muted-foreground">
+            No goals yet — create one to start saving toward something together.
+          </p>
+        ) : (
+          activeGoals.map((g) => (
+            <GoalCard key={g.goal.id} summary={g} canDelete={isOwner || g.goal.created_by === myUserId} currentUserId={myUserId} />
+          ))
+        )}
+      </div>
     </div>
   );
 }

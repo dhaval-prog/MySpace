@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/shared/empty-state";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
+import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { AddExpenseDialog } from "@/components/household/split/add-expense-dialog";
@@ -61,6 +62,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   }
 
   const isOwner = context.myRole === "owner";
+  const canInvite = context.myRole === "owner" || context.myRole === "co_owner";
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
@@ -72,6 +74,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <HouseholdSwitcher households={memberships} currentId={householdId} basePath="/split" />
+          <InviteMemberDialog householdId={householdId} canInvite={canInvite} />
           {splitSummary && <AddExpenseDialog householdId={householdId} members={splitMembers} currentUserId={myUserId} />}
         </div>
       </div>
