@@ -134,7 +134,7 @@ export function InviteMemberDialog({
           }
         />
       )}
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-sm">
+      <DialogContent className="max-h-[85vh] overflow-x-hidden overflow-y-auto sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Invite a member</DialogTitle>
         </DialogHeader>
@@ -145,22 +145,29 @@ export function InviteMemberDialog({
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <UserPlus className="size-4" />
               </span>
-              <p className="text-sm text-muted-foreground">
+              <p className="min-w-0 text-sm text-muted-foreground">
                 Share this code — whoever enters it joins as <span className="font-medium text-foreground capitalize">{role.replace("_", " ")}</span>.
                 It expires in 7 days.
               </p>
             </div>
 
+            {/* break-all (not truncate) so the code/link wrap onto their own
+                lines and stay fully readable/copyable instead of forcing
+                the row wider than the card — a single unbroken 30+ char
+                string under `truncate`'s nowrap can push a flex row past
+                its container in some nesting, which is exactly what
+                should never happen inside a fixed-width dialog. */}
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <KeyRound className="size-3.5" />
                 Invite code
               </Label>
               <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5">
-                <code className="min-w-0 flex-1 truncate text-xs">{token}</code>
+                <code className="min-w-0 flex-1 [overflow-wrap:anywhere] text-xs leading-relaxed">{token}</code>
                 <Button
                   size="icon-sm"
                   variant="ghost"
+                  className="shrink-0"
                   onClick={() => {
                     navigator.clipboard.writeText(token);
                     setCopied(true);
@@ -177,10 +184,11 @@ export function InviteMemberDialog({
                 Direct link
               </Label>
               <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2.5">
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteLink}</span>
+                <span className="min-w-0 flex-1 [overflow-wrap:anywhere] text-xs leading-relaxed text-muted-foreground">{inviteLink}</span>
                 <Button
                   size="icon-sm"
                   variant="ghost"
+                  className="shrink-0"
                   onClick={() => {
                     navigator.clipboard.writeText(inviteLink);
                     setLinkCopied(true);
