@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Copy, Check, Mail, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createSplitGroup, createExpense, type SplitGroupSummary } from "@/lib/actions/split";
 import { generateInvite } from "@/lib/actions/household";
+import { sendInviteSms } from "@/lib/actions/sms";
 import type { SplitShareType } from "@/lib/supabase/types";
 
 const ICON_OPTIONS = ["🤝", "🏠", "✈️", "🎉", "🍽️", "🚗", "🏕️", "🎓"];
@@ -108,6 +109,8 @@ function CreateSplitGroupDialog({
   const [newGroupId, setNewGroupId] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [smsStatus, setSmsStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [smsError, setSmsError] = useState<string | null>(null);
 
   function resetAll() {
     setStep("form");
@@ -120,10 +123,31 @@ function CreateSplitGroupDialog({
     setNewGroupId(null);
     setInviteLink(null);
     setLinkCopied(false);
+    setSmsStatus("idle");
+    setSmsError(null);
   }
 
   const looksLikeEmail = inviteContact.includes("@");
   const shareMessage = inviteLink ? `Join me on My Space — use this link: ${inviteLink}` : "";
+
+  // As soon as the invite link is ready, if the contact looks like a phone
+  // number (not an email), send it automatically via MSG91 — no second
+  // click needed. Falls back to showing the manual link/email/SMS options
+  // below regardless of whether this succeeds.
+  useEffect(() => {
+    if (step !== "invite-share" || looksLikeEmail || !inviteContact.trim() || !shareMessage) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSmsStatus("sending");
+    sendInviteSms(inviteContact, shareMessage).then((result) => {
+      if ("error" in result) {
+        setSmsStatus("error");
+        setSmsError(result.error);
+        return;
+      }
+      setSmsStatus("sent");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   return (
     <Dialog
@@ -283,6 +307,24 @@ function CreateSplitGroupDialog({
               <p className="text-sm text-muted-foreground">
                 Send this link to {inviteContact || "them"} — opening it joins them straight into &ldquo;{name}&rdquo; with Split Only access.
               </p>
+
+              {!looksLikeEmail && smsStatus !== "idle" && (
+                <p
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs",
+                    smsStatus === "sent" ? "text-positive" : smsStatus === "error" ? "text-destructive" : "text-muted-foreground"
+                  )}
+                >
+                  {smsStatus === "sending" && "Sending a text to " + inviteContact + "…"}
+                  {smsStatus === "sent" && (
+                    <>
+                      <Check className="size-3.5" /> Text sent to {inviteContact}
+                    </>
+                  )}
+                  {smsStatus === "error" && smsError}
+                </p>
+              )}
+
               <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
                 <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{inviteLink}</span>
                 <Button
@@ -321,7 +363,7 @@ function CreateSplitGroupDialog({
                   render={<a href={`sms:${looksLikeEmail ? "" : inviteContact}?body=${encodeURIComponent(shareMessage)}`} />}
                 >
                   <MessageSquare className="size-4" />
-                  Text message
+                  Open in Messages
                 </Button>
               </div>
             </div>

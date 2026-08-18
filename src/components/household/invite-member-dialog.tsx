@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { UserPlus, Copy, Check, Lock, Mail, MessageSquare } from "lucide-react";
+import { UserPlus, Copy, Check, Lock, Mail, MessageSquare, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateInvite } from "@/lib/actions/household";
+import { sendInviteSms } from "@/lib/actions/sms";
 import type { HouseholdInviteRole } from "@/lib/supabase/types";
 
 const ROLE_OPTIONS: { value: HouseholdInviteRole; label: string; description: string }[] = [
@@ -43,6 +45,10 @@ export function InviteMemberDialog({
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [smsError, setSmsError] = useState<string | null>(null);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsPending, startSmsTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -50,6 +56,9 @@ export function InviteMemberDialog({
     setToken(null);
     setCopied(false);
     setLinkCopied(false);
+    setPhone("");
+    setSmsError(null);
+    setSmsSent(false);
     setError(null);
     setRole(defaultRole);
   }
@@ -146,8 +155,47 @@ export function InviteMemberDialog({
               </Button>
               <Button variant="outline" size="sm" className="flex-1" render={<a href={`sms:?body=${encodeURIComponent(shareMessage)}`} />}>
                 <MessageSquare className="size-4" />
-                Text message
+                Open in Messages
               </Button>
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <Label htmlFor="invite-sms-phone" className="text-xs text-muted-foreground">
+                Or text it directly to a phone number
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="invite-sms-phone"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setSmsSent(false);
+                    setSmsError(null);
+                  }}
+                  placeholder="Phone number"
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={smsPending || !phone.trim() || smsSent}
+                  onClick={() =>
+                    startSmsTransition(async () => {
+                      const result = await sendInviteSms(phone, shareMessage);
+                      if ("error" in result) {
+                        setSmsError(result.error);
+                        return;
+                      }
+                      setSmsError(null);
+                      setSmsSent(true);
+                    })
+                  }
+                >
+                  {smsSent ? <Check className="size-4" /> : <Send className="size-4" />}
+                  {smsSent ? "Sent" : "Send"}
+                </Button>
+              </div>
+              {smsError && <p className="text-xs text-destructive">{smsError}</p>}
             </div>
           </div>
         ) : (

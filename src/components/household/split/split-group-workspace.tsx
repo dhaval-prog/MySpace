@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ExpenseDetailDialog } from "@/components/household/split/expense-detail-dialog";
 import { SettleUpDialog } from "@/components/household/split/settle-up-dialog";
 import { SplitChatPanel } from "@/components/household/split/split-chat-panel";
+import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
 import { listSplitMessages, type SplitChatMessageWithSender } from "@/lib/actions/split-chat";
 import type { SplitGroupSummary, SplitSummary, SimplifiedTransferWithNames } from "@/lib/actions/split";
 import type { HouseholdMemberLite } from "@/components/household/finance-toggle";
@@ -30,6 +31,7 @@ export function SplitGroupWorkspace({
   simplifiedBalances,
   members,
   currentUserId,
+  canInvite,
 }: {
   householdId: string;
   group: SplitGroupSummary;
@@ -37,6 +39,7 @@ export function SplitGroupWorkspace({
   simplifiedBalances: SimplifiedTransferWithNames[];
   members: HouseholdMemberLite[];
   currentUserId: string;
+  canInvite: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("expenses");
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -55,7 +58,10 @@ export function SplitGroupWorkspace({
         <div className="flex items-center gap-3.5">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{group.icon}</span>
           <div>
-            <p className="font-semibold">{group.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold">{group.name}</p>
+              <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={group.id} defaultRole="split_only" />
+            </div>
             <AvatarGroup className="mt-1.5">
               {group.memberPreview.map((m, i) => (
                 <Avatar key={m.userId} size="sm">

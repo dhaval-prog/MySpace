@@ -99,6 +99,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           simplifiedBalances={simplifiedBalances}
           members={splitMembers}
           currentUserId={myUserId}
+          canInvite={canInvite}
         />
       ) : (
         <div className="rounded-2xl border bg-card p-8 text-center">
