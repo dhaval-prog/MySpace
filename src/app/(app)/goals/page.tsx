@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { listGoals } from "@/lib/actions/household-goals";
 import { EmptyState } from "@/components/shared/empty-state";
-import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import { HouseholdCardRow } from "@/components/household/household-card-row";
+import { GoalsOptionsMenu } from "@/components/household/goals-options-menu";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
@@ -50,11 +50,13 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared &amp; Personal</p>
-          <h1 className="font-heading text-4xl text-foreground md:text-5xl">Goals</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="font-heading text-4xl text-foreground md:text-5xl">Goals</h1>
+            <GoalsOptionsMenu currentId={householdId} canInvite={canInvite} />
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">Track progress toward what matters most</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <HouseholdSwitcher households={memberships} currentId={householdId} canInvite={canInvite} />
           <CreateGoalDialog householdId={householdId} />
         </div>
       </div>

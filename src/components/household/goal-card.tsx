@@ -130,12 +130,20 @@ export function GoalCard({
             <p className="mt-1 text-xs text-muted-foreground">Created by {summary.creatorName}</p>
           </div>
         </div>
-        <Progress value={progressPct} max={100} className="mt-5" />
-        <div className="mt-3.5 flex items-baseline justify-between">
-          <span className="font-mono text-2xl text-foreground">{inr(currentAmount)}</span>
-          <span className="font-mono text-xs text-muted-foreground">
-            {progressPct}% · {inr(goal.target_amount)}
-          </span>
+        <div className="mt-5 rounded-2xl border bg-muted/30 p-4">
+          <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            <span>Saved</span>
+            <span>Target</span>
+          </div>
+          <div className="mt-0.5 flex items-baseline justify-between">
+            <span className="text-2xl font-semibold text-foreground">{inr(currentAmount)}</span>
+            <span className="text-2xl font-semibold text-muted-foreground">{inr(goal.target_amount)}</span>
+          </div>
+          <Progress value={progressPct} max={100} className="mt-3" />
+          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{inr(remaining)} remaining</span>
+            <span>{progressPct}% complete</span>
+          </div>
         </div>
         <div className="mt-4 flex items-center justify-between border-t pt-3.5">
           {cardMembers.length > 0 ? (
@@ -203,22 +211,6 @@ export function GoalCard({
               <Button size="icon-sm" variant="ghost" className="shrink-0" onClick={() => setOpen(false)}>
                 <X className="size-4" />
               </Button>
-            </div>
-
-            <div className="rounded-2xl border bg-muted/30 p-4">
-              <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                <span>Saved</span>
-                <span>Target</span>
-              </div>
-              <div className="mt-0.5 flex items-baseline justify-between">
-                <span className="text-2xl font-semibold text-foreground">{inr(currentAmount)}</span>
-                <span className="text-2xl font-semibold text-muted-foreground">{inr(goal.target_amount)}</span>
-              </div>
-              <Progress value={progressPct} max={100} className="mt-3" />
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>{inr(remaining)} remaining</span>
-                <span>{progressPct}% complete</span>
-              </div>
             </div>
 
             <div className="relative flex items-center rounded-full bg-muted p-1">
