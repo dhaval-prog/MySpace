@@ -244,6 +244,12 @@
 .piggy-coin-out { animation: coin-drop-out 0.8s ease-in 1; }
 .piggy-balance-pop { animation: balance-pop 0.4s ease-out 1; }
 
+/* Hides the scrollbar on the Piggy page's slide-snap carousel — dots + arrow
+   buttons are the intended navigation UI, a visible native scrollbar there
+   just reads as a rendering glitch. */
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .piggy-body-idle,
   .piggy-body-happy,

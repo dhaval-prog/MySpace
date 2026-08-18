@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Home } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Piggy, type PiggyCoinEvent, type PiggyMood } from "@/components/vault/piggy";
 import { AddMoneyDialog } from "@/components/vault/add-money-dialog";
 import { TakeMoneyDialog } from "@/components/vault/take-money-dialog";
 import { SavingsHistory } from "@/components/vault/savings-history";
 import { RecurringSavingsCard } from "@/components/vault/recurring-savings-card";
+import { PiggyCarousel } from "@/components/vault/piggy-carousel";
 import { useCountUp } from "@/lib/hooks/use-count-up";
 import type { VaultRecurringPlan, VaultTransaction } from "@/lib/supabase/types";
 
@@ -35,13 +34,11 @@ export function PersonalPiggyPage({
   initialBalance,
   initialTransactions,
   initialPlan,
-  householdTieIn,
 }: {
   memberName: string;
   initialBalance: number;
   initialTransactions: VaultTransaction[];
   initialPlan: VaultRecurringPlan | null;
-  householdTieIn: { householdId: string; householdName: string; totalSharedSavings: number } | null;
 }) {
   const [balance, setBalance] = useState(initialBalance);
   const [transactions, setTransactions] = useState(initialTransactions);
@@ -89,71 +86,58 @@ export function PersonalPiggyPage({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
-      <div className="space-y-3">
-        <div>
-          <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Personal Piggy</p>
-          <h1 className="font-heading text-2xl text-foreground sm:text-3xl md:text-5xl">Your personal savings space</h1>
-        </div>
-        {householdTieIn && (
-          <Link
-            href={`/goals?id=${householdTieIn.householdId}`}
-            className="flex max-w-sm items-center gap-3 rounded-2xl border bg-card px-4 py-3 transition hover:bg-muted"
-          >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Home className="size-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[11px] tracking-wide text-muted-foreground uppercase">Household Savings</span>
-              <span className="block truncate text-sm font-semibold text-foreground">{householdTieIn.householdName}</span>
-            </span>
-            <span className="shrink-0 font-mono text-sm font-semibold text-foreground">{inr(householdTieIn.totalSharedSavings)}</span>
-          </Link>
-        )}
+      <div>
+        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Personal Piggy</p>
+        <h1 className="font-heading text-2xl text-foreground sm:text-3xl md:text-5xl">Your personal savings space</h1>
       </div>
 
-      <Card className="p-6 sm:p-8">
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-          <div className="order-2 text-center sm:order-1 sm:text-left">
-            <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Piggy Balance</p>
-            <p className={`mt-1 font-heading text-5xl text-foreground ${balancePop ? "piggy-balance-pop" : ""}`}>{inr(displayBalance)}</p>
-            {!isEmpty && (
-              <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-                <p>
-                  Saved this month: <span className="font-medium text-foreground">{inr(savedThisMonth)}</span>
-                </p>
-                {lastAdded && (
-                  <p>
-                    Last added: <span className="font-medium text-foreground">{inr(lastAdded.amount)}</span>
-                  </p>
+      <PiggyCarousel
+        slides={[
+          <Card key="balance" className="p-6 sm:p-8">
+            <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
+              <div className="order-2 text-center sm:order-1 sm:text-left">
+                <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Piggy Balance</p>
+                <p className={`mt-1 font-heading text-5xl text-foreground ${balancePop ? "piggy-balance-pop" : ""}`}>{inr(displayBalance)}</p>
+                {!isEmpty && (
+                  <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                    <p>
+                      Saved this month: <span className="font-medium text-foreground">{inr(savedThisMonth)}</span>
+                    </p>
+                    {lastAdded && (
+                      <p>
+                        Last added: <span className="font-medium text-foreground">{inr(lastAdded.amount)}</span>
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
+              <Piggy mood={mood} fullness={fullnessFor(balance)} coinEvent={coinEvent} className="order-1 h-40 w-48 sm:order-2 sm:h-48 sm:w-56" />
+            </div>
+
+            {isEmpty && (
+              <div className="mt-6 flex flex-col items-center gap-2 text-center">
+                <p className="font-heading text-xl text-foreground">Your Piggy is Empty</p>
+                <p className="text-sm text-muted-foreground">Let&apos;s put the first coin in.</p>
+              </div>
             )}
-          </div>
-          <Piggy mood={mood} fullness={fullnessFor(balance)} coinEvent={coinEvent} className="order-1 h-40 w-48 sm:order-2 sm:h-48 sm:w-56" />
-        </div>
+            <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
+              <AddMoneyDialog onAdded={handleAdded} />
+              <TakeMoneyDialog balance={balance} onTaken={handleTaken} />
+            </div>
+          </Card>,
 
-        {isEmpty && (
-          <div className="mt-6 flex flex-col items-center gap-2 text-center">
-            <p className="font-heading text-xl text-foreground">Your Piggy is Empty</p>
-            <p className="text-sm text-muted-foreground">Let&apos;s put the first coin in.</p>
-          </div>
-        )}
-        <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
-          <AddMoneyDialog onAdded={handleAdded} />
-          <TakeMoneyDialog balance={balance} onTaken={handleTaken} />
-        </div>
-      </Card>
+          <RecurringSavingsCard key="recurring" plan={initialPlan} />,
 
-      <RecurringSavingsCard plan={initialPlan} />
-
-      <Card className="p-5">
-        <CardHeader className="p-0">
-          <CardTitle className="text-base">Savings History</CardTitle>
-        </CardHeader>
-        <CardContent className="mt-4 p-0">
-          <SavingsHistory transactions={transactions} memberName={memberName} />
-        </CardContent>
-      </Card>
+          <Card key="history" className="p-5">
+            <CardHeader className="p-0">
+              <CardTitle className="text-base">Savings History</CardTitle>
+            </CardHeader>
+            <CardContent className="mt-4 p-0">
+              <SavingsHistory transactions={transactions} memberName={memberName} />
+            </CardContent>
+          </Card>,
+        ]}
+      />
     </div>
   );
 }
