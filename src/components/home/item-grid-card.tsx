@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { MoreVertical, Pencil, Trash2, Clock } from "lucide-react";
+import { MoreVertical, Pencil, MoveRight, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,17 +45,18 @@ function BackDetail({ label, children }: { label: string; children: React.ReactN
  * are absolutely stacked inside a fixed-height, 3D-perspective wrapper so
  * the flip never shifts anything else in the grid.
  */
-export function ItemGridCard({ item }: { item: Item & { furnitureName: string } }) {
+export function ItemGridCard({ item }: { item: Item & { furnitureName: string; storageLocationName: string } }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [detail, setDetail] = useState<ItemDetail | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!flipped || detail) return;
+    if ((!flipped && !moveOpen) || detail) return;
     getItemDetail(item.id).then(setDetail);
-  }, [flipped, detail, item.id]);
+  }, [flipped, moveOpen, detail, item.id]);
 
   const CategoryIcon = getIcon(categoryIcon(item.category));
 
@@ -92,6 +93,10 @@ export function ItemGridCard({ item }: { item: Item & { furnitureName: string } 
                   <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMoveOpen(true)}>
+                  <MoveRight className="size-4" />
+                  Move Item
+                </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={() => setConfirmDelete(true)}>
                   <Trash2 className="size-4" />
                   Delete
@@ -101,9 +106,12 @@ export function ItemGridCard({ item }: { item: Item & { furnitureName: string } 
           </div>
 
           <button type="button" onClick={() => setFlipped(true)} className="mt-3 block w-full text-left">
-            <p className="truncate font-semibold">{item.name}</p>
+            <p className="flex items-baseline justify-between gap-2">
+              <span className="truncate font-semibold">{item.name}</span>
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">Qty {item.quantity}</span>
+            </p>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {categoryLabel(item.category)} · Qty {item.quantity} · {item.furnitureName}
+              {item.furnitureName} · {item.storageLocationName}
             </p>
             <div className="mt-3 border-t pt-3">
               <p className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
@@ -163,6 +171,18 @@ export function ItemGridCard({ item }: { item: Item & { furnitureName: string } 
       </div>
 
       <EditItemDialog item={{ id: item.id, name: item.name, category: item.category }} open={editOpen} onOpenChange={setEditOpen} />
+
+      {detail && (
+        <MoveItemDialog
+          itemId={item.id}
+          currentHomeId={detail.homeId}
+          currentRoomId={detail.roomId}
+          currentFurnitureId={detail.furnitureId}
+          currentStorageLocationId={item.storage_location_id}
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+        />
+      )}
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>

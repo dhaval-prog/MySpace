@@ -10,7 +10,7 @@ export interface RoomFilter {
 export interface HomeItemsView {
   home: Home;
   rooms: RoomFilter[];
-  items: (Item & { roomId: string; roomName: string; furnitureName: string })[];
+  items: (Item & { roomId: string; roomName: string; furnitureName: string; storageLocationName: string })[];
   totals: { items: number; rooms: number };
 }
 
@@ -37,8 +37,8 @@ export async function getHomeItemsView(
 
   const furnitureIds = (furniture ?? []).map((f) => f.id);
   const { data: storageLocations } = furnitureIds.length
-    ? await supabase.from("storage_locations").select("id, furniture_id").in("furniture_id", furnitureIds)
-    : { data: [] as { id: string; furniture_id: string }[] };
+    ? await supabase.from("storage_locations").select("id, furniture_id, name").in("furniture_id", furnitureIds)
+    : { data: [] as { id: string; furniture_id: string; name: string }[] };
 
   const storageIds = (storageLocations ?? []).map((s) => s.id);
   const { data: rawItems } = storageIds.length
@@ -50,6 +50,7 @@ export async function getHomeItemsView(
     : { data: [] as Item[] };
 
   const storageToFurniture = new Map((storageLocations ?? []).map((s) => [s.id, s.furniture_id]));
+  const storageNameById = new Map((storageLocations ?? []).map((s) => [s.id, s.name]));
   const furnitureToRoom = new Map((furniture ?? []).map((f) => [f.id, f.room_id]));
   const furnitureNameById = new Map((furniture ?? []).map((f) => [f.id, f.name]));
   const roomNameById = new Map((rooms ?? []).map((r) => [r.id, r.name]));
@@ -59,8 +60,9 @@ export async function getHomeItemsView(
     const roomId = furnitureId ? furnitureToRoom.get(furnitureId) : undefined;
     const roomName = roomId ? roomNameById.get(roomId) : undefined;
     const furnitureName = furnitureId ? furnitureNameById.get(furnitureId) : undefined;
-    if (!roomId || !roomName || !furnitureName) return [];
-    return [{ ...item, roomId, roomName, furnitureName }];
+    const storageLocationName = storageNameById.get(item.storage_location_id);
+    if (!roomId || !roomName || !furnitureName || !storageLocationName) return [];
+    return [{ ...item, roomId, roomName, furnitureName, storageLocationName }];
   });
 
   const itemCountByRoom = new Map<string, number>();
