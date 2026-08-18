@@ -8,27 +8,55 @@ const DRAG_THRESHOLD_RATIO = 0.2;
 /** Pixels of movement before a pointer-down commits to a carousel drag
  * rather than being left alone as a normal tap/click on whatever's inside
  * the slide (a button, an input, a select) — without this, every click on
- * "Add Money" or a form field would get captured as a swipe instead. */
+ * something inside a slide would get captured as a swipe instead. */
 const DRAG_COMMIT_PX = 8;
 
 /**
- * A drag-controlled carousel for the Piggy/Regular Savings/Savings History
- * cards. Deliberately NOT native scroll-snap: a fast swipe under
- * scroll-snap's momentum physics can fling past an intermediate snap point
- * straight to the next one (skipping a slide), which is exactly the bug this
- * replaces — every drag here explicitly lands on index±1 or springs back,
+ * A drag-controlled, snap-to-one-slide-at-a-time carousel. Deliberately NOT
+ * native scroll-snap: a fast swipe under scroll-snap's momentum physics can
+ * fling past an intermediate snap point straight to the next one (skipping
+ * a slide). Every drag here explicitly lands on index±1 or springs back,
  * never further. Arrow buttons + dots cover non-touch input, and the
  * track's height animates to match whichever slide is active (via
  * ResizeObserver) instead of always reserving space for the tallest one.
+ *
+ * Uncontrolled by default (tracks its own active slide). Pass
+ * `activeIndex`/`onActiveIndexChange` to drive it from elsewhere instead —
+ * e.g. a group switcher whose "active slide" is really a URL param and
+ * changing it triggers a navigation. The visible index still updates
+ * immediately on drag release (optimistic), then reconciles once the new
+ * `activeIndex` prop lands, so a controlled carousel doesn't feel laggy
+ * while waiting on that round trip.
  */
-export function PiggyCarousel({ slides }: { slides: ReactNode[] }) {
+export function SwipeCarousel({
+  slides,
+  activeIndex: activeIndexProp,
+  onActiveIndexChange,
+}: {
+  slides: ReactNode[];
+  activeIndex?: number;
+  onActiveIndexChange?: (index: number) => void;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(activeIndexProp ?? 0);
+  const [syncedProp, setSyncedProp] = useState(activeIndexProp);
   const [height, setHeight] = useState<number | undefined>(undefined);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; pointerId: number; committed: boolean } | null>(null);
+
+  // Adjusting state during render (not in an effect) when a prop changes —
+  // the pattern React's docs recommend for this exact case. goTo() below
+  // already sets `active` optimistically the instant a drag/click resolves,
+  // so by the time `activeIndexProp` actually changes (e.g. once a
+  // navigation it triggered completes), this is usually a same-value no-op;
+  // it only visibly moves the carousel when the active slide changes for a
+  // reason other than this component's own goTo().
+  if (activeIndexProp !== undefined && activeIndexProp !== syncedProp) {
+    setSyncedProp(activeIndexProp);
+    setActive(activeIndexProp);
+  }
 
   useEffect(() => {
     const el = slideRefs.current[active];
@@ -41,7 +69,9 @@ export function PiggyCarousel({ slides }: { slides: ReactNode[] }) {
   }, [active]);
 
   function goTo(i: number) {
-    setActive(Math.min(slides.length - 1, Math.max(0, i)));
+    const clamped = Math.min(slides.length - 1, Math.max(0, i));
+    setActive(clamped);
+    onActiveIndexChange?.(clamped);
   }
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {

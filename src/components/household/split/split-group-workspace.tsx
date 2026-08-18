@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Receipt, Check, Crown, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Receipt, Check } from "lucide-react";
 import { cn, initials, memberAccentClass } from "@/lib/utils";
-import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExpenseDetailDialog } from "@/components/household/split/expense-detail-dialog";
 import { SettleUpDialog } from "@/components/household/split/settle-up-dialog";
 import { SplitChatPanel } from "@/components/household/split/split-chat-panel";
-import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
-import { useHouseholdPresence } from "@/lib/hooks/use-presence";
 import { listSplitMessages, type SplitChatMessageWithSender } from "@/lib/actions/split-chat";
-import { deleteSplitGroup } from "@/lib/actions/split";
 import type { SplitGroupSummary, SplitSummary, SimplifiedTransferWithNames } from "@/lib/actions/split";
 import type { HouseholdMemberLite } from "@/components/household/finance-toggle";
 
@@ -27,7 +22,10 @@ function formatDate(iso: string): string {
 
 type Tab = "expenses" | "balances" | "chat";
 
-/** The group summary card + Expenses/Balances/Chat toggle — the whole body of the Let's Split page once a group is selected. */
+/** The Expenses/Balances/Chat toggle + content — the group's own summary
+ * card now lives in SplitGroupSwitcher's swipeable carousel instead, since
+ * swiping between groups needs the card to exist per-group, not just for
+ * whichever one is currently active here. */
 export function SplitGroupWorkspace({
   householdId,
   group,
@@ -35,8 +33,6 @@ export function SplitGroupWorkspace({
   simplifiedBalances,
   members,
   currentUserId,
-  canInvite,
-  canDeleteGroup,
 }: {
   householdId: string;
   group: SplitGroupSummary;
@@ -44,17 +40,10 @@ export function SplitGroupWorkspace({
   simplifiedBalances: SimplifiedTransferWithNames[];
   members: HouseholdMemberLite[];
   currentUserId: string;
-  canInvite: boolean;
-  canDeleteGroup: boolean;
 }) {
-  const router = useRouter();
   const [tab, setTab] = useState<Tab>("expenses");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<SplitChatMessageWithSender[] | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deletePending, startDeleteTransition] = useTransition();
-  const onlineUserIds = useHouseholdPresence(householdId, currentUserId);
 
   useEffect(() => {
     if (tab !== "chat") return;
@@ -65,81 +54,6 @@ export function SplitGroupWorkspace({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
-        <div className="flex items-center gap-3.5">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{group.icon}</span>
-          <div>
-            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              {group.createdByName}
-              <Crown className="size-3.5 text-amber-500" />
-            </span>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <p className="font-semibold">{group.name}</p>
-              <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={group.id} lockToSplitOnly />
-            </div>
-            <AvatarGroup className="mt-1.5">
-              {group.memberPreview.map((m, i) => (
-                <Avatar key={m.userId} size="sm">
-                  <AvatarFallback className={memberAccentClass(i)}>{initials(m.name)}</AvatarFallback>
-                  {onlineUserIds.has(m.userId) && <AvatarBadge className="bg-emerald-500" title="Active now" />}
-                </Avatar>
-              ))}
-            </AvatarGroup>
-          </div>
-        </div>
-        <div className="text-right">
-          {canDeleteGroup && (
-            <button
-              type="button"
-              onClick={() => setDeleteOpen(true)}
-              title="Delete group"
-              className="mb-1 inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          )}
-          <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">Total Spent</p>
-          <p className="mt-0.5 text-2xl font-semibold">{inr(group.totalSpent)}</p>
-        </div>
-      </div>
-
-      {canDeleteGroup && (
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete &ldquo;{group.name}&rdquo;?</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              This permanently deletes this group along with its expenses and settlement history. This can&apos;t be undone.
-            </p>
-            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={deletePending}
-                onClick={() =>
-                  startDeleteTransition(async () => {
-                    const result = await deleteSplitGroup(group.id);
-                    if ("error" in result) {
-                      setDeleteError(result.error);
-                      return;
-                    }
-                    setDeleteOpen(false);
-                    router.push(`/split?id=${householdId}`);
-                  })
-                }
-              >
-                <Trash2 className="size-4" />
-                Delete Group
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
       <div className="relative flex items-center rounded-full bg-muted p-1">
         <div
           aria-hidden

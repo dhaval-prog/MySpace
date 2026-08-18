@@ -2,16 +2,20 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Copy, Check, Mail, MessageSquare } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, Copy, Check, Mail, MessageSquare, Crown, Trash2 } from "lucide-react";
+import { cn, initials, memberAccentClass } from "@/lib/utils";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createSplitGroup, createExpense, type SplitGroupSummary } from "@/lib/actions/split";
+import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
+import { SwipeCarousel } from "@/components/shared/swipe-carousel";
+import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
+import { useHouseholdPresence } from "@/lib/hooks/use-presence";
+import { createSplitGroup, createExpense, deleteSplitGroup, type SplitGroupSummary } from "@/lib/actions/split";
 import { generateInvite } from "@/lib/actions/household";
 import { sendInviteSms } from "@/lib/actions/sms";
-import type { SplitShareType } from "@/lib/supabase/types";
+import type { HouseholdRole, SplitShareType } from "@/lib/supabase/types";
 
 const ICON_OPTIONS = ["🤝", "🏠", "✈️", "🎉", "🍽️", "🚗", "🏕️", "🎓"];
 const SPLIT_METHODS: { value: SplitShareType; label: string }[] = [
@@ -20,61 +24,101 @@ const SPLIT_METHODS: { value: SplitShareType; label: string }[] = [
   { value: "shares", label: "Shares" },
 ];
 
-/** Every split group the caller belongs to, as a row of pills — clicking one switches ?group= without touching ?id=, matching how HouseholdSwitcher already swaps ?id= for households. */
+function inr(n: number): string {
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+/**
+ * Every split group the caller belongs to, as swipeable full group cards
+ * (icon, creator, name, Invite, member avatars, Total Spent, delete) —
+ * replaces the earlier segmented-pill toggle. Swiping calls router.push to
+ * switch ?group=, the same way clicking a pill used to, so the
+ * Expenses/Balances/Chat content below (server-rendered per active group)
+ * re-fetches for whichever group the swipe lands on.
+ */
 export function SplitGroupSwitcher({
   householdId,
   groups,
   currentGroupId,
   currentUserId,
+  myRole,
 }: {
   householdId: string;
   groups: SplitGroupSummary[];
   currentGroupId: string;
   currentUserId: string;
+  myRole: HouseholdRole;
 }) {
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SplitGroupSummary | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePending, startDeleteTransition] = useTransition();
+  const onlineUserIds = useHouseholdPresence(householdId, currentUserId);
+
+  const activeIndex = Math.max(
+    0,
+    groups.findIndex((g) => g.id === currentGroupId)
+  );
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Grouped as one segmented control (bordered, padded pill) rather
-            than loose individual chips, matching the toggle treatment used
-            elsewhere (e.g. My Home's All/Add Items switch) — reads as one
-            intentional "which group am I in" control. */}
-        <div className="inline-flex flex-wrap items-center gap-1 rounded-full border bg-card p-1">
-          {groups.map((g) => {
-            const active = g.id === currentGroupId;
-            return (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => router.push(`/split?id=${householdId}&group=${g.id}`)}
-                className={cn(
-                  "flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition",
-                  active ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-muted"
+      <SwipeCarousel
+        activeIndex={activeIndex}
+        onActiveIndexChange={(i) => {
+          const g = groups[i];
+          if (g) router.push(`/split?id=${householdId}&group=${g.id}`);
+        }}
+        slides={groups.map((g) => {
+          const canInvite = myRole === "owner" || myRole === "co_owner" || g.createdBy === currentUserId;
+          const canDelete = groups.length > 1 && (myRole === "owner" || g.createdBy === currentUserId);
+          return (
+            <div key={g.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
+              <div className="flex items-center gap-3.5">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{g.icon}</span>
+                <div>
+                  <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                    {g.createdByName}
+                    <Crown className="size-3.5 text-amber-500" />
+                  </span>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">{g.name}</p>
+                    <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={g.id} lockToSplitOnly />
+                  </div>
+                  <AvatarGroup className="mt-1.5">
+                    {g.memberPreview.map((m, i) => (
+                      <Avatar key={m.userId} size="sm">
+                        <AvatarFallback className={memberAccentClass(i)}>{initials(m.name)}</AvatarFallback>
+                        {onlineUserIds.has(m.userId) && <AvatarBadge className="bg-emerald-500" title="Active now" />}
+                      </Avatar>
+                    ))}
+                  </AvatarGroup>
+                </div>
+              </div>
+              <div className="text-right">
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(g)}
+                    title="Delete group"
+                    className="mb-1 inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
                 )}
-              >
-                <span className={cn("flex size-6 items-center justify-center rounded-full text-sm", active ? "bg-primary-foreground/15" : "bg-muted")}>
-                  {g.icon}
-                </span>
-                {g.name}
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.5 font-mono text-[11px]",
-                    active ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {g.memberCount}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">Total Spent</p>
+                <p className="mt-0.5 text-2xl font-semibold">{inr(g.totalSpent)}</p>
+              </div>
+            </div>
+          );
+        })}
+      />
+
+      <div className="mt-3 flex justify-center">
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1.5 rounded-full border border-dashed px-3.5 py-2 text-sm font-medium text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
+          className="flex items-center gap-1.5 rounded-full border border-dashed px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
         >
           <Plus className="size-3.5" />
           New Group
@@ -91,6 +135,51 @@ export function SplitGroupSwitcher({
           router.push(`/split?id=${householdId}&group=${groupId}`);
         }}
       />
+
+      {deleteTarget && (
+        <Dialog
+          open={!!deleteTarget}
+          onOpenChange={(v) => {
+            if (!v) {
+              setDeleteTarget(null);
+              setDeleteError(null);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete &ldquo;{deleteTarget.name}&rdquo;?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              This permanently deletes this group along with its expenses and settlement history. This can&apos;t be undone.
+            </p>
+            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deletePending}
+                onClick={() =>
+                  startDeleteTransition(async () => {
+                    const result = await deleteSplitGroup(deleteTarget.id);
+                    if ("error" in result) {
+                      setDeleteError(result.error);
+                      return;
+                    }
+                    setDeleteTarget(null);
+                    router.push(`/split?id=${householdId}`);
+                  })
+                }
+              >
+                <Trash2 className="size-4" />
+                Delete Group
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

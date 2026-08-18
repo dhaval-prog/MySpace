@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Piggy, type PiggyCoinEvent, type PiggyMood } from "@/components/vault/piggy";
-import { AddMoneyDialog } from "@/components/vault/add-money-dialog";
-import { TakeMoneyDialog } from "@/components/vault/take-money-dialog";
+import { AddMoneyButton, AddMoneyPanel } from "@/components/vault/add-money-dialog";
+import { TakeMoneyButton, TakeMoneyPanel } from "@/components/vault/take-money-dialog";
 import { SavingsHistory } from "@/components/vault/savings-history";
 import { RecurringSavingsCard } from "@/components/vault/recurring-savings-card";
-import { PiggyCarousel } from "@/components/vault/piggy-carousel";
+import { SwipeCarousel } from "@/components/shared/swipe-carousel";
 import { useCountUp } from "@/lib/hooks/use-count-up";
 import type { VaultRecurringPlan, VaultTransaction } from "@/lib/supabase/types";
 
@@ -94,7 +94,7 @@ export function PersonalPiggyPage({
         <h1 className="font-heading text-2xl text-foreground sm:text-3xl md:text-5xl">Your personal savings space</h1>
       </div>
 
-      <PiggyCarousel
+      <SwipeCarousel
         slides={[
           <Card key="balance" className="p-6 sm:p-8">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
@@ -124,18 +124,20 @@ export function PersonalPiggyPage({
               </div>
             )}
             <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
-              <AddMoneyDialog
-                onAdded={handleAdded}
-                open={expandedPanel === "add"}
-                onOpenChange={(v) => setExpandedPanel(v ? "add" : null)}
-              />
-              <TakeMoneyDialog
-                balance={balance}
-                onTaken={handleTaken}
-                open={expandedPanel === "take"}
-                onOpenChange={(v) => setExpandedPanel(v ? "take" : null)}
-              />
+              <AddMoneyButton open={expandedPanel === "add"} onOpenChange={(v) => setExpandedPanel(v ? "add" : null)} />
+              <TakeMoneyButton open={expandedPanel === "take"} onOpenChange={(v) => setExpandedPanel(v ? "take" : null)} />
             </div>
+            <AddMoneyPanel
+              onAdded={handleAdded}
+              open={expandedPanel === "add"}
+              onOpenChange={(v) => setExpandedPanel(v ? "add" : null)}
+            />
+            <TakeMoneyPanel
+              balance={balance}
+              onTaken={handleTaken}
+              open={expandedPanel === "take"}
+              onOpenChange={(v) => setExpandedPanel(v ? "take" : null)}
+            />
           </Card>,
 
           <RecurringSavingsCard key="recurring" plan={initialPlan} />,

@@ -62,15 +62,6 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   const groupId = group && groups.some((g) => g.id === group) ? group : (groups.find((g) => g.isDefault)?.id ?? groups[0]?.id);
 
   const activeGroup = groups.find((g) => g.id === groupId);
-  // A group's own creator can invite people into it (Split Only role, scoped
-  // to that group) even without being the household owner/co-owner — mirrors
-  // household_invites_insert_inviter's widened check in supabase/schema.sql.
-  const canInvite = context.myRole === "owner" || context.myRole === "co_owner" || activeGroup?.createdBy === myUserId;
-  // Deleting is narrower than inviting — mirrors split_groups_delete_owner_or_creator
-  // exactly (household owner or the group's own creator; co-owner alone isn't
-  // enough). Any group can be deleted, including the default "Household
-  // Expenses" one, as long as it isn't the household's last remaining group.
-  const canDeleteGroup = groups.length > 1 && (context.myRole === "owner" || activeGroup?.createdBy === myUserId);
 
   const [splitSummary, splitMembers, simplifiedBalances] = groupId
     ? await Promise.all([getSplitSummary(householdId, groupId), getSplitGroupMembers(groupId), getSimplifiedBalances(householdId, groupId)])
@@ -91,7 +82,13 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
       </div>
 
       {groups.length > 0 && (
-        <SplitGroupSwitcher householdId={householdId} groups={groups} currentGroupId={groupId ?? ""} currentUserId={myUserId} />
+        <SplitGroupSwitcher
+          householdId={householdId}
+          groups={groups}
+          currentGroupId={groupId ?? ""}
+          currentUserId={myUserId}
+          myRole={context.myRole}
+        />
       )}
 
       {splitSummary && activeGroup ? (
@@ -102,8 +99,6 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           simplifiedBalances={simplifiedBalances}
           members={splitMembers}
           currentUserId={myUserId}
-          canInvite={canInvite}
-          canDeleteGroup={canDeleteGroup}
         />
       ) : (
         <div className="rounded-2xl border bg-card p-8 text-center">
