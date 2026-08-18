@@ -41,6 +41,23 @@ export function HomeItemsBrowser({
           room pills, and search stay put, cards below them scroll on.
           Desktop keeps its normal flow (md:static). */}
       <div className="sticky top-[61px] z-20 -mx-4 space-y-3 overflow-x-hidden bg-background px-4 pt-1 pb-3 md:static md:mx-0 md:space-y-5 md:px-0 md:pt-0 md:pb-0">
+        <div
+          className={cn(
+            "relative transition-opacity duration-300 ease-out motion-reduce:transition-none",
+            mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
+          )}
+          aria-hidden={mode !== "all"}
+        >
+          <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
+            className="h-11 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary"
+            tabIndex={mode === "all" ? 0 : -1}
+          />
+        </div>
+
         <div className="flex flex-wrap items-center gap-3">
           {/* A grouped segmented control (not just two more pills in the
               row) so the All/Add Items toggle reads as one intentional
@@ -111,23 +128,6 @@ export function HomeItemsBrowser({
               ))}
             </div>
           </div>
-        </div>
-
-        <div
-          className={cn(
-            "relative transition-opacity duration-300 ease-out motion-reduce:transition-none",
-            mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
-          )}
-          aria-hidden={mode !== "all"}
-        >
-          <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
-            className="h-11 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary"
-            tabIndex={mode === "all" ? 0 : -1}
-          />
         </div>
       </div>
 
