@@ -9,8 +9,6 @@ import { AddItemDialog } from "@/components/home/add-item-dialog";
 import { RenameHomeDialog } from "@/components/home/rename-home-dialog";
 import { DeleteHomeDialog } from "@/components/home/delete-home-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 
 export default async function HomePage({
   searchParams,
@@ -64,12 +62,6 @@ export default async function HomePage({
             ))}
           </div>
         )}
-        <Link href="/home/new">
-          <Button variant="ghost" size="sm">
-            <Plus className="size-4" />
-            New Home
-          </Button>
-        </Link>
         <AddRoomDialog homeId={homeId} />
         {homes.length > 1 && <DeleteHomeDialog homeId={homeId} homeName={home.name} roomCount={rooms.length} />}
       </div>
