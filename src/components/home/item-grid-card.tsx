@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { LocationPath } from "@/components/shared/location-path";
 import { EditItemDialog } from "@/components/items/edit-item-dialog";
 import { MoveItemDialog } from "@/components/items/move-item-dialog";
@@ -103,7 +102,6 @@ export function ItemGridCard({ item }: { item: Item }) {
 
           <button type="button" onClick={() => setFlipped(true)} className="mt-3 block w-full text-left">
             <p className="truncate font-semibold">{item.name}</p>
-            <p className="truncate text-sm text-muted-foreground">{item.container || "—"}</p>
             <div className="mt-3 border-t pt-3">
               <p className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
                 <Clock className="size-3.5" />
@@ -135,21 +133,8 @@ export function ItemGridCard({ item }: { item: Item }) {
                 </div>
 
                 <div className="rounded-xl border bg-muted/40 px-3 py-2.5">
-                  <LocationPath nodes={detail.path} container={item.container} className="text-sm" iconClassName="size-4" />
+                  <LocationPath nodes={detail.path} className="text-sm" iconClassName="size-4" />
                 </div>
-
-                {item.tags.length > 0 && (
-                  <div>
-                    <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">Tags</p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {item.tags.map((t) => (
-                        <Badge key={t} variant="default">
-                          {t}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </button>
