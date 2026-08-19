@@ -47,21 +47,20 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared &amp; Personal</p>
-          <div className="flex items-center gap-1.5">
-            <h1 className="font-heading text-4xl text-foreground md:text-5xl">Goals</h1>
-            <GoalsOptionsMenu currentId={householdId} canInvite={canInvite} />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">Track progress toward what matters most</p>
+      <div>
+        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared &amp; Personal</p>
+        <div className="flex items-center gap-1.5">
+          <h1 className="font-heading text-4xl text-foreground md:text-5xl">Goals &amp; Expenses</h1>
+          <CreateGoalDialog householdId={householdId} iconOnly />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <CreateGoalDialog householdId={householdId} />
-        </div>
+        <p className="mt-1 text-sm text-muted-foreground">Track progress toward what matters most</p>
       </div>
 
-      <HouseholdCardRow households={memberships} currentId={householdId} />
+      <HouseholdCardRow
+        households={memberships}
+        currentId={householdId}
+        optionsMenu={<GoalsOptionsMenu currentId={householdId} canInvite={canInvite} />}
+      />
 
       <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {activeGoals.length === 0 ? (

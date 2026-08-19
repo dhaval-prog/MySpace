@@ -89,7 +89,7 @@ export function PersonalPiggyPage({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
-      <div className="inline-block rounded-2xl border bg-card px-6 py-4 shadow-sm">
+      <div>
         <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Personal Piggy</p>
         <h1 className="font-heading text-2xl text-foreground sm:text-3xl md:text-5xl">Your personal savings space</h1>
       </div>

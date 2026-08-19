@@ -11,7 +11,7 @@ import { createGoal } from "@/lib/actions/household-goals";
 
 const GOAL_ICON_PRESETS = ["🎯", "✈️", "🏠", "📺", "🧊", "🎓", "🚗", "💍"];
 
-export function CreateGoalDialog({ householdId }: { householdId: string }) {
+export function CreateGoalDialog({ householdId, iconOnly = false }: { householdId: string; iconOnly?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -28,10 +28,16 @@ export function CreateGoalDialog({ householdId }: { householdId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button size="sm">
-            <Plus className="size-4" />
-            New Goal
-          </Button>
+          iconOnly ? (
+            <Button size="icon-sm" aria-label="New Goal">
+              <Plus className="size-4" />
+            </Button>
+          ) : (
+            <Button size="sm">
+              <Plus className="size-4" />
+              New Goal
+            </Button>
+          )
         }
       />
       <DialogContent>

@@ -72,12 +72,14 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared Costs</p>
-          <h1 className="font-heading text-4xl text-foreground md:text-5xl">Let&apos;s Split</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="font-heading text-4xl text-foreground md:text-5xl">Let&apos;s Split</h1>
+            {groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">Fair and simple expense splitting</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <JoinWithCodeDialog />
-          {groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} />}
           {splitSummary && groupId && <AddExpenseDialog householdId={householdId} groupId={groupId} members={splitMembers} currentUserId={myUserId} />}
         </div>
       </div>

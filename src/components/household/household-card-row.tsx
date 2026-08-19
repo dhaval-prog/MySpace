@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ManageHouseholdDialog, ManageHouseholdButton } from "@/components/household/manage-household-dialog";
@@ -27,10 +27,13 @@ export function HouseholdCardRow({
   households,
   currentId,
   basePath = "/goals",
+  optionsMenu,
 }: {
   households: HouseholdListEntry[];
   currentId: string;
   basePath?: string;
+  /** Rendered beside the "Your Households" heading — the page's own options menu (e.g. GoalsOptionsMenu), kept out of this component so it stays page-agnostic. */
+  optionsMenu?: ReactNode;
 }) {
   const router = useRouter();
   const [manageTarget, setManageTarget] = useState<{ id: string; name: string } | null>(null);
@@ -38,8 +41,13 @@ export function HouseholdCardRow({
 
   return (
     <div>
-      <p className="mb-2 font-heading text-lg text-foreground">Your Households</p>
-      <div className="flex flex-wrap gap-3">
+      <div className="mb-2 flex items-center gap-1.5">
+        <p className="font-heading text-lg text-foreground">Your Households</p>
+        {optionsMenu}
+      </div>
+      {/* One line on mobile — a swipeable slider rather than wrapping into
+          multiple rows — reverting to a normal wrap once there's room. */}
+      <div className="flex flex-nowrap gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
         {households.map((h) => {
           const active = h.household.id === currentId;
           const isOwner = h.role === "owner";

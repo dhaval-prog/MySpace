@@ -162,16 +162,30 @@ export function SplitGroupSwitcher({
 }
 
 /** Standalone "New Group" trigger — lives beside Join with a Code in the page header rather than next to the group carousel, so it's self-contained (own open state) instead of coordinating with SplitGroupSwitcher. */
-export function CreateSplitGroupButton({ householdId, currentUserId }: { householdId: string; currentUserId: string }) {
+export function CreateSplitGroupButton({
+  householdId,
+  currentUserId,
+  iconOnly = false,
+}: {
+  householdId: string;
+  currentUserId: string;
+  iconOnly?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        <Plus className="size-4" />
-        New Group
-      </Button>
+      {iconOnly ? (
+        <Button size="icon-sm" aria-label="New Group" onClick={() => setOpen(true)}>
+          <Plus className="size-4" />
+        </Button>
+      ) : (
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          <Plus className="size-4" />
+          New Group
+        </Button>
+      )}
       <CreateSplitGroupDialog
         householdId={householdId}
         currentUserId={currentUserId}
