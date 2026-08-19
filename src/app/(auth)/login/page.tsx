@@ -1,58 +1,15 @@
 "use client";
 
-import { Suspense, useActionState, useState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { signIn, signInAsGuest, type AuthState } from "@/lib/actions/auth";
-
-function GuestForm({ redirectTo }: { redirectTo: string }) {
-  const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState<AuthState, FormData>(signInAsGuest, {});
-
-  return (
-    <div className="mt-4 border-t pt-4">
-      <Button type="button" variant="outline" className="w-full" onClick={() => setOpen((v) => !v)}>
-        <UserRound className="size-4" />
-        Continue as a guest
-      </Button>
-
-      {/* Inline expand instead of a popup — same grid-template-rows trick used
-          throughout the app (Add Money, goal cards, etc). */}
-      <div
-        className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
-        style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
-      >
-        <div className="overflow-hidden">
-          <form action={formAction} className="mt-4 space-y-4">
-            <input type="hidden" name="redirectTo" value={redirectTo} />
-            <p className="text-xs text-muted-foreground">
-              Guest access only unlocks Let&apos;s Split for the group you were invited to — everything else stays
-              locked until you create a real account.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="guest-name">Your name</Label>
-              <Input id="guest-name" name="name" placeholder="e.g. Priya Sharma" autoComplete="name" tabIndex={open ? 0 : -1} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="guest-phone">Phone number</Label>
-              <Input id="guest-phone" name="phone" type="tel" placeholder="+91 98765 43210" autoComplete="tel" tabIndex={open ? 0 : -1} />
-            </div>
-            {state.error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{state.error}</p>}
-            <Button type="submit" className="w-full" disabled={pending} tabIndex={open ? 0 : -1}>
-              {pending ? "Continuing…" : "Continue"}
-            </Button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { GuestSignIn } from "@/components/auth/guest-sign-in";
+import { signIn, type AuthState } from "@/lib/actions/auth";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -101,7 +58,7 @@ function LoginForm() {
           </Link>
         </p>
 
-        <GuestForm redirectTo={redirectTo} />
+        <GuestSignIn redirectTo={redirectTo} />
       </CardContent>
     </Card>
   );

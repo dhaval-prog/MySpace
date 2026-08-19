@@ -52,3 +52,76 @@ export async function sendInviteSms(phone: string, message: string): Promise<{ o
     return { error: "Failed to send the text message. Please try the link instead." };
   }
 }
+
+/** 10-digit Indian numbers get "91" prefixed; anything already longer is assumed to already carry a country code. Returns null for anything too short to be real. */
+function normalizePhoneForMsg91(phone: string): string | null {
+  const digits = phone.replace(/[^\d]/g, "");
+  if (digits.length < 10) return null;
+  return digits.length === 10 ? `91${digits}` : digits;
+}
+
+/**
+ * Sends a one-time code to a phone number via MSG91's dedicated OTP API
+ * (distinct from sendInviteSms's plain-message API above) — backs the guest
+ * sign-in flow's phone verification step.
+ *
+ * Needs, on top of MSG91_AUTH_KEY:
+ *   MSG91_OTP_TEMPLATE_ID — an OTP template created (and DLT-registered, for
+ *   Indian numbers) in the MSG91 dashboard under OTP → Templates. This is
+ *   separate from the sender-id/template used by sendInviteSms.
+ */
+export async function sendPhoneOtp(phone: string): Promise<{ ok: true } | { error: string }> {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  const templateId = process.env.MSG91_OTP_TEMPLATE_ID;
+  if (!authKey || !templateId) {
+    return { error: "Phone verification isn't set up on this deployment yet — add MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID." };
+  }
+
+  const mobile = normalizePhoneForMsg91(phone);
+  if (!mobile) return { error: "Enter a valid phone number." };
+
+  try {
+    const url = new URL("https://control.msg91.com/api/v5/otp");
+    url.searchParams.set("template_id", templateId);
+    url.searchParams.set("mobile", mobile);
+    url.searchParams.set("otp_length", "6");
+
+    const res = await fetch(url.toString(), { method: "POST", headers: { authkey: authKey, Accept: "application/json" } });
+    const body: { type?: string; message?: string } | null = await res.json().catch(() => null);
+    if (!res.ok || body?.type === "error") {
+      console.error("otp: MSG91 send failed —", res.status, body);
+      return { error: body?.message ?? "Couldn't send the verification code. Please try again." };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("otp: MSG91 send threw —", err instanceof Error ? err.message : err);
+    return { error: "Couldn't send the verification code. Please try again." };
+  }
+}
+
+/** Verifies a code sent by sendPhoneOtp — MSG91 tracks the OTP itself (expiry, attempt limits), so there's nothing for this app to store between send and verify. */
+export async function verifyPhoneOtp(phone: string, otp: string): Promise<{ ok: true } | { error: string }> {
+  const authKey = process.env.MSG91_AUTH_KEY;
+  if (!authKey) return { error: "Phone verification isn't set up on this deployment yet." };
+
+  const mobile = normalizePhoneForMsg91(phone);
+  if (!mobile) return { error: "Enter a valid phone number." };
+  const code = otp.trim();
+  if (!/^\d{4,8}$/.test(code)) return { error: "Enter the code you received." };
+
+  try {
+    const url = new URL("https://control.msg91.com/api/v5/otp/verify");
+    url.searchParams.set("mobile", mobile);
+    url.searchParams.set("otp", code);
+
+    const res = await fetch(url.toString(), { method: "POST", headers: { authkey: authKey, Accept: "application/json" } });
+    const body: { type?: string; message?: string } | null = await res.json().catch(() => null);
+    if (!res.ok || body?.type !== "success") {
+      return { error: body?.message ?? "That code didn't match — check it and try again." };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("otp: MSG91 verify threw —", err instanceof Error ? err.message : err);
+    return { error: "Couldn't verify the code. Please try again." };
+  }
+}

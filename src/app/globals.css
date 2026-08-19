@@ -233,6 +233,15 @@
 }
 .nav-icon-pop { animation: nav-icon-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 1; }
 
+@keyframes otp-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.otp-shake { animation: otp-shake 0.4s ease-in-out 1; }
+
 .piggy-body-idle { animation: piggy-breathe 3.6s ease-in-out infinite; }
 .piggy-body-happy { animation: piggy-bounce-happy 0.7s ease-out 1; }
 .piggy-body-sad { animation: piggy-squash-down 0.6s ease-out 1; }

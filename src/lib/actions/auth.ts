@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyPhoneOtp } from "@/lib/actions/sms";
 
 export interface AuthState {
   error?: string;
@@ -128,20 +129,31 @@ export async function updatePassword(
 
 /**
  * A guest reaching the app off a shared Let's Split invite link — no email
- * or password, just a name and phone number. Backed by Supabase's real
- * anonymous auth (a genuine auth.users row with is_anonymous=true), so
- * every existing RLS policy and user_id foreign key works unchanged; the
- * app's own middleware/nav are what confine this user to Split (see
- * updateSession and Sidebar/BottomNav's isGuest handling) — this action
- * doesn't grant any elevated access itself.
+ * or password, just a name and a phone number that's verified with an OTP
+ * (sendPhoneOtp/verifyPhoneOtp in sms.ts) right before this runs. Backed by
+ * Supabase's real anonymous auth (a genuine auth.users row with
+ * is_anonymous=true), so every existing RLS policy and user_id foreign key
+ * works unchanged; the app's own middleware/nav are what confine this user
+ * to Split (see updateSession and Sidebar/BottomNav's isGuest handling) —
+ * this action doesn't grant any elevated access itself.
+ *
+ * The OTP check happens here, not just client-side before this is called —
+ * a Server Action is a public endpoint regardless of what UI flow leads to
+ * it, so the account is never created without MSG91 confirming the code
+ * for this exact phone number first.
  */
-export async function signInAsGuest(_prevState: AuthState, formData: FormData): Promise<AuthState> {
+export async function completeGuestSignIn(_prevState: AuthState, formData: FormData): Promise<AuthState> {
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
+  const otp = String(formData.get("otp") ?? "").trim();
   const redirectTo = String(formData.get("redirectTo") ?? "");
 
   if (!name) return { error: "Please enter your name." };
   if (!phone) return { error: "Please enter your phone number." };
+  if (!otp) return { error: "Please enter the verification code." };
+
+  const verified = await verifyPhoneOtp(phone, otp);
+  if ("error" in verified) return verified;
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInAnonymously({ options: { data: { name } } });
