@@ -97,7 +97,7 @@ export function PersonalPiggyPage({
       <SwipeCarousel
         peek
         slides={[
-          <Card key="balance" className="p-5">
+          <Card key="balance" className="p-5 transition-transform duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
               <div className="order-2 text-center sm:order-1 sm:text-left">
                 <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Piggy Balance</p>
@@ -143,7 +143,7 @@ export function PersonalPiggyPage({
 
           <RecurringSavingsCard key="recurring" plan={initialPlan} />,
 
-          <Card key="history" className="p-5">
+          <Card key="history" className="p-5 transition-transform duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100">
             <CardHeader className="p-0">
               <CardTitle className="text-base">Savings History</CardTitle>
             </CardHeader>

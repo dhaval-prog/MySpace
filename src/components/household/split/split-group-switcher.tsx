@@ -87,7 +87,7 @@ export function SplitGroupSwitcher({
                   key={g.id}
                   onClick={() => !isCurrent && router.push(`/split?id=${householdId}&group=${g.id}`)}
                   className={cn(
-                    "flex flex-col gap-3 rounded-2xl border bg-card p-4 transition",
+                    "flex flex-col gap-3 rounded-2xl border bg-card p-4 transition-[transform,border-color,box-shadow] duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100",
                     isCurrent ? "border-primary ring-1 ring-primary" : "cursor-pointer hover:border-primary/40"
                   )}
                 >

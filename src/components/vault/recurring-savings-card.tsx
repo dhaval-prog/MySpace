@@ -134,7 +134,7 @@ export function RecurringSavingsCard({ plan }: { plan: VaultRecurringPlan | null
   }
 
   return (
-    <Card className="p-5">
+    <Card className="p-5 transition-transform duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100">
       <CardHeader className="flex-row items-center justify-between p-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <RefreshCcw className="size-4 text-primary" />

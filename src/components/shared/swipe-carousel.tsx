@@ -145,9 +145,7 @@ export function SwipeCarousel({
               style={{ width: `${slideWidthPct}%` }}
               className="shrink-0 self-start"
             >
-              <div className="p-1.5 transition-transform duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100">
-                {slide}
-              </div>
+              <div className="p-1.5">{slide}</div>
             </div>
           ))}
         </div>
