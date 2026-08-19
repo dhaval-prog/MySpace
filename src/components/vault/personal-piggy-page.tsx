@@ -97,7 +97,7 @@ export function PersonalPiggyPage({
       <SwipeCarousel
         peek
         slides={[
-          <Card key="balance" className="p-6 sm:p-8">
+          <Card key="balance" className="p-5">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
               <div className="order-2 text-center sm:order-1 sm:text-left">
                 <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Piggy Balance</p>
