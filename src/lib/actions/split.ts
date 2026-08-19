@@ -88,13 +88,12 @@ export interface CreateExpenseInput {
   participants: SplitParticipantInput[];
 }
 
-export interface RecordSettlementInput {
-  otherUserId: string;
+export interface RequestSettlementInput {
+  /** The person being paid — only the payer (the caller, who owes) can request a settlement now; see requestSettlement. */
+  toUserId: string;
   amount: number;
   method: SplitSettlementMethod;
   comment?: string | null;
-  /** true = the caller paid otherUserId; false = otherUserId paid the caller. */
-  iPaid: boolean;
 }
 
 export interface SimplifiedTransferWithNames extends SimplifiedTransfer {
@@ -361,7 +360,9 @@ export async function getSplitSummary(householdId: string, groupId?: string): Pr
   ]);
 
   const expenseRows = expenses ?? [];
-  const settlementRows = settlements ?? [];
+  // Only confirmed settlements affect the ledger — a request the payee
+  // hasn't confirmed yet must not silently reduce what they're shown as owed.
+  const settlementRows = (settlements ?? []).filter((s) => s.confirmed_at);
 
   const { data: participants } = expenseRows.length
     ? await supabase
@@ -453,7 +454,7 @@ export async function getSimplifiedBalances(householdId: string, groupId?: strin
     participantsByExpense.set(p.expense_id, list);
   }
 
-  const owes = buildOwesMap(expenseRows, participantsByExpense, settlements ?? []);
+  const owes = buildOwesMap(expenseRows, participantsByExpense, (settlements ?? []).filter((s) => s.confirmed_at));
   const memberIds = splitMembers.map((m) => m.userId);
   const nameById = new Map(splitMembers.map((m) => [m.userId, m.name]));
 
@@ -588,9 +589,10 @@ export async function deleteExpense(expenseId: string): Promise<{ ok: true } | {
   return { ok: true };
 }
 
-export async function recordSettlement(
+/** The person who owes claims they paid — this doesn't touch balances yet; the payee has to confirmSettlement() before it counts. */
+export async function requestSettlement(
   householdId: string,
-  input: RecordSettlementInput,
+  input: RequestSettlementInput,
   groupId?: string
 ): Promise<{ ok: true } | { error: string }> {
   if (!Number.isFinite(input.amount) || input.amount <= 0) return { error: "Amount must be greater than zero." };
@@ -600,24 +602,43 @@ export async function recordSettlement(
   groupId = resolvedGroupId;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const fromUser = input.iPaid ? user.id : input.otherUserId;
-  const toUser = input.iPaid ? input.otherUserId : user.id;
-
-  const { data, error } = await supabase.rpc("record_split_settlement", {
+  const { data, error } = await supabase.rpc("request_split_settlement", {
     p_group_id: groupId,
-    p_from_user: fromUser,
-    p_to_user: toUser,
+    p_to_user: input.toUserId,
     p_amount: input.amount,
     p_method: input.method,
     p_comment: input.comment?.trim() || null,
   });
-  if (error || !data?.ok) return { error: error?.message ?? "Failed to record settlement" };
+  if (error || !data?.ok) return { error: error?.message ?? "Failed to request settlement" };
 
   revalidatePath("/split");
   return { ok: true };
+}
+
+/** The payee confirms a requested settlement actually arrived — only then does it reduce what's owed. */
+export async function confirmSettlement(settlementId: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("confirm_split_settlement", { p_settlement_id: settlementId });
+  if (error || !data?.ok) return { error: error?.message ?? "Failed to confirm settlement" };
+
+  revalidatePath("/split");
+  return { ok: true };
+}
+
+export interface PendingSettlement {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+}
+
+/** Settlements requested but not yet confirmed by the payee, in this group — used to swap a transfer's "Settle" button for a confirm tick (for the payee) or a "waiting" note (for the requester). */
+export async function getPendingSettlements(groupId: string): Promise<PendingSettlement[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("split_settlements")
+    .select("id, from_user, to_user, amount")
+    .eq("group_id", groupId)
+    .is("confirmed_at", null);
+  return (data ?? []).map((s) => ({ id: s.id, fromUserId: s.from_user, toUserId: s.to_user, amount: s.amount }));
 }

@@ -342,6 +342,8 @@ export type SplitSettlement = {
   comment: string | null;
   settled_at: string;
   created_at: string;
+  /** Null until the payee confirms — see confirm_split_settlement(). Balance math only counts confirmed settlements. */
+  confirmed_at: string | null;
 };
 
 export type SplitChatMessageKind = "user" | "system";
@@ -664,16 +666,19 @@ export type Database = {
         Args: { p_group_id: string; p_user_id: string };
         Returns: { ok: boolean };
       };
-      record_split_settlement: {
+      request_split_settlement: {
         Args: {
           p_group_id: string;
-          p_from_user: string;
           p_to_user: string;
           p_amount: number;
           p_method: SplitSettlementMethod;
           p_comment: string | null;
         };
         Returns: { ok: boolean; settlement_id: string };
+      };
+      confirm_split_settlement: {
+        Args: { p_settlement_id: string };
+        Returns: { ok: boolean };
       };
       get_vault_balance: {
         Args: Record<PropertyKey, never>;

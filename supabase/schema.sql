@@ -1235,8 +1235,14 @@ create table if not exists public.split_settlements (
   comment text,
   settled_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
+  -- Null until the payee (to_user) confirms — see confirm_split_settlement().
+  -- Balance math only ever counts confirmed settlements, so a mere request
+  -- doesn't silently zero out a debt before the other person agrees it
+  -- actually happened.
+  confirmed_at timestamptz,
   check (from_user != to_user)
 );
+alter table public.split_settlements add column if not exists confirmed_at timestamptz;
 create index if not exists split_settlements_group_id_idx on public.split_settlements (group_id);
 
 alter table public.split_groups enable row level security;
@@ -1341,11 +1347,18 @@ create policy "split_expense_participants_write_owner_or_creator" on public.spli
 drop policy if exists "split_settlements_select_group_member" on public.split_settlements;
 create policy "split_settlements_select_group_member" on public.split_settlements for select
   using (is_split_group_member(group_id));
--- record_split_settlement() runs SECURITY INVOKER — mirrors its own check
--- that the recorder must be one of the two parties, never a third party.
+-- request_split_settlement() runs SECURITY INVOKER — mirrors its own check
+-- that only the person who owes (from_user) can request a settlement, never
+-- the payee or a third party.
 drop policy if exists "split_settlements_insert_participant" on public.split_settlements;
 create policy "split_settlements_insert_participant" on public.split_settlements for insert
-  with check (is_split_group_member(group_id) and recorded_by = auth.uid() and (auth.uid() = from_user or auth.uid() = to_user));
+  with check (is_split_group_member(group_id) and recorded_by = auth.uid() and auth.uid() = from_user);
+-- Only the payee can confirm their own incoming settlement, and only once —
+-- confirm_split_settlement() re-checks both, this is defense in depth.
+drop policy if exists "split_settlements_update_confirm" on public.split_settlements;
+create policy "split_settlements_update_confirm" on public.split_settlements for update
+  using (to_user = auth.uid() and confirmed_at is null)
+  with check (to_user = auth.uid());
 
 -- On creating a household, also create its one default split group and seed
 -- its membership with the owner — mirrors the shared-vault half of
@@ -1629,6 +1642,15 @@ begin
       jsonb_build_object('expense_id', v_expense_id, 'description', p_description, 'amount', p_amount, 'payer_name', coalesce(v_payer_name, 'Someone'))
     );
 
+  -- Also a system line in the group's own chat, so everyone sees it there
+  -- too, not just in the (separate) household activity feed.
+  insert into split_chat_messages (group_id, household_id, user_id, message, kind)
+    values (
+      p_group_id, v_household_id, auth.uid(),
+      coalesce(v_payer_name, 'Someone') || ' added an expense: "' || p_description || '" — ₹' || round(p_amount)::text,
+      'system'
+    );
+
   return jsonb_build_object('ok', true, 'expense_id', v_expense_id);
 end;
 $$;
@@ -1655,6 +1677,7 @@ declare
   v_expense record;
   v_sum numeric;
   v_participant_count int;
+  v_actor_name text;
 begin
   select * into v_expense from split_expenses where id = p_expense_id;
   if v_expense is null then
@@ -1701,6 +1724,14 @@ begin
     select p_expense_id, (p.value->>'user_id')::uuid, (p.value->>'share_type')::text, (p.value->>'share_value')::numeric, (p.value->>'owed_amount')::numeric
     from jsonb_array_elements(p_participants) p;
 
+  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_actor_name from profiles where id = auth.uid();
+  insert into split_chat_messages (group_id, household_id, user_id, message, kind)
+    values (
+      v_expense.group_id, v_expense.household_id, auth.uid(),
+      coalesce(v_actor_name, 'Someone') || ' edited the "' || p_description || '" expense',
+      'system'
+    );
+
   return jsonb_build_object('ok', true);
 end;
 $$;
@@ -1714,6 +1745,7 @@ security invoker set search_path = public
 as $$
 declare
   v_expense record;
+  v_actor_name text;
 begin
   select * into v_expense from split_expenses where id = p_expense_id;
   if v_expense is null then
@@ -1726,18 +1758,26 @@ begin
   insert into household_activity (household_id, actor_user_id, kind, payload)
     values (v_expense.household_id, auth.uid(), 'expense_deleted', jsonb_build_object('description', v_expense.description, 'amount', v_expense.amount));
 
+  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_actor_name from profiles where id = auth.uid();
+  insert into split_chat_messages (group_id, household_id, user_id, message, kind)
+    values (
+      v_expense.group_id, v_expense.household_id, auth.uid(),
+      coalesce(v_actor_name, 'Someone') || ' removed the "' || v_expense.description || '" expense (₹' || round(v_expense.amount)::text || ')',
+      'system'
+    );
+
   delete from split_expenses where id = p_expense_id;
 
   return jsonb_build_object('ok', true);
 end;
 $$;
 
--- Records a settlement — the caller must be one of the two parties (you can
--- record that you paid someone, or that someone paid you), never an
--- uninvolved third party fabricating a payment between two other members.
-create or replace function public.record_split_settlement(
+-- A settlement now needs the payee's confirmation before it's final — only
+-- the person who owes (from_user) can request one (they're claiming "I paid
+-- you"); see confirm_split_settlement() below for the payee's side.
+drop function if exists public.record_split_settlement(uuid, uuid, uuid, numeric, text, text);
+create or replace function public.request_split_settlement(
   p_group_id uuid,
-  p_from_user uuid,
   p_to_user uuid,
   p_amount numeric,
   p_method text,
@@ -1756,38 +1796,89 @@ begin
   if not is_split_group_member(p_group_id) then
     raise exception 'You are not a member of this split group';
   end if;
-  if auth.uid() != p_from_user and auth.uid() != p_to_user then
-    raise exception 'You can only record a settlement you are a part of';
-  end if;
-  if p_from_user = p_to_user then
+  if auth.uid() = p_to_user then
     raise exception 'A settlement needs two different people';
   end if;
   if p_amount is null or p_amount <= 0 then
     raise exception 'Amount must be greater than zero';
   end if;
-  if not (is_split_group_member_check(p_group_id, p_from_user) and is_split_group_member_check(p_group_id, p_to_user)) then
-    raise exception 'Both people must be members of this split group';
+  if not is_split_group_member_check(p_group_id, p_to_user) then
+    raise exception 'The other person must be a member of this split group';
   end if;
 
   select household_id into v_household_id from split_groups where id = p_group_id;
 
   insert into split_settlements (group_id, household_id, from_user, to_user, amount, method, recorded_by, comment)
-    values (p_group_id, v_household_id, p_from_user, p_to_user, p_amount, p_method, auth.uid(), p_comment)
+    values (p_group_id, v_household_id, auth.uid(), p_to_user, p_amount, p_method, auth.uid(), p_comment)
     returning id into v_settlement_id;
 
-  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_from_name from profiles where id = p_from_user;
+  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_from_name from profiles where id = auth.uid();
   select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_to_name from profiles where id = p_to_user;
 
   insert into household_activity (household_id, actor_user_id, kind, payload)
     values (
-      v_household_id, auth.uid(), 'settlement_recorded',
-      jsonb_build_object(
-        'settlement_id', v_settlement_id, 'from_user', p_from_user, 'to_user', p_to_user,
-        'from_name', coalesce(v_from_name, 'Someone'), 'to_name', coalesce(v_to_name, 'Someone'), 'amount', p_amount
-      )
+      v_household_id, auth.uid(), 'settlement_requested',
+      jsonb_build_object('settlement_id', v_settlement_id, 'from_user', auth.uid(), 'to_user', p_to_user,
+        'from_name', coalesce(v_from_name, 'Someone'), 'to_name', coalesce(v_to_name, 'Someone'), 'amount', p_amount)
+    );
+
+  insert into split_chat_messages (group_id, household_id, user_id, message, kind)
+    values (
+      p_group_id, v_household_id, auth.uid(),
+      coalesce(v_from_name, 'Someone') || ' says they paid ' || coalesce(v_to_name, 'Someone') || ' ₹' || round(p_amount)::text
+        || ' — waiting for ' || coalesce(v_to_name, 'Someone') || ' to confirm',
+      'system'
     );
 
   return jsonb_build_object('ok', true, 'settlement_id', v_settlement_id);
+end;
+$$;
+
+-- The payee confirms money actually arrived — only then does the debt drop
+-- out of the balance math (getSplitSummary/getSimplifiedBalances only fold
+-- in settlements where confirmed_at is set).
+create or replace function public.confirm_split_settlement(p_settlement_id uuid)
+returns jsonb
+language plpgsql
+security invoker set search_path = public
+as $$
+declare
+  v_settlement record;
+  v_from_name text;
+  v_to_name text;
+begin
+  select * into v_settlement from split_settlements where id = p_settlement_id;
+  if v_settlement is null then
+    raise exception 'Settlement not found';
+  end if;
+  if v_settlement.to_user != auth.uid() then
+    raise exception 'Only the person who was paid can confirm this';
+  end if;
+  if v_settlement.confirmed_at is not null then
+    raise exception 'This settlement was already confirmed';
+  end if;
+
+  update split_settlements set confirmed_at = now() where id = p_settlement_id;
+
+  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_from_name from profiles where id = v_settlement.from_user;
+  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_to_name from profiles where id = v_settlement.to_user;
+
+  insert into household_activity (household_id, actor_user_id, kind, payload)
+    values (
+      v_settlement.household_id, auth.uid(), 'settlement_recorded',
+      jsonb_build_object('settlement_id', p_settlement_id, 'from_user', v_settlement.from_user, 'to_user', v_settlement.to_user,
+        'from_name', coalesce(v_from_name, 'Someone'), 'to_name', coalesce(v_to_name, 'Someone'), 'amount', v_settlement.amount)
+    );
+
+  insert into split_chat_messages (group_id, household_id, user_id, message, kind)
+    values (
+      v_settlement.group_id, v_settlement.household_id, auth.uid(),
+      coalesce(v_to_name, 'Someone') || ' confirmed receiving ₹' || round(v_settlement.amount)::text
+        || ' from ' || coalesce(v_from_name, 'Someone') || ' — settled ✅',
+      'system'
+    );
+
+  return jsonb_build_object('ok', true);
 end;
 $$;
 

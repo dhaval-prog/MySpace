@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
-import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, listSplitGroups } from "@/lib/actions/split";
+import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, getPendingSettlements, listSplitGroups } from "@/lib/actions/split";
 import { EmptyState } from "@/components/shared/empty-state";
 import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
@@ -51,9 +51,14 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
 
   const activeGroup = groups.find((g) => g.id === groupId);
 
-  const [splitSummary, splitMembers, simplifiedBalances] = groupId
-    ? await Promise.all([getSplitSummary(householdId, groupId), getSplitGroupMembers(groupId), getSimplifiedBalances(householdId, groupId)])
-    : [null, [], []];
+  const [splitSummary, splitMembers, simplifiedBalances, pendingSettlements] = groupId
+    ? await Promise.all([
+        getSplitSummary(householdId, groupId),
+        getSplitGroupMembers(groupId),
+        getSimplifiedBalances(householdId, groupId),
+        getPendingSettlements(groupId),
+      ])
+    : [null, [], [], []];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
@@ -92,6 +97,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           group={activeGroup}
           summary={splitSummary}
           simplifiedBalances={simplifiedBalances}
+          pendingSettlements={pendingSettlements}
           members={splitMembers}
           currentUserId={myUserId}
         />

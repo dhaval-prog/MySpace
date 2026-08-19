@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Receipt, Check } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Receipt, Check, Clock } from "lucide-react";
 import { cn, initials, memberAccentClass } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,8 @@ import { ExpenseDetailDialog } from "@/components/household/split/expense-detail
 import { SettleUpDialog } from "@/components/household/split/settle-up-dialog";
 import { SplitChatPanel } from "@/components/household/split/split-chat-panel";
 import { listSplitMessages, type SplitChatMessageWithSender } from "@/lib/actions/split-chat";
-import type { SplitGroupSummary, SplitSummary, SimplifiedTransferWithNames } from "@/lib/actions/split";
+import { confirmSettlement } from "@/lib/actions/split";
+import type { SplitGroupSummary, SplitSummary, SimplifiedTransferWithNames, PendingSettlement } from "@/lib/actions/split";
 import type { HouseholdMemberLite } from "@/components/household/finance-toggle";
 
 function inr(n: number): string {
@@ -31,6 +33,7 @@ export function SplitGroupWorkspace({
   group,
   summary,
   simplifiedBalances,
+  pendingSettlements,
   members,
   currentUserId,
 }: {
@@ -38,6 +41,7 @@ export function SplitGroupWorkspace({
   group: SplitGroupSummary;
   summary: SplitSummary;
   simplifiedBalances: SimplifiedTransferWithNames[];
+  pendingSettlements: PendingSettlement[];
   members: HouseholdMemberLite[];
   currentUserId: string;
 }) {
@@ -101,7 +105,13 @@ export function SplitGroupWorkspace({
         <ExpensesTab summary={summary} onSelect={setDetailId} />
       )}
       {tab === "balances" && (
-        <BalancesTab householdId={householdId} groupId={group.id} transfers={simplifiedBalances} currentUserId={currentUserId} />
+        <BalancesTab
+          householdId={householdId}
+          groupId={group.id}
+          transfers={simplifiedBalances}
+          pendingSettlements={pendingSettlements}
+          currentUserId={currentUserId}
+        />
       )}
       {tab === "chat" && (
         <div className="flex h-[420px] flex-col overflow-hidden rounded-2xl border">
@@ -163,23 +173,40 @@ function BalancesTab({
   householdId,
   groupId,
   transfers,
+  pendingSettlements,
   currentUserId,
 }: {
   householdId: string;
   groupId: string;
   transfers: SimplifiedTransferWithNames[];
+  pendingSettlements: PendingSettlement[];
   currentUserId: string;
 }) {
-  const [settled, setSettled] = useState<Set<string>>(new Set());
+  const router = useRouter();
   const [settleTarget, setSettleTarget] = useState<SimplifiedTransferWithNames | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [justConfirmed, setJustConfirmed] = useState<Set<string>>(new Set());
+  const [pending, startTransition] = useTransition();
 
   const key = (t: SimplifiedTransferWithNames) => `${t.fromUserId}:${t.toUserId}`;
+  const pendingByPair = new Map(pendingSettlements.map((p) => [`${p.fromUserId}:${p.toUserId}`, p]));
 
-  // Server-confirmed empty state, not client-tracked — settling a pair
-  // removes it from getSimplifiedBalances() entirely (net debt hits zero),
-  // so this stays accurate once router.refresh() brings back a shorter
-  // `transfers` list. The `settled` set below only smooths over the moment
-  // right after clicking Settle, before that refresh has landed.
+  function handleConfirm(settlementId: string, pairKey: string) {
+    setConfirmingId(settlementId);
+    startTransition(async () => {
+      const result = await confirmSettlement(settlementId);
+      setConfirmingId(null);
+      if (!("error" in result)) {
+        setJustConfirmed((prev) => new Set(prev).add(pairKey));
+        router.refresh();
+      }
+    });
+  }
+
+  // Server-confirmed empty state, not client-tracked — confirming a
+  // settlement removes it from getSimplifiedBalances() entirely (net debt
+  // hits zero) once router.refresh() brings back a shorter `transfers`
+  // list. `justConfirmed` only smooths over the moment right after clicking.
   if (transfers.length === 0) {
     return (
       <div className="rounded-2xl border bg-card p-8 text-center">
@@ -192,14 +219,17 @@ function BalancesTab({
     <>
       <ul className="space-y-2.5">
         {transfers.map((t) => {
-          const isSettled = settled.has(key(t));
-          const iAmParty = t.fromUserId === currentUserId || t.toUserId === currentUserId;
+          const pairKey = key(t);
+          const isDebtor = t.fromUserId === currentUserId;
+          const isCreditor = t.toUserId === currentUserId;
+          const request = pendingByPair.get(pairKey);
+          const justSettled = justConfirmed.has(pairKey);
           return (
             <li
-              key={key(t)}
+              key={pairKey}
               className={cn(
-                "flex items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 transition-opacity duration-500",
-                isSettled && "opacity-50"
+                "flex items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 transition-all duration-500 ease-out",
+                justSettled && "translate-x-1 opacity-40"
               )}
             >
               <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
@@ -214,16 +244,26 @@ function BalancesTab({
                 </Avatar>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className={cn("font-mono text-sm font-semibold", isSettled ? "text-muted-foreground line-through" : "text-destructive")}>
-                  {inr(t.amount)}
-                </span>
-                {isSettled ? (
-                  <span className="flex items-center gap-1 rounded-full bg-positive/10 px-3 py-1.5 text-xs font-medium text-positive">
-                    <Check className="size-3.5" />
-                    Settled
+                <span className="font-mono text-sm font-semibold text-destructive">{inr(t.amount)}</span>
+                {request && isCreditor ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-full"
+                    disabled={pending && confirmingId === request.id}
+                    onClick={() => handleConfirm(request.id, pairKey)}
+                    title={`Confirm you received ${inr(request.amount)} from ${t.fromName}`}
+                  >
+                    <Check className={cn("size-3.5", pending && confirmingId === request.id && "animate-pulse")} />
+                    {pending && confirmingId === request.id ? "Confirming…" : "Confirm"}
+                  </Button>
+                ) : request && isDebtor ? (
+                  <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                    <Clock className="size-3.5" />
+                    Waiting for {t.toName}
                   </span>
                 ) : (
-                  iAmParty && (
+                  isDebtor && (
                     <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setSettleTarget(t)}>
                       <Check className="size-3.5" />
                       Settle
@@ -244,13 +284,12 @@ function BalancesTab({
           onOpenChange={(v) => {
             if (!v) setSettleTarget(null);
           }}
-          otherUserId={settleTarget.fromUserId === currentUserId ? settleTarget.toUserId : settleTarget.fromUserId}
-          otherName={settleTarget.fromUserId === currentUserId ? settleTarget.toName : settleTarget.fromName}
-          iPaid={settleTarget.fromUserId === currentUserId}
+          otherUserId={settleTarget.toUserId}
+          otherName={settleTarget.toName}
           suggestedAmount={settleTarget.amount}
           onSettled={() => {
-            setSettled((prev) => new Set(prev).add(key(settleTarget)));
             setSettleTarget(null);
+            router.refresh();
           }}
         />
       )}
