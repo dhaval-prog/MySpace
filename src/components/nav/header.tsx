@@ -23,6 +23,10 @@ export function Header({ name, email }: { name: string; email: string }) {
         <Search className="size-4.5" />
       </button>
 
+      {/* Mobile-only landing spot for the current page's options menu (Home/Goals/Split),
+          portaled in from the page itself — see HeaderActionsPortal. */}
+      <div id="header-page-actions" className="flex items-center md:hidden" />
+
       <UserMenu name={name} email={email} />
     </header>
   );

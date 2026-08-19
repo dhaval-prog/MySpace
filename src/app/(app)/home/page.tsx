@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { HomeItemsBrowser } from "@/components/home/home-items-browser";
 import { AddRoomDialog } from "@/components/home/add-room-dialog";
 import { HomeActionsMenu } from "@/components/home/home-actions-menu";
+import { HeaderActionsPortal } from "@/components/nav/header-actions-portal";
 import { NewHomeSetup } from "@/components/home/new-home-setup";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -51,8 +52,12 @@ export default async function HomePage({
 
   return (
     <div className="min-h-full bg-[#FAF3F2]">
+      <HeaderActionsPortal>
+        <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
+      </HeaderActionsPortal>
+
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-        <div>
+        <div className="hidden md:block">
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Inventory</p>
           <div className="flex items-center gap-1.5">
             <h1 className="font-heading text-4xl text-foreground md:text-5xl">{home.name}</h1>

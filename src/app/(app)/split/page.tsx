@@ -9,6 +9,7 @@ import { AddExpenseDialog } from "@/components/household/split/add-expense-dialo
 import { SplitGroupSwitcher, CreateSplitGroupButton } from "@/components/household/split/split-group-switcher";
 import { SplitGroupWorkspace } from "@/components/household/split/split-group-workspace";
 import { SplitOnlyWorkspace } from "@/components/household/split/split-only-workspace";
+import { HeaderActionsPortal } from "@/components/nav/header-actions-portal";
 
 export default async function SplitPage({ searchParams }: { searchParams: Promise<{ id?: string; group?: string }> }) {
   const { id, group } = await searchParams;
@@ -69,10 +70,14 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+      <HeaderActionsPortal>
+        {groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
+      </HeaderActionsPortal>
+
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="hidden md:block">
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared Costs</p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-end gap-2.5">
             <h1 className="font-heading text-4xl text-foreground md:text-5xl">Let&apos;s Split</h1>
             {groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
           </div>
