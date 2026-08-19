@@ -88,7 +88,7 @@ export function PersonalPiggyPage({
   const isEmpty = balance <= 0;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-6 py-4 md:px-12 md:py-8">
+    <div className="mx-auto max-w-4xl space-y-6 px-8 py-8 md:px-16 md:py-14">
       <div className="hidden md:block">
         <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Personal Piggy</p>
         <h1 className="font-heading text-2xl text-foreground sm:text-3xl md:text-5xl">Your personal savings space</h1>
