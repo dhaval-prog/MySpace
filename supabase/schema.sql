@@ -1288,6 +1288,28 @@ drop policy if exists "split_members_select_group_member" on public.split_member
 create policy "split_members_select_group_member" on public.split_members for select
   using (is_split_group_member(group_id));
 
+-- A split_only member's household_members visibility is self-only
+-- (household_members_select_member requires has_home_access(), which
+-- split_only never has), so profiles_select_household_members' inner join
+-- never surfaces co-members for them — every other split group participant
+-- fell back to a generic "Member" label. This additive policy grants
+-- visibility based on shared split_members rows instead, security definer
+-- so the check itself isn't blocked by the same household_members RLS gap.
+create or replace function public.shares_split_group_with(p_other_user_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from split_members sm_self
+    join split_members sm_target on sm_target.group_id = sm_self.group_id
+    where sm_self.user_id = auth.uid() and sm_target.user_id = p_other_user_id
+  );
+$$;
+
+drop policy if exists "profiles_select_split_group_members" on public.profiles;
+create policy "profiles_select_split_group_members" on public.profiles for select
+  using (shares_split_group_with(profiles.id));
+
 drop policy if exists "split_expenses_select_group_member" on public.split_expenses;
 create policy "split_expenses_select_group_member" on public.split_expenses for select
   using (is_split_group_member(group_id));
