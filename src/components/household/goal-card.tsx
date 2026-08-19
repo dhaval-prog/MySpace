@@ -46,7 +46,11 @@ function monthYear(iso: string): string {
  * (Regular Savings' Add Money panel, My Home's sticky filters). `canDelete`
  * is computed by the server (household owner or the goal's creator) — the
  * icon below only hides itself for everyone else, the real gate lives in
- * delete_household_goal().
+ * delete_household_goal(). The Saved/Target progress block has its own
+ * click target, independent of that: clicking it 3D-flips just that block
+ * to a quick Contribute form (stopPropagation keeps it from also toggling
+ * the panel below) — a shortcut to the same contributeToGoal() the panel's
+ * own Contribute form (under the Members tab) uses.
  */
 export function GoalCard({
   summary,
@@ -59,6 +63,7 @@ export function GoalCard({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [flipped, setFlipped] = useState(false);
   const [view, setView] = useState<"members" | "chat">("members");
   const [detail, setDetail] = useState<HouseholdGoalDetail | null>(null);
   const [members, setMembers] = useState<GoalMemberInfo[]>([]);
@@ -117,11 +122,21 @@ export function GoalCard({
 
   return (
     <div className="relative self-start">
-      <button
-        type="button"
+      {/* Not a real <button> — the Contribute face below needs to nest an
+          actual Input/Button, which isn't valid inside a <button>. role="button"
+          + the click/keydown handlers keep the same toggle-the-panel-below
+          behavior and keyboard accessibility. */}
+      <div
+        role="button"
+        tabIndex={0}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-full rounded-2xl border bg-card p-5 text-left transition-all duration-200 ease-out hover:z-10 hover:scale-[1.02] hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100"
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          setOpen((v) => !v);
+        }}
+        className="w-full cursor-pointer rounded-2xl border bg-card p-5 text-left transition-all duration-200 ease-out hover:z-10 hover:scale-[1.02] hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100"
       >
         <div className="flex items-start gap-3.5">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{goal.icon}</span>
@@ -130,21 +145,109 @@ export function GoalCard({
             <p className="mt-1 text-xs text-muted-foreground">Created by {summary.creatorName}</p>
           </div>
         </div>
-        <div className="mt-5 rounded-2xl border bg-muted/30 p-4">
-          <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            <span>Saved</span>
-            <span>Target</span>
-          </div>
-          <div className="mt-0.5 flex items-baseline justify-between">
-            <span className="text-2xl font-semibold text-foreground">{inr(currentAmount)}</span>
-            <span className="text-2xl font-semibold text-muted-foreground">{inr(goal.target_amount)}</span>
-          </div>
-          <Progress value={progressPct} max={100} className="mt-3" />
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{inr(remaining)} remaining</span>
-            <span>{progressPct}% complete</span>
+
+        {/* Flip card: front face is the Saved/Target progress summary,
+            back face is a quick Contribute form — clicking either face
+            flips it in place, independent of the toggle-the-panel-below
+            click on the rest of this card (stopPropagation on both faces). */}
+        <div className="relative mt-5 [perspective:1200px]">
+          <div
+            className="grid transition-transform duration-500 ease-out [transform-style:preserve-3d] motion-reduce:transition-none motion-reduce:duration-0"
+            style={{ transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
+          >
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setFlipped(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                e.stopPropagation();
+                setFlipped(true);
+              }}
+              className="col-start-1 row-start-1 cursor-pointer rounded-2xl border bg-muted/30 p-4 [backface-visibility:hidden]"
+            >
+              <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                <span>Saved</span>
+                <span>Target</span>
+              </div>
+              <div className="mt-0.5 flex items-baseline justify-between">
+                <span className="text-2xl font-semibold text-foreground">{inr(currentAmount)}</span>
+                <span className="text-2xl font-semibold text-muted-foreground">{inr(goal.target_amount)}</span>
+              </div>
+              <Progress value={progressPct} max={100} className="mt-3" />
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>{inr(remaining)} remaining</span>
+                <span>{progressPct}% complete</span>
+              </div>
+            </div>
+
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="col-start-1 row-start-1 space-y-3 rounded-2xl border bg-background p-4 [backface-visibility:hidden] [transform:rotateY(180deg)]"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Contribute</p>
+                <button type="button" onClick={() => setFlipped(false)} className="text-xs text-muted-foreground hover:text-foreground">
+                  Back
+                </button>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`contribute-amount-flip-${goal.id}`}>Amount (₹)</Label>
+                <Input
+                  id={`contribute-amount-flip-${goal.id}`}
+                  type="number"
+                  min={1}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="2000"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSource("personal_vault")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${source === "personal_vault" ? "border-primary bg-primary/10" : ""}`}
+                >
+                  My Personal Piggy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSource("external")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${source === "external" ? "border-primary bg-primary/10" : ""}`}
+                >
+                  External / Manual
+                </button>
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button
+                className="w-full"
+                disabled={pending || !canContribute}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await contributeToGoal(goal.id, contributeAmount, source);
+                    if ("error" in result) {
+                      setError(result.error);
+                      return;
+                    }
+                    setAmount("");
+                    setError(null);
+                    const refreshed = await getGoalDetail(goal.id);
+                    setDetail(refreshed);
+                    router.refresh();
+                    setFlipped(false);
+                  })
+                }
+              >
+                Contribute {amount ? inr(contributeAmount) : ""}
+              </Button>
+            </div>
           </div>
         </div>
+
         <div className="mt-4 flex items-center justify-between border-t pt-3.5">
           {cardMembers.length > 0 ? (
             <AvatarGroup>
@@ -167,7 +270,7 @@ export function GoalCard({
             </span>
           )}
         </div>
-      </button>
+      </div>
 
       {canDelete && (
         <button

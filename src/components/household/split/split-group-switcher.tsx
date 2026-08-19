@@ -87,8 +87,8 @@ export function SplitGroupSwitcher({
                   key={g.id}
                   onClick={() => !isCurrent && router.push(`/split?id=${householdId}&group=${g.id}`)}
                   className={cn(
-                    "flex flex-col gap-3 rounded-2xl border bg-card p-4 transition-[transform,border-color,box-shadow] duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100",
-                    isCurrent ? "border-primary ring-1 ring-primary" : "cursor-pointer hover:border-primary/40"
+                    "flex flex-col gap-3 rounded-2xl border bg-card p-4 transition-[transform,border-color,box-shadow] duration-300 ease-out hover:scale-[1.015] hover:border-primary hover:ring-1 hover:ring-primary motion-reduce:transition-none motion-reduce:hover:scale-100",
+                    isCurrent ? "border-primary ring-1 ring-primary" : "cursor-pointer"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -107,17 +107,12 @@ export function SplitGroupSwitcher({
                       </button>
                     )}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                       {g.createdByName}
                       <Crown className="size-3.5 text-amber-500" />
                     </span>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{g.name}</p>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={g.id} lockToSplitOnly />
-                      </div>
-                    </div>
+                    <p className="mt-0.5 font-semibold">{g.name}</p>
                     <AvatarGroup className="mt-1.5">
                       {g.memberPreview.map((m, i) => (
                         <Avatar key={m.userId} size="sm">
@@ -127,9 +122,14 @@ export function SplitGroupSwitcher({
                       ))}
                     </AvatarGroup>
                   </div>
-                  <div>
-                    <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">Total Spent</p>
-                    <p className="mt-0.5 text-2xl font-semibold">{inr(g.totalSpent)}</p>
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">Total Spent</p>
+                      <p className="mt-0.5 text-2xl font-semibold">{inr(g.totalSpent)}</p>
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={g.id} lockToSplitOnly />
+                    </div>
                   </div>
                 </div>
               );
