@@ -104,35 +104,42 @@ export function HomeItemsBrowser({
         </div>
 
         {/* Room filter chips — only for the "All" segment, on their own
-            line below the toggle row (Search Bar mode hides them). */}
+            line below the toggle row (Search Bar mode hides them). Centered
+            as a block when they fit; once they don't (narrow/mobile), the
+            inner box is capped to the row's width and scrolls internally
+            instead of centering (which would clip the first/last chip). */}
         <div
-          dir="rtl"
-          className="mx-auto overflow-hidden transition-[max-width] duration-500 ease-out motion-reduce:transition-none"
-          style={{ maxWidth: mode === "all" ? "800px" : "0px" }}
+          className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
+          style={{ gridTemplateRows: mode === "all" ? "1fr" : "0fr" }}
         >
-          <div
-            dir="ltr"
-            className={cn(
-              "flex flex-nowrap items-center justify-start gap-2 overflow-x-auto pb-1 transition-opacity duration-500 ease-out motion-reduce:transition-none",
-              mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
-            )}
-          >
-            {rooms.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRoomId(r.id)}
-                className={cn(
-                  "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors",
-                  roomId === r.id ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
-                )}
-              >
-                {r.name}
-                <span className={cn("font-mono text-[11px]", roomId === r.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                  {r.itemCount}
-                </span>
-              </button>
-            ))}
+          <div className="overflow-hidden">
+            <div
+              className={cn(
+                "flex justify-center transition-opacity duration-300 ease-out motion-reduce:transition-none",
+                mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
+              )}
+            >
+              <div className="max-w-full overflow-x-auto pb-1">
+                <div className="flex flex-nowrap items-center gap-2">
+                  {rooms.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setRoomId(r.id)}
+                      className={cn(
+                        "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors",
+                        roomId === r.id ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
+                      )}
+                    >
+                      {r.name}
+                      <span className={cn("font-mono text-[11px]", roomId === r.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                        {r.itemCount}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
