@@ -191,6 +191,8 @@ export type HouseholdVault = {
 
 export type HouseholdGoalStatus = "active" | "completed" | "archived";
 
+export type HouseholdGoalType = "saving" | "spending";
+
 export type HouseholdGoal = {
   id: string;
   household_id: string;
@@ -204,6 +206,30 @@ export type HouseholdGoal = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  goal_type: HouseholdGoalType;
+};
+
+export type ExpenseCategory = {
+  id: string;
+  household_id: string;
+  name: string;
+  icon: string;
+  created_by: string;
+  is_preset: boolean;
+  created_at: string;
+};
+
+export type Expense = {
+  id: string;
+  household_id: string;
+  category_id: string;
+  goal_id: string | null;
+  description: string;
+  amount: number;
+  expense_date: string;
+  receipt_url: string | null;
+  created_by: string;
+  created_at: string;
 };
 
 export type HouseholdVaultTransactionSource = "personal_vault" | "external";
@@ -497,6 +523,28 @@ export type Database = {
         Update: Partial<HouseholdGoal>;
         Relationships: [];
       };
+      expense_categories: {
+        Row: ExpenseCategory;
+        Insert: Partial<ExpenseCategory> & {
+          household_id: string;
+          name: string;
+          created_by: string;
+        };
+        Update: Partial<ExpenseCategory>;
+        Relationships: [];
+      };
+      expenses: {
+        Row: Expense;
+        Insert: Partial<Expense> & {
+          household_id: string;
+          category_id: string;
+          description: string;
+          amount: number;
+          created_by: string;
+        };
+        Update: Partial<Expense>;
+        Relationships: [];
+      };
       household_vault_transactions: {
         Row: HouseholdVaultTransaction;
         Insert: Partial<HouseholdVaultTransaction> & {
@@ -611,6 +659,7 @@ export type Database = {
           p_target_amount: number;
           p_deadline?: string | null;
           p_notes?: string | null;
+          p_goal_type?: HouseholdGoalType;
         };
         Returns: { ok: boolean; goal_id: string; vault_id: string };
       };

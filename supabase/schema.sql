@@ -2009,3 +2009,185 @@ end $$;
 insert into household_goal_members (goal_id, user_id, added_by)
   select id, created_by, created_by from household_goals
   on conflict (goal_id, user_id) do nothing;
+
+-- ─────────────────────────────────────────────────────────────
+-- Spending goals + household Expenses (spec: "Add Expense System",
+-- "Goals + Expenses") — see src/lib/actions/expenses.ts.
+-- ─────────────────────────────────────────────────────────────
+
+-- Goal type: 'saving' (existing vault-based contribution model, unchanged)
+-- vs 'spending' (a budget tracked against the expenses table below, no
+-- vault contributions involved). Every goal still gets a vault row either
+-- way (create_household_goal keeps doing that unconditionally) so
+-- delete_household_goal's cascade-via-vault stays a single code path.
+alter table public.household_goals add column if not exists goal_type text not null default 'saving' check (goal_type in ('saving', 'spending'));
+
+create or replace function public.create_household_goal(
+  p_household_id uuid,
+  p_name text,
+  p_icon text,
+  p_target_amount numeric,
+  p_deadline date default null,
+  p_notes text default null,
+  p_goal_type text default 'saving'
+)
+returns jsonb
+language plpgsql
+security invoker set search_path = public
+as $$
+declare
+  v_vault_id uuid;
+  v_goal_id uuid;
+begin
+  if not can_contribute_to_household(p_household_id) then
+    raise exception 'You do not have permission to create goals in this household';
+  end if;
+  if p_target_amount is null or p_target_amount <= 0 then
+    raise exception 'Target amount must be greater than zero';
+  end if;
+  if p_goal_type not in ('saving', 'spending') then
+    raise exception 'Invalid goal type';
+  end if;
+
+  insert into household_vaults (household_id, vault_type, name, created_by)
+    values (p_household_id, 'goal', p_name, auth.uid())
+    returning id into v_vault_id;
+
+  insert into household_goals (household_id, vault_id, created_by, name, icon, target_amount, deadline, notes, goal_type)
+    values (p_household_id, v_vault_id, auth.uid(), p_name, coalesce(p_icon, '🎯'), p_target_amount, p_deadline, p_notes, p_goal_type)
+    returning id into v_goal_id;
+
+  -- The creator is always this goal's first member — everyone else needs an
+  -- explicit invite (add_goal_member), never automatic household-wide access.
+  insert into household_goal_members (goal_id, user_id, added_by) values (v_goal_id, auth.uid(), auth.uid());
+
+  insert into household_activity (household_id, actor_user_id, kind, payload, goal_id)
+    values (p_household_id, auth.uid(), 'goal_created', jsonb_build_object('goal_id', v_goal_id, 'name', p_name), v_goal_id);
+
+  return jsonb_build_object('ok', true, 'goal_id', v_goal_id, 'vault_id', v_vault_id);
+end;
+$$;
+
+-- Deliberately separate from split_expenses (Let's Split divides a bill
+-- between people; this is one household's own categorized spending ledger,
+-- optionally counted against a 'spending' goal's budget).
+create table if not exists public.expense_categories (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households (id) on delete cascade,
+  name text not null,
+  icon text not null default '🧾',
+  created_by uuid not null references auth.users (id) on delete cascade,
+  is_preset boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (household_id, name)
+);
+create index if not exists expense_categories_household_id_idx on public.expense_categories (household_id);
+
+create table if not exists public.expenses (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households (id) on delete cascade,
+  category_id uuid not null references public.expense_categories (id) on delete restrict,
+  goal_id uuid references public.household_goals (id) on delete set null,
+  description text not null,
+  amount numeric not null check (amount > 0),
+  expense_date date not null default current_date,
+  receipt_url text,
+  created_by uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index if not exists expenses_household_id_idx on public.expenses (household_id);
+create index if not exists expenses_household_date_idx on public.expenses (household_id, expense_date desc, created_at desc);
+create index if not exists expenses_goal_id_idx on public.expenses (goal_id);
+create index if not exists expenses_category_id_idx on public.expenses (category_id);
+
+alter table public.expense_categories enable row level security;
+alter table public.expenses enable row level security;
+
+drop policy if exists "expense_categories_select_member" on public.expense_categories;
+create policy "expense_categories_select_member" on public.expense_categories for select
+  using (has_home_access(household_id));
+drop policy if exists "expense_categories_insert_contributor" on public.expense_categories;
+create policy "expense_categories_insert_contributor" on public.expense_categories for insert
+  with check (can_contribute_to_household(household_id) and created_by = auth.uid());
+
+drop policy if exists "expenses_select_member" on public.expenses;
+create policy "expenses_select_member" on public.expenses for select
+  using (has_home_access(household_id));
+drop policy if exists "expenses_insert_contributor" on public.expenses;
+create policy "expenses_insert_contributor" on public.expenses for insert
+  with check (can_contribute_to_household(household_id) and created_by = auth.uid());
+drop policy if exists "expenses_delete_owner_or_creator" on public.expenses;
+create policy "expenses_delete_owner_or_creator" on public.expenses for delete
+  using (is_household_owner(household_id) or created_by = auth.uid());
+
+-- Every household gets the same starter category set, same idea as the
+-- auto-created shared vault/default split group — nobody has to set up
+-- categories before they can log their first expense. ON CONFLICT because
+-- (household_id, name) is unique and a household member might rename/recreate
+-- around the same names later; do nothing rather than error.
+create or replace function public.seed_default_expense_categories(p_household_id uuid, p_created_by uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into expense_categories (household_id, name, icon, created_by, is_preset) values
+    (p_household_id, 'Household', '🏠', p_created_by, true),
+    (p_household_id, 'Groceries', '🛒', p_created_by, true),
+    (p_household_id, 'Utilities', '💡', p_created_by, true),
+    (p_household_id, 'Shopping', '🛍️', p_created_by, true),
+    (p_household_id, 'Outing', '🎉', p_created_by, true),
+    (p_household_id, 'Personal', '👤', p_created_by, true)
+  on conflict (household_id, name) do nothing;
+end;
+$$;
+
+create or replace function public.handle_new_household()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_split_group_id uuid;
+begin
+  insert into public.household_members (household_id, user_id, role)
+  values (new.id, new.owner_id, 'owner');
+
+  insert into public.household_vaults (household_id, vault_type, name, created_by)
+  values (new.id, 'shared', 'Household Savings', new.owner_id);
+
+  insert into public.split_groups (household_id, name, is_default, created_by)
+  values (new.id, 'Household Expenses', true, new.owner_id)
+  returning id into v_split_group_id;
+
+  insert into public.split_members (group_id, user_id) values (v_split_group_id, new.owner_id);
+
+  perform public.seed_default_expense_categories(new.id, new.owner_id);
+
+  return new;
+end;
+$$;
+
+-- Backfill: seed the starter category set for every household that existed
+-- before this migration. Safe to re-run (on conflict do nothing above).
+select public.seed_default_expense_categories(h.id, h.owner_id) from public.households h;
+
+-- ─────────────────────────────────────────────────────────────
+-- Storage bucket for expense receipt photos — same shape as item-photos
+-- above, one folder per uploader.
+-- ─────────────────────────────────────────────────────────────
+insert into storage.buckets (id, name, public)
+values ('expense-receipts', 'expense-receipts', true)
+on conflict (id) do nothing;
+
+drop policy if exists "expense_receipts_read_all" on storage.objects;
+create policy "expense_receipts_read_all" on storage.objects for select
+  using (bucket_id = 'expense-receipts');
+
+drop policy if exists "expense_receipts_insert_own" on storage.objects;
+create policy "expense_receipts_insert_own" on storage.objects for insert
+  with check (bucket_id = 'expense-receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "expense_receipts_delete_own" on storage.objects;
+create policy "expense_receipts_delete_own" on storage.objects for delete
+  using (bucket_id = 'expense-receipts' and (storage.foldername(name))[1] = auth.uid()::text);

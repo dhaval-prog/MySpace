@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PiggyBank, Target, Receipt, Lock } from "lucide-react";
+import { Home, PiggyBank, Target, Wallet, Receipt, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignInPromptDialog } from "@/components/nav/sign-in-prompt-dialog";
 
@@ -11,6 +11,7 @@ const TABS = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/vault", label: "Piggy", icon: PiggyBank },
   { href: "/goals", label: "Goals", icon: Target },
+  { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/split", label: "Split", icon: Receipt },
 ];
 

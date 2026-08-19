@@ -27,6 +27,7 @@ import {
 import { MemberManagerDialog } from "@/components/household/member-manager-dialog";
 import { listGoalMessages, type GoalChatMessageWithSender } from "@/lib/actions/household-goal-chat";
 import { GoalChatPanel } from "@/components/household/goal-chat-panel";
+import { listExpenses, type ExpenseSummary } from "@/lib/actions/expenses";
 import type { HouseholdVaultTransactionSource } from "@/lib/supabase/types";
 
 function inr(amount: number): string {
@@ -67,6 +68,7 @@ export function GoalCard({
   const [view, setView] = useState<"members" | "chat">("members");
   const [detail, setDetail] = useState<HouseholdGoalDetail | null>(null);
   const [members, setMembers] = useState<GoalMemberInfo[]>([]);
+  const [goalExpenses, setGoalExpenses] = useState<ExpenseSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<GoalChatMessageWithSender[] | null>(null);
   const [amount, setAmount] = useState("");
@@ -78,6 +80,7 @@ export function GoalCard({
   const [deleting, startDeleteTransition] = useTransition();
 
   const { goal, currentAmount, progressPct, members: cardMembers } = summary;
+  const isSpending = goal.goal_type === "spending";
   // canDelete is computed server-side as owner-or-creator — the same gate as
   // can_manage_goal() in supabase/schema.sql, so it doubles as "can manage
   // this goal's member list" without a second server round-trip.
@@ -88,11 +91,24 @@ export function GoalCard({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setView("members");
-    Promise.all([getGoalDetail(goal.id), listGoalMembers(goal.id)]).then(([d, m]) => {
-      setDetail(d);
-      setMembers(m);
-      setLoading(false);
-    });
+    // Spending goals don't have vault contributors — the Members tab shows
+    // the expenses logged against this budget instead (getGoalDetail's
+    // contributors list is always empty for goal_type='spending', see
+    // household-goals.ts).
+    if (isSpending) {
+      Promise.all([listGoalMembers(goal.id), listExpenses(goal.household_id, { goalId: goal.id })]).then(([m, exp]) => {
+        setMembers(m);
+        setGoalExpenses(exp);
+        setLoading(false);
+      });
+    } else {
+      Promise.all([getGoalDetail(goal.id), listGoalMembers(goal.id)]).then(([d, m]) => {
+        setDetail(d);
+        setMembers(m);
+        setLoading(false);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, goal.id]);
 
   useEffect(() => {
@@ -146,11 +162,34 @@ export function GoalCard({
           </div>
         </div>
 
-        {/* Flip card: front face is the Saved/Target progress summary,
-            back face is a quick Contribute form — clicking either face
-            flips it in place, independent of the toggle-the-panel-below
-            click on the rest of this card (stopPropagation on both faces). */}
-        <div className="relative mt-5 [perspective:1200px]">
+        {isSpending ? (
+          // Spending goals track a budget, not contributions — nothing to
+          // flip to, since "adding money" doesn't apply. Same numbers, just
+          // relabeled (Spent/Budget instead of Saved/Target), plus an
+          // over-budget callout.
+          <div className="relative mt-5 rounded-2xl border bg-muted/30 p-4">
+            <div className="flex items-center justify-between text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+              <span>Spent</span>
+              <span>Budget</span>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between">
+              <span className="text-2xl font-semibold text-foreground">{inr(currentAmount)}</span>
+              <span className="text-2xl font-semibold text-muted-foreground">{inr(goal.target_amount)}</span>
+            </div>
+            <Progress value={progressPct} max={100} className="mt-3" />
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span className={currentAmount > goal.target_amount ? "font-medium text-destructive" : undefined}>
+                {currentAmount > goal.target_amount ? "Over budget" : `${inr(remaining)} remaining`}
+              </span>
+              <span>{progressPct}% used</span>
+            </div>
+          </div>
+        ) : (
+          /* Flip card: front face is the Saved/Target progress summary,
+             back face is a quick Contribute form — clicking either face
+             flips it in place, independent of the toggle-the-panel-below
+             click on the rest of this card (stopPropagation on both faces). */
+          <div className="relative mt-5 [perspective:1200px]">
           <div
             className="grid transition-transform duration-500 ease-out [transform-style:preserve-3d] motion-reduce:transition-none motion-reduce:duration-0"
             style={{ transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
@@ -262,7 +301,8 @@ export function GoalCard({
               </Button>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
         <div className="mt-4 flex items-center justify-between border-t pt-3.5">
           {cardMembers.length > 0 ? (
@@ -377,6 +417,25 @@ export function GoalCard({
                 <div>
                   {loading ? (
                     <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : isSpending ? (
+                    goalExpenses.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No expenses logged against this budget yet.</p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {goalExpenses.map((e) => (
+                          <li key={e.id} className="flex items-center gap-2.5 text-sm">
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm">{e.categoryIcon}</span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium">{e.description}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {e.categoryName} · {new Date(e.expenseDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                              </span>
+                            </span>
+                            <span className="font-medium">{inr(e.amount)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )
                   ) : memberRows.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No members yet.</p>
                   ) : (

@@ -43,6 +43,7 @@ import {
   Search,
   Settings,
   LayoutDashboard,
+  Wallet,
 } from "lucide-react";
 import { SofaIcon } from "@/components/icons/sofa-icon";
 
@@ -93,6 +94,7 @@ export const ICON_MAP: Record<string, AppIcon> = {
   Search,
   Settings,
   LayoutDashboard,
+  Wallet,
 };
 
 export function getIcon(name: string | null | undefined): AppIcon {

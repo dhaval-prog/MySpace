@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { displayName } from "@/lib/utils";
-import type { HouseholdGoal, HouseholdGoalStatus, HouseholdVaultTransactionSource } from "@/lib/supabase/types";
+import type { HouseholdGoal, HouseholdGoalStatus, HouseholdGoalType, HouseholdVaultTransactionSource } from "@/lib/supabase/types";
 
 export interface GoalMemberBrief {
   userId: string;
@@ -52,15 +52,28 @@ export async function listGoals(householdId: string, opts?: { status?: Household
 
   const vaultIds = goals.map((g) => g.vault_id);
   const goalIds = goals.map((g) => g.id);
-  const [{ data: txns }, { data: goalMembers }] = await Promise.all([
+  const spendingGoalIds = goals.filter((g) => g.goal_type === "spending").map((g) => g.id);
+  const [{ data: txns }, { data: goalMembers }, { data: expenses }] = await Promise.all([
     supabase.from("household_vault_transactions").select("vault_id, type, amount").in("vault_id", vaultIds),
     supabase.from("household_goal_members").select("goal_id, user_id").in("goal_id", goalIds),
+    spendingGoalIds.length > 0
+      ? supabase.from("expenses").select("goal_id, amount").in("goal_id", spendingGoalIds)
+      : Promise.resolve({ data: [] as { goal_id: string | null; amount: number }[] }),
   ]);
 
   const totalsByVault = new Map<string, number>();
   for (const t of txns ?? []) {
     const delta = t.type === "add" ? t.amount : -t.amount;
     totalsByVault.set(t.vault_id, (totalsByVault.get(t.vault_id) ?? 0) + delta);
+  }
+
+  // A 'spending' goal's progress is spent-vs-budget, derived from the
+  // expenses table (never vault contributions — spending goals don't use
+  // their vault at all, see the goal_type column comment in schema.sql).
+  const spentByGoal = new Map<string, number>();
+  for (const e of expenses ?? []) {
+    if (!e.goal_id) continue;
+    spentByGoal.set(e.goal_id, (spentByGoal.get(e.goal_id) ?? 0) + e.amount);
   }
 
   const memberIdsByGoal = new Map<string, string[]>();
@@ -76,7 +89,7 @@ export async function listGoals(householdId: string, opts?: { status?: Household
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
   return goals.map((goal) => {
-    const currentAmount = totalsByVault.get(goal.vault_id) ?? 0;
+    const currentAmount = goal.goal_type === "spending" ? (spentByGoal.get(goal.id) ?? 0) : (totalsByVault.get(goal.vault_id) ?? 0);
     return {
       goal,
       currentAmount,
@@ -93,7 +106,14 @@ export async function listGoals(householdId: string, opts?: { status?: Household
 
 export async function createGoal(
   householdId: string,
-  input: { name: string; icon?: string | null; targetAmount: number; deadline?: string | null; notes?: string | null }
+  input: {
+    name: string;
+    icon?: string | null;
+    targetAmount: number;
+    deadline?: string | null;
+    notes?: string | null;
+    goalType?: HouseholdGoalType;
+  }
 ): Promise<{ goalId: string } | { error: string }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_household_goal", {
@@ -103,6 +123,7 @@ export async function createGoal(
     p_target_amount: input.targetAmount,
     p_deadline: input.deadline ?? null,
     p_notes: input.notes ?? null,
+    p_goal_type: input.goalType ?? "saving",
   });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to create goal" };
 
@@ -132,14 +153,23 @@ export async function getGoalDetail(goalId: string): Promise<HouseholdGoalDetail
   const { data: goal } = await supabase.from("household_goals").select("*").eq("id", goalId).single();
   if (!goal) return null;
 
-  const { data: txns } = await supabase
-    .from("household_vault_transactions")
-    .select("*")
-    .eq("vault_id", goal.vault_id)
-    .order("created_at", { ascending: false });
+  // Spending goals never write to their vault (see the goal_type comment in
+  // supabase/schema.sql) — their "current amount" is spent-vs-budget,
+  // summed from the expenses table instead, and they have no per-member
+  // contributor breakdown (nobody "contributes" to a budget).
+  const isSpending = goal.goal_type === "spending";
+
+  const [{ data: txns }, { data: goalExpenses }] = await Promise.all([
+    isSpending
+      ? Promise.resolve({ data: [] as { user_id: string; type: string; amount: number; created_at: string }[] })
+      : supabase.from("household_vault_transactions").select("*").eq("vault_id", goal.vault_id).order("created_at", { ascending: false }),
+    isSpending ? supabase.from("expenses").select("amount").eq("goal_id", goalId) : Promise.resolve({ data: [] as { amount: number }[] }),
+  ]);
   const rows = txns ?? [];
 
-  const currentAmount = rows.reduce((sum, t) => sum + (t.type === "add" ? t.amount : -t.amount), 0);
+  const currentAmount = isSpending
+    ? (goalExpenses ?? []).reduce((sum, e) => sum + e.amount, 0)
+    : rows.reduce((sum, t) => sum + (t.type === "add" ? t.amount : -t.amount), 0);
 
   const byUser = new Map<string, { amount: number; count: number; last: { amount: number; createdAt: string } | null }>();
   for (const t of rows) {
@@ -202,10 +232,11 @@ export async function contributeToGoal(
   const supabase = await createClient();
   const { data: goal } = await supabase
     .from("household_goals")
-    .select("id, household_id, vault_id, name, target_amount, status")
+    .select("id, household_id, vault_id, name, target_amount, status, goal_type")
     .eq("id", goalId)
     .single();
   if (!goal) return { error: "Goal not found" };
+  if (goal.goal_type === "spending") return { error: "Spending goals track expenses, not contributions — add an expense linked to this goal instead." };
 
   const {
     data: { user },
