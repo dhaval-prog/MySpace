@@ -42,7 +42,7 @@ export function HouseholdCardRow({
   return (
     <div>
       <div className="mb-2 flex items-center gap-1.5">
-        <p className="font-heading text-lg text-foreground">Your Households</p>
+        <p className="font-semibold text-foreground">Your Households</p>
         {optionsMenu}
       </div>
       {/* One line on mobile — a swipeable slider rather than wrapping into
