@@ -14,11 +14,14 @@ function inr(n: number): string {
 
 export function BalancesSheet({
   householdId,
+  groupId,
   open,
   onOpenChange,
   memberBalances,
 }: {
   householdId: string;
+  /** Defaults to the household's default group (getSimplifiedBalances'/recordSettlement's own fallback) when omitted — pass this whenever the caller's actual group isn't the default one. */
+  groupId?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   memberBalances: SplitMemberBalance[];
@@ -79,7 +82,7 @@ export function BalancesSheet({
                   disabled={loadingSimplify}
                   onClick={() => {
                     setLoadingSimplify(true);
-                    getSimplifiedBalances(householdId).then((result) => {
+                    getSimplifiedBalances(householdId, groupId).then((result) => {
                       setSimplified(result);
                       setLoadingSimplify(false);
                     });
@@ -114,6 +117,7 @@ export function BalancesSheet({
       {settleTarget && (
         <SettleUpDialog
           householdId={householdId}
+          groupId={groupId}
           open={!!settleTarget}
           onOpenChange={(v) => {
             if (!v) setSettleTarget(null);

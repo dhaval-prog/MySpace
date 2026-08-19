@@ -113,7 +113,13 @@ export function SplitDashboard({
         </Button>
       )}
 
-      <BalancesSheet householdId={householdId} open={balancesOpen} onOpenChange={setBalancesOpen} memberBalances={summary.memberBalances} />
+      <BalancesSheet
+        householdId={householdId}
+        groupId={summary.groupId}
+        open={balancesOpen}
+        onOpenChange={setBalancesOpen}
+        memberBalances={summary.memberBalances}
+      />
 
       {detailId && (
         <ExpenseDetailDialog

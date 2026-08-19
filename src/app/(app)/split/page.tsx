@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
-import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, getSplitActivity, listSplitGroups, getDefaultGroupId } from "@/lib/actions/split";
+import {
+  getSplitSummary,
+  getSplitGroupMembers,
+  getSimplifiedBalances,
+  getSplitActivity,
+  listSplitGroups,
+  getMySplitGroupId,
+} from "@/lib/actions/split";
 import { EmptyState } from "@/components/shared/empty-state";
 import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
@@ -40,11 +47,11 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
 
   if (context.myRole === "split_only") {
-    const groupId = await getDefaultGroupId(householdId);
+    const groupId = await getMySplitGroupId(householdId);
     const [splitSummary, splitMembers, activity] = await Promise.all([
-      getSplitSummary(householdId),
+      groupId ? getSplitSummary(householdId, groupId) : Promise.resolve(null),
       groupId ? getSplitGroupMembers(groupId) : Promise.resolve([]),
-      getSplitActivity(householdId),
+      getSplitActivity(householdId, groupId ?? undefined),
     ]);
     return (
       <SplitOnlyWorkspace

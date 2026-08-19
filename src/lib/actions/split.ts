@@ -110,6 +110,36 @@ export async function getDefaultGroupId(householdId: string): Promise<string | n
   return data?.id ?? null;
 }
 
+/**
+ * The caller's own split group within this household — NOT necessarily the
+ * default one. A split_only invite can target any specific group (see
+ * generate_invite's groupId param / redeem_household_invite's group_id
+ * fallback), so a split_only member landing on /split needs the group they
+ * were actually added to, not always the household's default. Falls back to
+ * null (never the default group) if they aren't in any group here, so the
+ * caller can show "not added yet" instead of someone else's group data.
+ */
+export async function getMySplitGroupId(householdId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: groups } = await supabase.from("split_groups").select("id").eq("household_id", householdId);
+  const groupIds = (groups ?? []).map((g) => g.id);
+  if (groupIds.length === 0) return null;
+
+  const { data: membership } = await supabase
+    .from("split_members")
+    .select("group_id")
+    .eq("user_id", user.id)
+    .in("group_id", groupIds)
+    .limit(1)
+    .maybeSingle();
+  return membership?.group_id ?? null;
+}
+
 export interface SplitGroupSummary {
   id: string;
   name: string;

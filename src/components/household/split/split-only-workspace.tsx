@@ -46,7 +46,9 @@ export function SplitOnlyWorkspace({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <HouseholdSwitcher households={households} currentId={householdId} basePath="/split" />
-          {splitSummary && <AddExpenseDialog householdId={householdId} members={members} currentUserId={currentUserId} />}
+          {splitSummary && (
+            <AddExpenseDialog householdId={householdId} groupId={splitSummary.groupId} members={members} currentUserId={currentUserId} />
+          )}
         </div>
       </div>
 
