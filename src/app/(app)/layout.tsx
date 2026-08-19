@@ -1,17 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClientSafe } from "@/lib/supabase/admin";
+import { isPastGuestAccessWindow } from "@/lib/guest";
 import { Sidebar } from "@/components/nav/sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Header } from "@/components/nav/header";
 import { Toaster } from "@/components/ui/sonner";
 import { listMyHouseholds, listHouseholdMembersLite } from "@/lib/actions/household";
-
-const GUEST_ACCESS_MS = 7 * 24 * 60 * 60 * 1000;
-
-function isPastGuestAccessWindow(firstSeenAt: string): boolean {
-  return Date.now() - new Date(firstSeenAt).getTime() > GUEST_ACCESS_MS;
-}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();

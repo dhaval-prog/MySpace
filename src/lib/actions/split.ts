@@ -2,10 +2,32 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClientSafe } from "@/lib/supabase/admin";
+import { isPastGuestAccessWindow } from "@/lib/guest";
 import { displayName } from "@/lib/utils";
 import { getHouseholdContext } from "@/lib/actions/household";
 import { computeSplit, simplifyDebts, type SplitParticipantInput, type SimplifiedTransfer } from "@/lib/split/split-math";
 import type { SplitExpense, SplitExpenseParticipant, SplitSettlement, SplitShareType, SplitSettlementMethod } from "@/lib/supabase/types";
+
+/** Which of the given user ids belong to a guest whose 7-day access window has passed — profiles.phone is only ever set by the guest sign-in flow, so "has a phone" already means "was a guest"; cross-referencing guest_phone_registry (service-role only) finds which of those are now expired. Returns an empty set (nothing flagged) when the service role key isn't configured, same graceful-degradation as everywhere else guest expiry is checked. */
+async function findExpiredGuestUserIds(userIds: string[]): Promise<Set<string>> {
+  const admin = createAdminClientSafe();
+  if (!admin || userIds.length === 0) return new Set();
+
+  const { data: profiles } = await admin.from("profiles").select("id, phone").in("id", userIds);
+  const phoneById = new Map((profiles ?? []).filter((p) => p.phone).map((p) => [p.id, p.phone as string]));
+  const phones = Array.from(new Set(phoneById.values()));
+  if (phones.length === 0) return new Set();
+
+  const { data: registryRows } = await admin.from("guest_phone_registry").select("phone, first_seen_at").in("phone", phones);
+  const expiredPhones = new Set((registryRows ?? []).filter((r) => isPastGuestAccessWindow(r.first_seen_at)).map((r) => r.phone));
+
+  const expiredUserIds = new Set<string>();
+  for (const [userId, phone] of phoneById) {
+    if (expiredPhones.has(phone)) expiredUserIds.add(userId);
+  }
+  return expiredUserIds;
+}
 
 /**
  * Let's Split — shared-expense splitting. Deliberately separate from the
@@ -35,11 +57,15 @@ export interface SplitExpenseSummary {
   category: string | null;
   payerId: string;
   payerName: string;
+  /** Who added this expense — always the payer at creation time, but stays fixed even if the payer is later changed via an edit, so this (not payerId) is the real "can delete/edit" gate. */
+  createdBy: string;
   participantCount: number;
   expenseDate: string;
   createdAt: string;
   /** True once none of this expense's participants still net-owe the payer (considering all expenses/settlements between them, not just this one — settling up is always against the overall balance, the same way Splitwise itself works, never earmarked to one expense). */
   settled: boolean;
+  /** True when the payer's guest access has passed its 7-day window — the UI dims this row (while still unsettled) so other members know that account can no longer be reached to manage it. Always false when the service role key isn't configured. */
+  payerIsExpiredGuest: boolean;
 }
 
 export interface SplitSummary {
@@ -398,7 +424,10 @@ export async function getSplitSummary(householdId: string, groupId?: string): Pr
   const youAreOwed = memberBalances.reduce((sum, m) => sum + Math.max(0, m.netAmount), 0);
   const youOwe = memberBalances.reduce((sum, m) => sum + Math.max(0, -m.netAmount), 0);
 
-  const recentExpenses: SplitExpenseSummary[] = expenseRows.slice(0, 20).map((e) => {
+  const shownExpenses = expenseRows.slice(0, 20);
+  const expiredGuestPayerIds = await findExpiredGuestUserIds(Array.from(new Set(shownExpenses.map((e) => e.paid_by))));
+
+  const recentExpenses: SplitExpenseSummary[] = shownExpenses.map((e) => {
     const parts = participantsByExpense.get(e.id) ?? [];
     const settled = parts.every((p) => p.user_id === e.paid_by || netBetween(owes, p.user_id, e.paid_by) <= EPSILON);
     return {
@@ -408,10 +437,12 @@ export async function getSplitSummary(householdId: string, groupId?: string): Pr
       category: e.category,
       payerId: e.paid_by,
       payerName: nameById.get(e.paid_by) ?? "Member",
+      createdBy: e.created_by,
       participantCount: parts.length,
       expenseDate: e.expense_date,
       createdAt: e.created_at,
       settled,
+      payerIsExpiredGuest: expiredGuestPayerIds.has(e.paid_by),
     };
   });
 

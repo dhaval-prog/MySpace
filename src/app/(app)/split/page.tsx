@@ -45,6 +45,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   // actually off-limits for them (can_contribute_to_household() excludes
   // split_only), so that's the one thing gated below.
   const canCreateGroup = context.myRole !== "split_only";
+  const isOwner = context.myRole === "owner";
 
   const groups = await listSplitGroups(householdId);
   const groupId = group && groups.some((g) => g.id === group) ? group : (groups.find((g) => g.isDefault)?.id ?? groups[0]?.id);
@@ -100,6 +101,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           pendingSettlements={pendingSettlements}
           members={splitMembers}
           currentUserId={myUserId}
+          isOwner={isOwner}
         />
       ) : (
         <div className="rounded-2xl border bg-card p-8 text-center">

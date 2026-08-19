@@ -2,16 +2,17 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Receipt, Check, Clock } from "lucide-react";
+import { Receipt, Check, Clock, Trash2, UserRoundX } from "lucide-react";
 import { cn, initials, memberAccentClass } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExpenseDetailDialog } from "@/components/household/split/expense-detail-dialog";
 import { SettleUpDialog } from "@/components/household/split/settle-up-dialog";
 import { SplitChatPanel } from "@/components/household/split/split-chat-panel";
 import { listSplitMessages, type SplitChatMessageWithSender } from "@/lib/actions/split-chat";
-import { confirmSettlement } from "@/lib/actions/split";
-import type { SplitGroupSummary, SplitSummary, SimplifiedTransferWithNames, PendingSettlement } from "@/lib/actions/split";
+import { confirmSettlement, deleteExpense } from "@/lib/actions/split";
+import type { SplitGroupSummary, SplitSummary, SplitExpenseSummary, SimplifiedTransferWithNames, PendingSettlement } from "@/lib/actions/split";
 import type { HouseholdMemberLite } from "@/components/household/finance-toggle";
 
 function inr(n: number): string {
@@ -36,6 +37,7 @@ export function SplitGroupWorkspace({
   pendingSettlements,
   members,
   currentUserId,
+  isOwner,
 }: {
   householdId: string;
   group: SplitGroupSummary;
@@ -44,6 +46,7 @@ export function SplitGroupWorkspace({
   pendingSettlements: PendingSettlement[];
   members: HouseholdMemberLite[];
   currentUserId: string;
+  isOwner: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("expenses");
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -102,7 +105,7 @@ export function SplitGroupWorkspace({
       </div>
 
       {tab === "expenses" && (
-        <ExpensesTab summary={summary} onSelect={setDetailId} />
+        <ExpensesTab summary={summary} onSelect={setDetailId} currentUserId={currentUserId} isOwner={isOwner} />
       )}
       {tab === "balances" && (
         <BalancesTab
@@ -138,7 +141,22 @@ export function SplitGroupWorkspace({
   );
 }
 
-function ExpensesTab({ summary, onSelect }: { summary: SplitSummary; onSelect: (id: string) => void }) {
+function ExpensesTab({
+  summary,
+  onSelect,
+  currentUserId,
+  isOwner,
+}: {
+  summary: SplitSummary;
+  onSelect: (id: string) => void;
+  currentUserId: string;
+  isOwner: boolean;
+}) {
+  const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<SplitExpenseSummary | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, startDeleteTransition] = useTransition();
+
   if (summary.recentExpenses.length === 0) {
     return (
       <div className="rounded-2xl border bg-card p-8 text-center">
@@ -148,24 +166,103 @@ function ExpensesTab({ summary, onSelect }: { summary: SplitSummary; onSelect: (
   }
 
   return (
-    <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
-      {summary.recentExpenses.map((e) => (
-        <li key={e.id}>
-          <button onClick={() => onSelect(e.id)} className="flex w-full items-center gap-3.5 p-4 text-left transition hover:bg-muted/50">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
-              <Receipt className="size-4 text-muted-foreground" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{e.description}</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                Paid by {e.payerName} · {formatDate(e.expenseDate)}
-              </span>
-            </span>
-            <span className="shrink-0 font-mono text-base font-medium">{inr(e.amount)}</span>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
+        {summary.recentExpenses.map((e) => {
+          // Same gate delete_split_expense() enforces server-side (owner or
+          // whoever created it) — this button is a shortcut into that, not
+          // a looser rule of its own.
+          const canDelete = isOwner || e.createdBy === currentUserId;
+          // Dimmed once the payer's guest access has lapsed and the expense
+          // is still outstanding — settled ones don't need the flag, nobody
+          // still needs to reach that account for anything.
+          const dimmed = e.payerIsExpiredGuest && !e.settled;
+          return (
+            <li key={e.id} className={cn("flex items-center transition-opacity duration-300", dimmed && "opacity-45")}>
+              <button
+                type="button"
+                onClick={() => onSelect(e.id)}
+                className="flex min-w-0 flex-1 items-center gap-3.5 p-4 text-left transition hover:bg-muted/50"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <Receipt className="size-4 text-muted-foreground" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{e.description}</span>
+                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="truncate">
+                      Paid by {e.payerName} · {formatDate(e.expenseDate)}
+                    </span>
+                    {dimmed && (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                        <UserRoundX className="size-3" />
+                        Guest expired
+                      </span>
+                    )}
+                  </span>
+                </span>
+              </button>
+              <div className="flex shrink-0 items-center gap-1.5 pr-4">
+                {canDelete && (
+                  <button
+                    type="button"
+                    title={`Delete "${e.description}"`}
+                    onClick={() => {
+                      setDeleteError(null);
+                      setDeleteTarget(e);
+                    }}
+                    className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="sr-only">Delete &ldquo;{e.description}&rdquo;</span>
+                  </button>
+                )}
+                <span className="font-mono text-base font-medium">{inr(e.amount)}</span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete &ldquo;{deleteTarget?.description}&rdquo;?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This removes it and its split for everyone. This can&apos;t be undone.</p>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={() =>
+                startDeleteTransition(async () => {
+                  if (!deleteTarget) return;
+                  const result = await deleteExpense(deleteTarget.id);
+                  if ("error" in result) {
+                    setDeleteError(result.error);
+                    return;
+                  }
+                  setDeleteTarget(null);
+                  router.refresh();
+                })
+              }
+            >
+              <Trash2 className="size-4" />
+              Delete Expense
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

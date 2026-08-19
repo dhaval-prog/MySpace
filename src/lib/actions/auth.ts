@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClientSafe } from "@/lib/supabase/admin";
+import { isPastGuestAccessWindow } from "@/lib/guest";
 import type { HouseholdRole } from "@/lib/supabase/types";
 
 export interface AuthState {
@@ -11,8 +12,6 @@ export interface AuthState {
   /** Set when signInAsGuest rejects a phone whose 7-day guest window has passed — GuestSignIn shows a "sign up to continue" dialog instead of the plain inline error for this case. */
   guestExpired?: boolean;
 }
-
-const GUEST_ACCESS_MS = 7 * 24 * 60 * 60 * 1000;
 
 function normalizeGuestPhone(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -180,8 +179,7 @@ export async function signInAsGuest(_prevState: AuthState, formData: FormData): 
   if (admin) {
     const { data: registry } = await admin.from("guest_phone_registry").select("first_seen_at").eq("phone", phone).maybeSingle();
     if (registry) {
-      const ageMs = Date.now() - new Date(registry.first_seen_at).getTime();
-      if (ageMs > GUEST_ACCESS_MS) {
+      if (isPastGuestAccessWindow(registry.first_seen_at)) {
         return { error: "Your 7-day guest access has ended.", guestExpired: true };
       }
     } else {
