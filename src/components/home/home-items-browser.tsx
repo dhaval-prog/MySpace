@@ -50,8 +50,8 @@ export function HomeItemsBrowser({
             the other two segments right); picking either of the other two
             collapses it back to a compact pill automatically, no separate
             close button needed. */}
-        <div className="flex flex-nowrap items-center gap-1 rounded-full border bg-card p-1">
-          <div className={cn("flex min-w-0 items-center", mode === "search" ? "flex-1" : "shrink-0")}>
+        <div className="mx-auto flex w-fit flex-nowrap items-center gap-1 rounded-full border bg-card p-1">
+          <div className={cn("flex min-w-0 items-center", mode === "search" ? "w-36 sm:w-44" : "shrink-0")}>
             {mode === "search" ? (
               <div className="relative w-full">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -103,18 +103,18 @@ export function HomeItemsBrowser({
           </button>
         </div>
 
-        {/* Room filter chips — their own line below the toggle row now
-            that Search Bar can claim the rest of that row's width. */}
+        {/* Room filter chips — only for the "All" segment, on their own
+            line below the toggle row (Search Bar mode hides them). */}
         <div
           dir="rtl"
-          className="overflow-hidden transition-[max-width] duration-500 ease-out motion-reduce:transition-none"
-          style={{ maxWidth: browsing ? "800px" : "0px" }}
+          className="mx-auto overflow-hidden transition-[max-width] duration-500 ease-out motion-reduce:transition-none"
+          style={{ maxWidth: mode === "all" ? "800px" : "0px" }}
         >
           <div
             dir="ltr"
             className={cn(
-              "flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 transition-opacity duration-500 ease-out motion-reduce:transition-none",
-              browsing ? "opacity-100" : "pointer-events-none opacity-0"
+              "flex flex-nowrap items-center justify-center gap-2 overflow-x-auto pb-1 transition-opacity duration-500 ease-out motion-reduce:transition-none",
+              mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
             )}
           >
             {rooms.map((r) => (
