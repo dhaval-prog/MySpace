@@ -23,6 +23,7 @@ export function HomeItemsBrowser({
   const [mode, setMode] = useState<Mode>("all");
   const [roomId, setRoomId] = useState<string | "all">("all");
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const activeRoomName = roomId === "all" ? null : (rooms.find((r) => r.id === roomId)?.name ?? null);
 
@@ -41,21 +42,31 @@ export function HomeItemsBrowser({
           room pills, and search stay put, cards below them scroll on.
           Desktop keeps its normal flow (md:static). */}
       <div className="sticky top-[61px] z-20 -mx-4 space-y-3 overflow-x-hidden bg-background px-4 pt-1 pb-3 md:static md:mx-0 md:space-y-5 md:px-0 md:pt-0 md:pb-0">
+        {/* The "Search Bar" toggle collapses this independently of the
+            All/Add Items mode fade below — grid-template-rows 0fr/1fr, the
+            same inline-expand trick used elsewhere in the app. */}
         <div
-          className={cn(
-            "relative transition-opacity duration-300 ease-out motion-reduce:transition-none",
-            mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
-          )}
-          aria-hidden={mode !== "all"}
+          className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
+          style={{ gridTemplateRows: searchOpen ? "1fr" : "0fr" }}
         >
-          <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
-            className="h-11 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary"
-            tabIndex={mode === "all" ? 0 : -1}
-          />
+          <div className="overflow-hidden">
+            <div
+              className={cn(
+                "relative transition-opacity duration-300 ease-out motion-reduce:transition-none",
+                mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
+              )}
+              aria-hidden={mode !== "all" || !searchOpen}
+            >
+              <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
+                className="h-11 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary"
+                tabIndex={mode === "all" && searchOpen ? 0 : -1}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -90,6 +101,19 @@ export function HomeItemsBrowser({
               </span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setSearchOpen((v) => !v)}
+            aria-pressed={searchOpen}
+            className={cn(
+              "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+              searchOpen ? "bg-primary text-primary-foreground" : "border bg-card text-foreground hover:bg-muted"
+            )}
+          >
+            <Search className="size-3.5" />
+            Search Bar
+          </button>
 
           {/* A max-width transition (not grid-template-columns) so pills
               never get squeezed into a narrower row and re-wrap onto
