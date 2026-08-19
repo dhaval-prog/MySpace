@@ -68,7 +68,7 @@ export function FurnitureCard({
       <Dialog open={renaming} onOpenChange={setRenaming}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename furniture</DialogTitle>
+            <DialogTitle>Rename place</DialogTitle>
           </DialogHeader>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
           <DialogFooter>
@@ -96,8 +96,7 @@ export function FurnitureCard({
             <DialogTitle>Delete &ldquo;{furniture.name}&rdquo;?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This will permanently delete this furniture along with its storage locations and {itemCount} item
-            {itemCount === 1 ? "" : "s"}.
+            This will permanently delete this place along with {itemCount} item{itemCount === 1 ? "" : "s"} in it.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDelete(false)}>

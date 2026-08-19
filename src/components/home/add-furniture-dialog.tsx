@@ -41,13 +41,13 @@ export function AddFurnitureDialog({ roomId, roomType }: { roomId: string; roomT
         render={
           <Button>
             <Plus className="size-4" />
-            Add Furniture
+            Add Place
           </Button>
         }
       />
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add furniture</DialogTitle>
+          <DialogTitle>Add a place</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -77,9 +77,9 @@ export function AddFurnitureDialog({ roomId, roomType }: { roomId: string; roomT
 
         {selected && (
           <div className="space-y-2 border-t pt-4">
-            <Label htmlFor="furniture-name">Name it (optional)</Label>
+            <Label htmlFor="place-name">Name it (optional)</Label>
             <Input
-              id="furniture-name"
+              id="place-name"
               placeholder={selected.name}
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
@@ -108,7 +108,7 @@ export function AddFurnitureDialog({ roomId, roomType }: { roomId: string; roomT
               })
             }
           >
-            Add Furniture
+            Add Place
           </Button>
         </DialogFooter>
       </DialogContent>

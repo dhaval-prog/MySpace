@@ -38,19 +38,22 @@ export async function buildLocationIndex(
   };
 }
 
+/**
+ * Resolves an item's storage_location back to its Room → Place (furniture)
+ * path. The storage_location itself is deliberately NOT included in the
+ * returned path — every furniture now has exactly one, auto-managed and
+ * named to match the furniture (see storage_locations_one_per_furniture in
+ * supabase/schema.sql), so from the user's perspective the location IS the
+ * Place, not a separate step underneath it.
+ */
 export function pathForStorageLocation(
   index: LocationIndex,
   storageLocationId: string
 ): LocationNode[] | null {
-  const storageChain: StorageLocation[] = [];
-  let current = index.storageLocations.get(storageLocationId);
-  while (current) {
-    storageChain.unshift(current);
-    current = current.parent_id ? index.storageLocations.get(current.parent_id) : undefined;
-  }
-  if (storageChain.length === 0) return null;
+  const storage = index.storageLocations.get(storageLocationId);
+  if (!storage) return null;
 
-  const furniture = index.furniture.get(storageChain[0].furniture_id);
+  const furniture = index.furniture.get(storage.furniture_id);
   if (!furniture) return null;
   const room = index.rooms.get(furniture.room_id);
   if (!room) return null;
@@ -61,7 +64,6 @@ export function pathForStorageLocation(
     { type: "home", id: home.id, name: home.name, icon: "Home" },
     { type: "room", id: room.id, name: room.name, icon: room.icon },
     { type: "furniture", id: furniture.id, name: furniture.name, icon: furniture.icon },
-    ...storageChain.map((s) => ({ type: "storage" as const, id: s.id, name: s.name, icon: "Rows3" })),
   ];
 }
 

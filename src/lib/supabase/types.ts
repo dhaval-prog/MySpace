@@ -74,6 +74,7 @@ export type Item = {
   quantity: number;
   container: string | null;
   photo_url: string | null;
+  expiry_date: string | null;
   tags: string[];
   is_favorite: boolean;
   is_important: boolean;

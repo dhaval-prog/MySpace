@@ -62,7 +62,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{room.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {(furniture ?? []).length} furniture item{(furniture ?? []).length === 1 ? "" : "s"}
+            {(furniture ?? []).length} place{(furniture ?? []).length === 1 ? "" : "s"}
           </p>
         </div>
         <AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />
@@ -72,8 +72,8 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
         <EmptyState
           icon={room.icon}
           isRoomIcon
-          title="No furniture yet"
-          description="This room is empty. Add your first piece of furniture to start organizing your belongings."
+          title="No places yet"
+          description="This room is empty. Add your first place — a fridge, a wardrobe, a shelf — to start organizing your belongings."
           action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
         />
       ) : (

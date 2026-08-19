@@ -55,7 +55,7 @@ export function DeleteHomeDialog({
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             This permanently deletes this home along with all {roomCount} room{roomCount === 1 ? "" : "s"}, every
-            piece of furniture, every storage location, and every item inside it. This can&apos;t be undone.
+            place, and every item inside it. This can&apos;t be undone.
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="confirm-home-name">

@@ -1,23 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Furniture, Home, Item, Room, StorageLocation } from "@/lib/supabase/types";
-
-export interface StorageLocationWithItems {
-  location: StorageLocation;
-  items: Item[];
-}
+import type { Database, Furniture, Home, Item, Room } from "@/lib/supabase/types";
 
 export interface FurnitureDetail {
   home: Home;
   room: Room;
   furniture: Furniture;
-  locations: StorageLocationWithItems[];
-  totalItems: number;
+  items: Item[];
 }
 
-export async function getFurnitureDetail(
-  supabase: SupabaseClient<Database>,
-  furnitureId: string
-): Promise<FurnitureDetail | null> {
+/** A Place's own detail — every furniture has exactly one storage_location under it (auto-managed, see storage_locations_one_per_furniture in supabase/schema.sql), so this is just "the furniture's items", no location sub-level to browse. */
+export async function getFurnitureDetail(supabase: SupabaseClient<Database>, furnitureId: string): Promise<FurnitureDetail | null> {
   const { data: furniture } = await supabase.from("furniture").select("*").eq("id", furnitureId).maybeSingle();
   if (!furniture) return null;
 
@@ -27,32 +19,11 @@ export async function getFurnitureDetail(
   const { data: home } = await supabase.from("homes").select("*").eq("id", room.home_id).maybeSingle();
   if (!home) return null;
 
-  const { data: locations } = await supabase
-    .from("storage_locations")
-    .select("*")
-    .eq("furniture_id", furnitureId)
-    .is("parent_id", null)
-    .order("sort_order", { ascending: true });
+  const { data: location } = await supabase.from("storage_locations").select("id").eq("furniture_id", furnitureId).maybeSingle();
 
-  const locationIds = (locations ?? []).map((l) => l.id);
-  const { data: items } = locationIds.length
-    ? await supabase
-        .from("items")
-        .select("*")
-        .in("storage_location_id", locationIds)
-        .order("created_at", { ascending: false })
+  const { data: items } = location
+    ? await supabase.from("items").select("*").eq("storage_location_id", location.id).order("created_at", { ascending: false })
     : { data: [] as Item[] };
 
-  const locationsWithItems: StorageLocationWithItems[] = (locations ?? []).map((location) => ({
-    location,
-    items: (items ?? []).filter((i) => i.storage_location_id === location.id),
-  }));
-
-  return {
-    home,
-    room,
-    furniture,
-    locations: locationsWithItems,
-    totalItems: items?.length ?? 0,
-  };
+  return { home, room, furniture, items: items ?? [] };
 }

@@ -55,8 +55,8 @@ export default async function SettingsPage() {
           <CardHeader className="p-0">
             <CardTitle className="text-base text-destructive">Danger zone</CardTitle>
             <CardDescription>
-              Deleting your home removes every room, piece of furniture, storage location, and item inside it. You&apos;ll
-              be able to set up a new home from scratch afterward.
+              Deleting your home removes every room, place, and item inside it. You&apos;ll be able to set up a new home
+              from scratch afterward.
             </CardDescription>
           </CardHeader>
           <CardContent className="mt-4 p-0">

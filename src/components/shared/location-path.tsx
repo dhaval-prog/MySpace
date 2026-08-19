@@ -14,10 +14,11 @@ export function LocationPath({
   className?: string;
   iconClassName?: string;
 }) {
-  // The home and room are already established by page context (page title,
-  // "My Home" nav, etc.) everywhere this renders — showing furniture onward
-  // keeps the path short instead of repeating "My Home > Hall" on every row.
-  const visibleNodes = nodes.length > 2 ? nodes.slice(2) : nodes;
+  // Which home it's in is already established by page context (there's
+  // only ever one being browsed at a time) — everywhere this renders,
+  // showing Room → Place is the actual answer to "where is it?" (spec:
+  // "Where did I keep it?"), so only the home node gets dropped.
+  const visibleNodes = nodes.length > 1 ? nodes.slice(1) : nodes;
   return (
     <div className={"flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground " + (className ?? "")}>
       {visibleNodes.map((node, i) => {

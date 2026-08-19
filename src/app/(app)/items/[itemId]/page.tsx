@@ -5,6 +5,7 @@ import { buildLocationIndex, pathForStorageLocation } from "@/lib/location";
 import { getIcon } from "@/lib/icon-map";
 import { categoryIcon, categoryLabel } from "@/lib/constants";
 import { LocationPath } from "@/components/shared/location-path";
+import { ExpiryBadge } from "@/components/items/expiry-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EditItemButton } from "@/components/items/edit-item-button";
@@ -34,12 +35,15 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
           <h1 className="text-2xl font-semibold tracking-tight">{item.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">📍 Found here</p>
         </div>
-        <EditItemButton item={{ id: item.id, name: item.name, category: item.category }} />
+        <EditItemButton
+          item={{ id: item.id, name: item.name, category: item.category, quantity: item.quantity, expiryDate: item.expiry_date, photoUrl: item.photo_url }}
+        />
       </div>
 
       <Card>
-        <CardContent className="p-5">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
           <LocationPath nodes={path} container={item.container} className="text-sm" iconClassName="size-4" />
+          <ExpiryBadge expiryDate={item.expiry_date} />
         </CardContent>
       </Card>
 
@@ -87,13 +91,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
       </Card>
 
       <div className="flex flex-wrap gap-2 border-t pt-4">
-        <MoveItemDialog
-          itemId={item.id}
-          currentHomeId={home.id}
-          currentRoomId={room.id}
-          currentFurnitureId={furniture.id}
-          currentStorageLocationId={item.storage_location_id}
-        />
+        <MoveItemDialog itemId={item.id} currentHomeId={home.id} currentRoomId={room.id} currentFurnitureId={furniture.id} />
         <ItemDeleteButton itemId={item.id} name={item.name} />
       </div>
     </div>

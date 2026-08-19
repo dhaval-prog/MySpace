@@ -2191,3 +2191,57 @@ create policy "expense_receipts_insert_own" on storage.objects for insert
 drop policy if exists "expense_receipts_delete_own" on storage.objects;
 create policy "expense_receipts_delete_own" on storage.objects for delete
   using (bucket_id = 'expense-receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ─────────────────────────────────────────────────────────────
+-- Flatten Room → Furniture → Storage Location → Item down to the
+-- user-facing Room → Place → Item model (spec: "Where Is It?" rework).
+-- The furniture/storage_locations tables and items.storage_location_id FK
+-- are kept as-is (no risky column drops) — every furniture ("Place") is
+-- simply guaranteed exactly one storage_location from now on, auto-managed
+-- and invisible in the UI. See src/lib/actions/furniture.ts (addFurniture)
+-- for the going-forward half of this.
+-- ─────────────────────────────────────────────────────────────
+
+alter table public.items add column if not exists expiry_date date;
+create index if not exists items_expiry_date_idx on public.items (expiry_date) where expiry_date is not null;
+
+-- One-time backfill: consolidate every furniture's existing storage_locations
+-- into one (earliest by created_at is the "keeper"), moving items onto it and
+-- renaming it to match the furniture. Safe to re-run — a no-op once every
+-- furniture already has exactly one location (which the constraints below
+-- guarantee going forward).
+do $$
+declare
+  f record;
+  keeper uuid;
+begin
+  for f in select distinct furniture_id from storage_locations loop
+    select id into keeper from storage_locations
+      where furniture_id = f.furniture_id
+      order by created_at asc, id asc
+      limit 1;
+
+    update items set storage_location_id = keeper
+      where storage_location_id in (
+        select id from storage_locations where furniture_id = f.furniture_id and id <> keeper
+      );
+
+    delete from storage_locations where furniture_id = f.furniture_id and id <> keeper;
+
+    update storage_locations sl set name = fu.name
+      from furniture fu
+      where fu.id = f.furniture_id and sl.id = keeper;
+  end loop;
+end $$;
+
+-- Every furniture needs exactly one storage_location, even ones that
+-- currently have none, so any Place is immediately ready to hold items.
+insert into storage_locations (user_id, furniture_id, name, type, sort_order)
+select fu.user_id, fu.id, fu.name, 'default', 0
+from furniture fu
+where not exists (select 1 from storage_locations sl where sl.furniture_id = fu.id);
+
+-- Structurally enforce the flattened model going forward: one location per
+-- furniture, and no nested sub-locations (parent_id was already unused).
+alter table public.storage_locations add constraint storage_locations_one_per_furniture unique (furniture_id);
+alter table public.storage_locations add constraint storage_locations_no_nesting check (parent_id is null);

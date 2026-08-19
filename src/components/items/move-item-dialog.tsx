@@ -18,7 +18,6 @@ export function MoveItemDialog({
   currentHomeId,
   currentRoomId,
   currentFurnitureId,
-  currentStorageLocationId,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
 }: {
@@ -26,14 +25,13 @@ export function MoveItemDialog({
   currentHomeId: string;
   currentRoomId: string;
   currentFurnitureId: string;
-  currentStorageLocationId: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = controlledOnOpenChange ?? setUncontrolledOpen;
-  const [selection, setSelection] = useState<{ storageLocationId: string } | null>(null);
+  const [selection, setSelection] = useState<{ furnitureId: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   return (
@@ -56,7 +54,6 @@ export function MoveItemDialog({
           initialHomeId={currentHomeId}
           initialRoomId={currentRoomId}
           initialFurnitureId={currentFurnitureId}
-          initialStorageLocationId={currentStorageLocationId}
           onChange={setSelection}
         />
         <DialogFooter>
@@ -64,13 +61,11 @@ export function MoveItemDialog({
             Cancel
           </Button>
           <Button
-            disabled={
-              !selection || selection.storageLocationId === currentStorageLocationId || pending
-            }
+            disabled={!selection || selection.furnitureId === currentFurnitureId || pending}
             onClick={() =>
               startTransition(async () => {
                 if (!selection) return;
-                await moveItem(itemId, selection.storageLocationId);
+                await moveItem(itemId, selection.furnitureId);
               })
             }
           >

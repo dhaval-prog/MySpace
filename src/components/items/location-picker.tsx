@@ -3,35 +3,32 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { listFurniture, listHomes, listRooms, listStorageLocations } from "@/lib/actions/browse";
+import { listFurniture, listHomes, listRooms } from "@/lib/actions/browse";
 
 interface Option {
   id: string;
   name: string;
 }
 
+/** Home → Room → Place (furniture) — the flattened location picker. "Place" is purely a display label here; the DB/action layer underneath still calls it furniture (see browse.ts, items.ts) since renaming the column would be schema churn for no functional gain. */
 export function LocationPicker({
   initialHomeId,
   initialRoomId,
   initialFurnitureId,
-  initialStorageLocationId,
   onChange,
 }: {
   initialHomeId?: string;
   initialRoomId?: string;
   initialFurnitureId?: string;
-  initialStorageLocationId?: string;
-  onChange: (value: { roomId: string; furnitureId: string; storageLocationId: string } | null) => void;
+  onChange: (value: { roomId: string; furnitureId: string } | null) => void;
 }) {
   const [homes, setHomes] = useState<Option[]>([]);
   const [rooms, setRooms] = useState<Option[]>([]);
   const [furniture, setFurniture] = useState<Option[]>([]);
-  const [locations, setLocations] = useState<Option[]>([]);
 
   const [homeId, setHomeId] = useState(initialHomeId ?? "");
   const [roomId, setRoomId] = useState(initialRoomId ?? "");
   const [furnitureId, setFurnitureId] = useState(initialFurnitureId ?? "");
-  const [locationId, setLocationId] = useState(initialStorageLocationId ?? "");
 
   useEffect(() => {
     listHomes().then((data) => {
@@ -60,25 +57,16 @@ export function LocationPicker({
   }, [roomId]);
 
   useEffect(() => {
-    if (!furnitureId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocations([]);
-      return;
-    }
-    listStorageLocations(furnitureId).then(setLocations);
-  }, [furnitureId]);
-
-  useEffect(() => {
-    if (roomId && furnitureId && locationId) {
-      onChange({ roomId, furnitureId, storageLocationId: locationId });
+    if (roomId && furnitureId) {
+      onChange({ roomId, furnitureId });
     } else {
       onChange(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, furnitureId, locationId]);
+  }, [roomId, furnitureId]);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-3">
       <div className="space-y-1.5">
         <Label>Home</Label>
         <Select
@@ -87,7 +75,6 @@ export function LocationPicker({
             setHomeId(v ?? "");
             setRoomId("");
             setFurnitureId("");
-            setLocationId("");
           }}
         >
           <SelectTrigger className="w-full">
@@ -111,7 +98,6 @@ export function LocationPicker({
           onValueChange={(v) => {
             setRoomId(v ?? "");
             setFurnitureId("");
-            setLocationId("");
           }}
         >
           <SelectTrigger className="w-full">
@@ -128,38 +114,15 @@ export function LocationPicker({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Furniture</Label>
-        <Select
-          value={furnitureId}
-          disabled={!roomId}
-          onValueChange={(v) => {
-            setFurnitureId(v ?? "");
-            setLocationId("");
-          }}
-        >
+        <Label>Place</Label>
+        <Select value={furnitureId} disabled={!roomId} onValueChange={(v) => setFurnitureId(v ?? "")}>
           <SelectTrigger className="w-full">
-            <SelectValue>{(v) => furniture.find((f) => f.id === v)?.name ?? "Select furniture"}</SelectValue>
+            <SelectValue>{(v) => furniture.find((f) => f.id === v)?.name ?? "Select a place"}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {furniture.map((f) => (
               <SelectItem key={f.id} value={f.id}>
                 {f.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Storage Location</Label>
-        <Select value={locationId} disabled={!furnitureId} onValueChange={(v) => setLocationId(v ?? "")}>
-          <SelectTrigger className="w-full">
-            <SelectValue>{(v) => locations.find((l) => l.id === v)?.name ?? "Select a location"}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {locations.map((l) => (
-              <SelectItem key={l.id} value={l.id}>
-                {l.name}
               </SelectItem>
             ))}
           </SelectContent>

@@ -45,6 +45,16 @@ function parseTags(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** Every furniture ("Place") has exactly one storage_location, auto-created alongside it and never surfaced in the UI (see addFurniture() and storage_locations_one_per_furniture in supabase/schema.sql) — this is the one place that FK gets resolved from the Place the user actually picked. */
+async function resolveStorageLocationId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  furnitureId: string
+): Promise<{ id: string } | { error: string }> {
+  const { data } = await supabase.from("storage_locations").select("id").eq("furniture_id", furnitureId).maybeSingle();
+  if (!data) return { error: "That place couldn't be found." };
+  return { id: data.id };
+}
+
 export interface NewItemInput {
   storageLocationId: string;
   name: string;
@@ -53,6 +63,7 @@ export interface NewItemInput {
   quantity?: number;
   container?: string | null;
   photoUrl?: string | null;
+  expiryDate?: string | null;
   tags?: string[];
   isFavorite?: boolean;
   isImportant?: boolean;
@@ -79,6 +90,7 @@ async function insertItemRow(
       quantity: input.quantity ?? 1,
       container: input.container ?? null,
       photo_url: input.photoUrl ?? null,
+      expiry_date: input.expiryDate ?? null,
       tags: input.tags ?? [],
       is_favorite: input.isFavorite ?? false,
       is_important: input.isImportant ?? false,
@@ -90,31 +102,34 @@ async function insertItemRow(
   return { id: data.id };
 }
 
-export async function createItem(
-  _prevState: ItemFormState,
-  formData: FormData
-): Promise<ItemFormState> {
+export async function createItem(_prevState: ItemFormState, formData: FormData): Promise<ItemFormState> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  const storageLocationId = String(formData.get("storageLocationId") ?? "");
   const roomId = String(formData.get("roomId") ?? "");
   const furnitureId = String(formData.get("furnitureId") ?? "");
+  if (!furnitureId) return { error: "Please choose where this item is kept." };
+
+  const resolved = await resolveStorageLocationId(supabase, furnitureId);
+  if ("error" in resolved) return { error: resolved.error };
 
   const { url, error: uploadError } = await uploadPhotoIfPresent(supabase, user.id, formData);
   if (uploadError) return { error: uploadError };
 
+  const expiryDateRaw = String(formData.get("expiryDate") ?? "");
+
   const result = await insertItemRow(supabase, user.id, {
-    storageLocationId,
+    storageLocationId: resolved.id,
     name: String(formData.get("name") ?? ""),
     category: String(formData.get("category") ?? "other"),
     description: String(formData.get("description") ?? "") || null,
     quantity: Number(formData.get("quantity") ?? 1) || 1,
     container: String(formData.get("container") ?? "") || null,
     photoUrl: url ?? null,
+    expiryDate: expiryDateRaw || null,
     tags: parseTags(String(formData.get("tags") ?? "")),
     isFavorite: formData.get("isFavorite") === "on",
     isImportant: formData.get("isImportant") === "on",
@@ -152,17 +167,45 @@ export async function createItemFromVoice(
   return { itemId: result.id };
 }
 
-/** Item editing is deliberately limited to name + category — see EditItemDialog. Every other field is set once at creation and changed by its own dedicated action instead (moveItem for location, deleteItem to remove). */
-export async function updateItemNameCategory(
-  itemId: string,
-  name: string,
-  category: string
-): Promise<{ ok: true } | { error: string }> {
-  const trimmedName = name.trim();
+export interface UpdateItemInput {
+  name: string;
+  category: string;
+  quantity: number;
+  expiryDate?: string | null;
+  /** undefined = leave the photo alone, null = remove it, a File = replace it. */
+  photo?: File | null;
+}
+
+/** Everything an item's own Edit dialog can change — name, category, quantity, expiry, and the photo. Location changes go through the separate Move action instead. */
+export async function updateItem(itemId: string, input: UpdateItemInput): Promise<{ ok: true } | { error: string }> {
+  const trimmedName = input.name.trim();
   if (!trimmedName) return { error: "Please give the item a name." };
+  if (!Number.isFinite(input.quantity) || input.quantity < 1) return { error: "Quantity must be at least 1." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("items").update({ name: trimmedName, category }).eq("id", itemId);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const update: Partial<Item> = {
+    name: trimmedName,
+    category: input.category,
+    quantity: input.quantity,
+    expiry_date: input.expiryDate ?? null,
+  };
+
+  if (input.photo === null) {
+    update.photo_url = null;
+  } else if (input.photo) {
+    const formData = new FormData();
+    formData.set("photo", input.photo);
+    const { url, error: uploadError } = await uploadPhotoIfPresent(supabase, user.id, formData);
+    if (uploadError) return { error: uploadError };
+    update.photo_url = url ?? null;
+  }
+
+  const { error } = await supabase.from("items").update(update).eq("id", itemId);
   if (error) return { error: "Something went wrong while saving this item. Please try again." };
 
   revalidatePath(`/items/${itemId}`);
@@ -207,17 +250,16 @@ export async function deleteItem(itemId: string) {
   redirect("/items");
 }
 
-export async function moveItem(itemId: string, newStorageLocationId: string) {
+/** newFurnitureId is the Place the user picked in MoveItemDialog — resolved to that Place's one storage_location the same way createItem does. */
+export async function moveItem(itemId: string, newFurnitureId: string) {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("items")
-    .update({ storage_location_id: newStorageLocationId })
-    .eq("id", itemId);
+  const resolved = await resolveStorageLocationId(supabase, newFurnitureId);
+  if ("error" in resolved) throw new Error(resolved.error);
 
+  const { error } = await supabase.from("items").update({ storage_location_id: resolved.id }).eq("id", itemId);
   if (error) throw new Error("Something went wrong while moving this item. Please try again.");
 
   revalidatePath(`/items/${itemId}`);
   revalidatePath("/items");
   redirect(`/items/${itemId}`);
 }
-

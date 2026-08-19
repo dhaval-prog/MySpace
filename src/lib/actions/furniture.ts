@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { STORAGE_LOCATION_PRESETS } from "@/lib/constants";
 
 export async function addFurniture(
   roomId: string,
@@ -39,18 +38,17 @@ export async function addFurniture(
 
   if (error || !furniture) throw new Error(error?.message ?? "Failed to add furniture");
 
-  // Pre-populate common storage locations for this furniture type so the
-  // user isn't starting from a completely empty grid (section 9).
-  const presets = STORAGE_LOCATION_PRESETS[type] ?? STORAGE_LOCATION_PRESETS.default;
-  await supabase.from("storage_locations").insert(
-    presets.slice(0, 4).map((presetName, i) => ({
-      user_id: user.id,
-      furniture_id: furniture.id,
-      name: presetName,
-      type: "shelf",
-      sort_order: i,
-    }))
-  );
+  // Every Place gets exactly one storage_location, auto-managed and never
+  // surfaced in the UI — items attach to the Place directly from the
+  // user's perspective (see storage_locations_one_per_furniture in
+  // supabase/schema.sql). This row is what items.storage_location_id
+  // actually points at underneath.
+  await supabase.from("storage_locations").insert({
+    user_id: user.id,
+    furniture_id: furniture.id,
+    name,
+    type: "default",
+  });
 
   revalidatePath("/home/rooms/" + roomId);
   return furniture.id as string;
@@ -64,6 +62,10 @@ export async function renameFurniture(
 ) {
   const supabase = await createClient();
   await supabase.from("furniture").update({ name, description: description || null }).eq("id", furnitureId);
+  // Keep the Place's one auto-managed storage_location's name in sync — it's
+  // never edited directly, so this is the only place it can drift from the
+  // furniture's own name.
+  await supabase.from("storage_locations").update({ name }).eq("furniture_id", furnitureId);
   revalidatePath(`/home/rooms/${roomId}/furniture/${furnitureId}`);
 }
 

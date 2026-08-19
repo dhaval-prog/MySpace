@@ -129,18 +129,6 @@ export const GENERIC_FURNITURE: FurnitureOption[] = [
   { name: "Other", type: "other", icon: "Package" },
 ];
 
-export const STORAGE_LOCATION_PRESETS: Record<string, string[]> = {
-  wardrobe: ["Top Shelf", "Middle Shelf", "Bottom Shelf", "Drawer 1", "Drawer 2", "Left Section", "Right Section"],
-  chest_of_drawers: ["Drawer 1", "Drawer 2", "Drawer 3", "Drawer 4"],
-  kitchen_cabinet: ["Cabinet 1", "Cabinet 2", "Cabinet 3", "Drawer 1", "Drawer 2"],
-  wall_cabinet: ["Cabinet 1", "Cabinet 2", "Cabinet 3"],
-  refrigerator: ["Freezer", "Top Shelf", "Middle Shelf", "Bottom Shelf", "Door Rack", "Vegetable Drawer"],
-  cabinet: ["Top Shelf", "Middle Shelf", "Bottom Shelf", "Drawer 1", "Drawer 2"],
-  bookshelf: ["Shelf 1", "Shelf 2", "Shelf 3", "Shelf 4"],
-  tv_unit: ["Left Cabinet", "Right Cabinet", "Top Shelf", "Drawer 1"],
-  default: ["Shelf 1", "Shelf 2", "Drawer 1", "Drawer 2", "Section A", "Section B"],
-};
-
 export const ITEM_CATEGORIES = [
   { value: "documents", label: "Documents", icon: "FileText" },
   { value: "electronics", label: "Electronics", icon: "Tv" },

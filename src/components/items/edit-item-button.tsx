@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EditItemDialog } from "@/components/items/edit-item-dialog";
+import { EditItemDialog, type EditableItem } from "@/components/items/edit-item-dialog";
 
-export function EditItemButton({ item }: { item: { id: string; name: string; category: string } }) {
+export function EditItemButton({ item }: { item: EditableItem }) {
   const [open, setOpen] = useState(false);
 
   return (
