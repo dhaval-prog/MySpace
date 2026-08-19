@@ -63,7 +63,7 @@ export default async function HomePage({
             <h1 className="font-heading text-4xl text-foreground md:text-5xl">{home.name}</h1>
             <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-2.5 text-sm text-muted-foreground">
             {totals.items} item{totals.items === 1 ? "" : "s"} across {totals.rooms} space{totals.rooms === 1 ? "" : "s"}
           </p>
         </div>

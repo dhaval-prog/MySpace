@@ -58,7 +58,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
           <h1 className="font-heading text-4xl text-foreground md:text-5xl">Goals &amp; Expenses</h1>
           <CreateGoalDialog householdId={householdId} iconOnly />
         </div>
-        <p className="mt-2.5 text-sm text-muted-foreground">Track progress toward what matters most</p>
+        <p className="mt-4 text-sm text-muted-foreground">Track progress toward what matters most</p>
       </div>
 
       <HouseholdCardRow
