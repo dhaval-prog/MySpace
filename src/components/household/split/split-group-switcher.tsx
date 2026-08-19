@@ -28,13 +28,16 @@ function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
+const GROUPS_PER_SLIDE = 3;
+
 /**
- * Every split group the caller belongs to, as swipeable full group cards
- * (icon, creator, name, Invite, member avatars, Total Spent, delete) —
- * replaces the earlier segmented-pill toggle. Swiping calls router.push to
- * switch ?group=, the same way clicking a pill used to, so the
- * Expenses/Balances/Chat content below (server-rendered per active group)
- * re-fetches for whichever group the swipe lands on.
+ * Every split group the caller belongs to, as compact group cards (icon,
+ * creator, name, Invite, member avatars, Total Spent, delete) laid out
+ * 3-up per swipeable row — replaces the earlier segmented-pill toggle and
+ * the one-full-card-per-swipe layout. Clicking any card (or swiping to a
+ * row that doesn't contain the current group) calls router.push to switch
+ * ?group=, so the Expenses/Balances/Chat content below (server-rendered
+ * per active group) re-fetches for whichever group is now current.
  */
 export function SplitGroupSwitcher({
   householdId,
@@ -55,62 +58,83 @@ export function SplitGroupSwitcher({
   const [deletePending, startDeleteTransition] = useTransition();
   const onlineUserIds = useHouseholdPresence(householdId, currentUserId);
 
-  const activeIndex = Math.max(
+  const activeGroupIndex = Math.max(
     0,
     groups.findIndex((g) => g.id === currentGroupId)
   );
+  const activeSlideIndex = Math.floor(activeGroupIndex / GROUPS_PER_SLIDE);
+
+  const rows: SplitGroupSummary[][] = [];
+  for (let i = 0; i < groups.length; i += GROUPS_PER_SLIDE) rows.push(groups.slice(i, i + GROUPS_PER_SLIDE));
 
   return (
     <>
       <SwipeCarousel
-        activeIndex={activeIndex}
+        activeIndex={activeSlideIndex}
         onActiveIndexChange={(i) => {
-          const g = groups[i];
+          const g = rows[i]?.[0];
           if (g) router.push(`/split?id=${householdId}&group=${g.id}`);
         }}
-        slides={groups.map((g) => {
-          const canInvite = myRole === "owner" || myRole === "co_owner" || g.createdBy === currentUserId;
-          const canDelete = groups.length > 1 && (myRole === "owner" || g.createdBy === currentUserId);
-          return (
-            <div key={g.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-5">
-              <div className="flex items-center gap-3.5">
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{g.icon}</span>
-                <div>
-                  <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                    {g.createdByName}
-                    <Crown className="size-3.5 text-amber-500" />
-                  </span>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                    <p className="font-semibold">{g.name}</p>
-                    <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={g.id} lockToSplitOnly />
+        slides={rows.map((row, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {row.map((g) => {
+              const canInvite = myRole === "owner" || myRole === "co_owner" || g.createdBy === currentUserId;
+              const canDelete = groups.length > 1 && (myRole === "owner" || g.createdBy === currentUserId);
+              const isCurrent = g.id === currentGroupId;
+              return (
+                <div
+                  key={g.id}
+                  onClick={() => !isCurrent && router.push(`/split?id=${householdId}&group=${g.id}`)}
+                  className={cn(
+                    "flex flex-col gap-3 rounded-2xl border bg-card p-4 transition",
+                    isCurrent ? "border-primary ring-1 ring-primary" : "cursor-pointer hover:border-primary/40"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-lg">{g.icon}</span>
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(g);
+                        }}
+                        title="Delete group"
+                        className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
                   </div>
-                  <AvatarGroup className="mt-1.5">
-                    {g.memberPreview.map((m, i) => (
-                      <Avatar key={m.userId} size="sm">
-                        <AvatarFallback className={memberAccentClass(i)}>{initials(m.name)}</AvatarFallback>
-                        {onlineUserIds.has(m.userId) && <AvatarBadge className="bg-emerald-500" title="Active now" />}
-                      </Avatar>
-                    ))}
-                  </AvatarGroup>
+                  <div>
+                    <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                      {g.createdByName}
+                      <Crown className="size-3.5 text-amber-500" />
+                    </span>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{g.name}</p>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <InviteMemberDialog householdId={householdId} canInvite={canInvite} groupId={g.id} lockToSplitOnly />
+                      </div>
+                    </div>
+                    <AvatarGroup className="mt-1.5">
+                      {g.memberPreview.map((m, i) => (
+                        <Avatar key={m.userId} size="sm">
+                          <AvatarFallback className={memberAccentClass(i)}>{initials(m.name)}</AvatarFallback>
+                          {onlineUserIds.has(m.userId) && <AvatarBadge className="bg-emerald-500" title="Active now" />}
+                        </Avatar>
+                      ))}
+                    </AvatarGroup>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">Total Spent</p>
+                    <p className="mt-0.5 text-2xl font-semibold">{inr(g.totalSpent)}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="text-right">
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(g)}
-                    title="Delete group"
-                    className="mb-1 inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                )}
-                <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">Total Spent</p>
-                <p className="mt-0.5 text-2xl font-semibold">{inr(g.totalSpent)}</p>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       />
 
       {deleteTarget && (
