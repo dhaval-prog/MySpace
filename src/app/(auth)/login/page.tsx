@@ -15,6 +15,12 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? "/home";
   const [state, formAction, pending] = useActionState<AuthState, FormData>(signIn, {});
+  // "Continue as a guest" only makes sense for someone who actually followed
+  // a shared Let's Split invite link here (middleware bounces /join?token=...
+  // through /login?redirectTo=... when unauthenticated) — hidden otherwise,
+  // so it isn't just sitting there as a generic "skip signing up" shortcut.
+  const hasInviteToken = redirectTo.startsWith("/join");
+  const guestExpired = searchParams.get("guestExpired") === "1";
 
   return (
     <Card>
@@ -58,7 +64,9 @@ function LoginForm() {
           </Link>
         </p>
 
-        <GuestSignIn redirectTo={redirectTo} initiallyExpired={searchParams.get("guestExpired") === "1"} />
+        {(hasInviteToken || guestExpired) && (
+          <GuestSignIn redirectTo={redirectTo} initiallyExpired={guestExpired} showForm={hasInviteToken} />
+        )}
       </CardContent>
     </Card>
   );
