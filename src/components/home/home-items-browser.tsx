@@ -50,8 +50,8 @@ export function HomeItemsBrowser({
             the other two segments right); picking either of the other two
             collapses it back to a compact pill automatically, no separate
             close button needed. */}
-        <div className="mx-auto flex w-fit flex-nowrap items-center gap-1 rounded-full border bg-card p-1">
-          <div className={cn("flex min-w-0 items-center", mode === "search" ? "w-36 sm:w-44" : "shrink-0")}>
+        <div className="mx-auto grid w-full max-w-sm grid-cols-3 gap-1 rounded-full border bg-card p-1">
+          <div className="min-w-0">
             {mode === "search" ? (
               <div className="relative w-full">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -67,7 +67,7 @@ export function HomeItemsBrowser({
               <button
                 type="button"
                 onClick={() => setMode("search")}
-                className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted"
+                className="flex h-[30px] w-full items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted"
               >
                 <Search className="size-3.5" />
                 Search Bar
@@ -79,7 +79,7 @@ export function HomeItemsBrowser({
             type="button"
             onClick={() => setMode("add")}
             className={cn(
-              "flex h-[30px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+              "flex h-[30px] w-full items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-semibold transition-colors",
               mode === "add" ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
             )}
           >
@@ -92,7 +92,7 @@ export function HomeItemsBrowser({
               setRoomId("all");
             }}
             className={cn(
-              "flex h-[30px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+              "flex h-[30px] w-full items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-semibold transition-colors",
               mode === "all" ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
             )}
           >
@@ -113,7 +113,7 @@ export function HomeItemsBrowser({
           <div
             dir="ltr"
             className={cn(
-              "flex flex-nowrap items-center justify-center gap-2 overflow-x-auto pb-1 transition-opacity duration-500 ease-out motion-reduce:transition-none",
+              "flex flex-nowrap items-center justify-start gap-2 overflow-x-auto pb-1 transition-opacity duration-500 ease-out motion-reduce:transition-none",
               mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
             )}
           >
