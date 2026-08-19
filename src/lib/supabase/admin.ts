@@ -20,3 +20,12 @@ export function createAdminClient() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
+
+/** Same as createAdminClient(), but returns null instead of throwing when SUPABASE_SERVICE_ROLE_KEY isn't configured — for callers where the service-role-backed behavior is an enhancement (guest continuity/expiry, account deletion) that should degrade gracefully rather than block the whole request. */
+export function createAdminClientSafe() {
+  try {
+    return createAdminClient();
+  } catch {
+    return null;
+  }
+}

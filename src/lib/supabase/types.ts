@@ -389,6 +389,11 @@ export type HouseholdGoalChatMessage = {
   created_at: string;
 };
 
+export type GuestPhoneRegistry = {
+  phone: string;
+  first_seen_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -396,6 +401,12 @@ export type Database = {
         Row: Profile;
         Insert: Partial<Profile> & { id: string };
         Update: Partial<Profile>;
+        Relationships: [];
+      };
+      guest_phone_registry: {
+        Row: GuestPhoneRegistry;
+        Insert: Partial<GuestPhoneRegistry> & { phone: string };
+        Update: Partial<GuestPhoneRegistry>;
         Relationships: [];
       };
       homes: {

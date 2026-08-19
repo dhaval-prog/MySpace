@@ -58,7 +58,7 @@ function LoginForm() {
           </Link>
         </p>
 
-        <GuestSignIn redirectTo={redirectTo} />
+        <GuestSignIn redirectTo={redirectTo} initiallyExpired={searchParams.get("guestExpired") === "1"} />
       </CardContent>
     </Card>
   );

@@ -1,10 +1,17 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClientSafe } from "@/lib/supabase/admin";
 import { Sidebar } from "@/components/nav/sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Header } from "@/components/nav/header";
 import { Toaster } from "@/components/ui/sonner";
 import { listMyHouseholds, listHouseholdMembersLite } from "@/lib/actions/household";
+
+const GUEST_ACCESS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isPastGuestAccessWindow(firstSeenAt: string): boolean {
+  return Date.now() - new Date(firstSeenAt).getTime() > GUEST_ACCESS_MS;
+}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -28,15 +35,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // authenticated page renders through this layout, so trimming a
   // sequential chain to a single round trip here matters on every navigation.
   const [{ data: profile }, memberships] = await Promise.all([
-    supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("name, phone").eq("id", user.id).maybeSingle(),
     listMyHouseholds(),
   ]);
+
+  const isGuest = Boolean(user.is_anonymous);
+
+  // Covers the guest who just never logs out — signInAsGuest already refuses
+  // a phone whose 7-day window has passed at the *login* step, but without
+  // this, staying signed in past that point would just work forever.
+  if (isGuest && profile?.phone) {
+    const admin = createAdminClientSafe();
+    if (admin) {
+      const { data: registry } = await admin
+        .from("guest_phone_registry")
+        .select("first_seen_at")
+        .eq("phone", profile.phone)
+        .maybeSingle();
+      if (registry && isPastGuestAccessWindow(registry.first_seen_at)) {
+        await supabase.auth.signOut();
+        redirect("/login?guestExpired=1");
+      }
+    }
+  }
 
   const primaryHousehold = memberships[0];
   const sidebarMembers = primaryHousehold ? await listHouseholdMembersLite(primaryHousehold.household.id) : [];
 
   const name = profile?.name || user.email?.split("@")[0] || "there";
-  const isGuest = Boolean(user.is_anonymous);
 
   return (
     <div className="flex min-h-svh bg-background text-foreground">

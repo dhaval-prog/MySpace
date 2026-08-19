@@ -2,11 +2,20 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClientSafe } from "@/lib/supabase/admin";
+import type { HouseholdRole } from "@/lib/supabase/types";
 
 export interface AuthState {
   error?: string;
   success?: string;
+  /** Set when signInAsGuest rejects a phone whose 7-day guest window has passed — GuestSignIn shows a "sign up to continue" dialog instead of the plain inline error for this case. */
+  guestExpired?: boolean;
+}
+
+const GUEST_ACCESS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function normalizeGuestPhone(phone: string): string {
+  return phone.replace(/\D/g, "");
 }
 
 /** Pulls the invite token out of a `redirectTo` like "/join?token=...", the
@@ -128,29 +137,102 @@ export async function updatePassword(
 
 /**
  * A guest reaching the app off a shared Let's Split invite link — no email
- * or password, just a name and phone number (no OTP verification for now —
- * see completeGuestSignIn's history if that comes back). Backed by
- * Supabase's real anonymous auth (a genuine auth.users row with
+ * or password, just a name and phone number (no OTP verification for now).
+ * Backed by Supabase's real anonymous auth (a genuine auth.users row with
  * is_anonymous=true), so every existing RLS policy and user_id foreign key
  * works unchanged; the app's own middleware/nav are what confine this user
  * to Split (see updateSession and Sidebar/BottomNav's isGuest handling) —
  * this action doesn't grant any elevated access itself.
+ *
+ * Anonymous auth gives a brand-new auth.users row every time someone signs
+ * in this way — there's no Supabase-native way to resume a specific
+ * anonymous identity once its session is gone (e.g. after signing out). So
+ * "the same guest" is tracked by phone number instead, in
+ * guest_phone_registry (independent of any one anonymous user row): a
+ * returning phone's prior household/split-group membership is carried
+ * forward onto the new anonymous account, and the old one is deleted (its
+ * now-redundant rows go with it via cascade) — same phone, continuous
+ * access, even though the underlying user id changes each time. That
+ * registry row's first_seen_at is also the 7-day guest-access clock; past
+ * that, sign-in is refused with guestExpired so the UI can prompt signup.
+ *
+ * All of this — continuity and the 7-day limit alike — needs
+ * SUPABASE_SERVICE_ROLE_KEY; without it, guest sign-in still works, just as
+ * a plain one-off anonymous account with no cross-session memory or expiry.
  */
 export async function signInAsGuest(_prevState: AuthState, formData: FormData): Promise<AuthState> {
   const name = String(formData.get("name") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
+  const phoneRaw = String(formData.get("phone") ?? "").trim();
   const redirectTo = String(formData.get("redirectTo") ?? "");
 
   if (!name) return { error: "Please enter your name." };
-  if (!phone) return { error: "Please enter your phone number." };
+  if (!phoneRaw) return { error: "Please enter your phone number." };
+
+  const phone = normalizeGuestPhone(phoneRaw);
+  if (phone.length < 10) return { error: "Enter a valid phone number." };
+
+  const admin = createAdminClientSafe();
+
+  let carriedHouseholds: { household_id: string; role: HouseholdRole }[] = [];
+  let carriedGroups: { group_id: string }[] = [];
+  let oldUserIds: string[] = [];
+
+  if (admin) {
+    const { data: registry } = await admin.from("guest_phone_registry").select("first_seen_at").eq("phone", phone).maybeSingle();
+    if (registry) {
+      const ageMs = Date.now() - new Date(registry.first_seen_at).getTime();
+      if (ageMs > GUEST_ACCESS_MS) {
+        return { error: "Your 7-day guest access has ended.", guestExpired: true };
+      }
+    } else {
+      await admin.from("guest_phone_registry").insert({ phone });
+    }
+
+    const { data: oldProfiles } = await admin.from("profiles").select("id").eq("phone", phone);
+    oldUserIds = (oldProfiles ?? []).map((p) => p.id);
+    if (oldUserIds.length > 0) {
+      const [{ data: hm }, { data: sm }] = await Promise.all([
+        admin.from("household_members").select("household_id, role").in("user_id", oldUserIds),
+        admin.from("split_members").select("group_id").in("user_id", oldUserIds),
+      ]);
+      carriedHouseholds = hm ?? [];
+      carriedGroups = sm ?? [];
+    }
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInAnonymously({ options: { data: { name } } });
   if (error || !data.user) {
     return { error: error?.message ?? "Couldn't continue as a guest. Please try again." };
   }
+  const newUserId = data.user.id;
 
-  await supabase.from("profiles").update({ phone }).eq("id", data.user.id);
+  await supabase.from("profiles").update({ name, phone }).eq("id", newUserId);
+
+  if (admin) {
+    if (carriedHouseholds.length > 0) {
+      await admin
+        .from("household_members")
+        .upsert(
+          carriedHouseholds.map((h) => ({ household_id: h.household_id, user_id: newUserId, role: h.role })),
+          { onConflict: "household_id,user_id", ignoreDuplicates: true }
+        );
+    }
+    if (carriedGroups.length > 0) {
+      await admin
+        .from("split_members")
+        .upsert(
+          carriedGroups.map((g) => ({ group_id: g.group_id, user_id: newUserId })),
+          { onConflict: "group_id,user_id", ignoreDuplicates: true }
+        );
+    }
+    // Membership is now duplicated onto newUserId — deleting the old
+    // identities (cascades to their now-redundant rows) keeps exactly one
+    // live account per guest phone at a time.
+    for (const oldId of oldUserIds) {
+      await admin.auth.admin.deleteUser(oldId).catch(() => {});
+    }
+  }
 
   const token = extractJoinToken(redirectTo);
   if (token) {
@@ -161,6 +243,10 @@ export async function signInAsGuest(_prevState: AuthState, formData: FormData): 
     // same action, so the RPC ran with no auth.uid() and silently failed.
     const { data: joinData, error: joinError } = await supabase.rpc("redeem_household_invite", { p_token: token.trim() });
     if (!joinError && joinData?.ok) redirect(`/split?id=${joinData.household_id}`);
+  }
+
+  if (carriedHouseholds.length > 0) {
+    redirect(`/split?id=${carriedHouseholds[0].household_id}`);
   }
 
   redirect("/split");
@@ -181,10 +267,8 @@ export async function deleteMyAccount(): Promise<{ ok: true } | { error: string 
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch {
+  const admin = createAdminClientSafe();
+  if (!admin) {
     return {
       error: "Account deletion isn't set up on this deployment yet — ask the site owner to add a SUPABASE_SERVICE_ROLE_KEY environment variable.",
     };

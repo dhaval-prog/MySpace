@@ -20,6 +20,18 @@ create table if not exists public.profiles (
 );
 alter table public.profiles add column if not exists phone text;
 
+-- Tracks a guest phone number's first-ever sign-in, independent of any
+-- specific anonymous auth.users row (those get recreated on every guest
+-- login — see signInAsGuest). This is what "7 days of guest access" and
+-- "log back in as the same guest" are actually measured/keyed against.
+-- Service-role only (no RLS policies at all — deny-all), since it's only
+-- ever touched from the trusted server action, never the browser.
+create table if not exists public.guest_phone_registry (
+  phone text primary key,
+  first_seen_at timestamptz not null default now()
+);
+alter table public.guest_phone_registry enable row level security;
+
 -- ─────────────────────────────────────────────────────────────
 -- homes
 -- ─────────────────────────────────────────────────────────────
