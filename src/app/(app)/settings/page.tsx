@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { DeleteHomeDialog } from "@/components/home/delete-home-dialog";
+import { DeleteAccountDialog } from "@/components/settings/delete-account-dialog";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -63,6 +64,16 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card className="border-destructive/30 p-5">
+        <CardHeader className="p-0">
+          <CardTitle className="text-base text-destructive">Delete account</CardTitle>
+          <CardDescription>Permanently erase your My Space account and everything in it.</CardDescription>
+        </CardHeader>
+        <CardContent className="mt-4 p-0">
+          <DeleteAccountDialog />
+        </CardContent>
+      </Card>
     </div>
   );
 }

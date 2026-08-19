@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ShieldCheck, Target, Receipt, PiggyBank, Crown, User, type LucideIcon } from "lucide-react";
+import { Home, ShieldCheck, Target, Receipt, PiggyBank, Crown, User, Lock, type LucideIcon } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/nav/nav-items";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SignInPromptDialog } from "@/components/nav/sign-in-prompt-dialog";
 import type { HouseholdRole } from "@/lib/supabase/types";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -40,8 +42,9 @@ export interface SidebarMember {
   role: HouseholdRole;
 }
 
-export function Sidebar({ members = [] }: { members?: SidebarMember[] }) {
+export function Sidebar({ members = [], isGuest = false }: { members?: SidebarMember[]; isGuest?: boolean }) {
   const pathname = usePathname();
+  const [promptOpen, setPromptOpen] = useState(false);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 shrink-0 flex-col gap-5 border-r border-border bg-card px-4 py-5 shadow-sm md:flex">
@@ -57,6 +60,23 @@ export function Sidebar({ members = [] }: { members?: SidebarMember[] }) {
         {NAV_ITEMS.map((item) => {
           const Icon = ICONS[item.icon];
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const locked = isGuest && item.href !== "/split";
+
+          if (locked) {
+            return (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => setPromptOpen(true)}
+                className="flex items-center gap-2.5 rounded-full px-3.5 py-2 text-[13.5px] font-medium text-foreground/35 transition-colors hover:bg-muted hover:text-foreground/50"
+              >
+                <Icon className="size-4" />
+                {item.label}
+                <Lock className="ml-auto size-3.5" />
+              </button>
+            );
+          }
+
           return (
             <Link
               key={item.href}
@@ -96,6 +116,8 @@ export function Sidebar({ members = [] }: { members?: SidebarMember[] }) {
           </ul>
         </div>
       )}
+
+      <SignInPromptDialog open={promptOpen} onOpenChange={setPromptOpen} />
     </aside>
   );
 }

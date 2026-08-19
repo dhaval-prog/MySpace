@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./types";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth/callback"];
+// A guest (anonymous auth) account only ever gets to Split — everything
+// else redirects here even on a direct/deep link, on top of the nav
+// already hiding those destinations behind a locked, sign-in-prompting UI.
+const GUEST_ALLOWED_PATHS = ["/split", "/join"];
 
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -55,9 +59,18 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  const isGuest = Boolean(user?.is_anonymous);
+
   if (user && (path === "/login" || path === "/signup")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/home";
+    url.pathname = isGuest ? "/split" : "/home";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (isGuest && !isPublic && path !== "/" && !GUEST_ALLOWED_PATHS.some((p) => path === p || path.startsWith(p + "/"))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/split";
     url.search = "";
     return NextResponse.redirect(url);
   }

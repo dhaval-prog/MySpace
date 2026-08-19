@@ -14,9 +14,11 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   name text not null default '',
   email text not null default '',
+  phone text,
   avatar_url text,
   created_at timestamptz not null default now()
 );
+alter table public.profiles add column if not exists phone text;
 
 -- ─────────────────────────────────────────────────────────────
 -- homes
@@ -196,11 +198,13 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
+  -- new.email is null for anonymous (guest) sign-ins — coalesce both so the
+  -- insert doesn't violate profiles.email's not-null constraint.
   insert into public.profiles (id, name, email)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)),
-    new.email
+    coalesce(new.raw_user_meta_data ->> 'name', split_part(coalesce(new.email, ''), '@', 1)),
+    coalesce(new.email, '')
   )
   on conflict (id) do nothing;
   return new;

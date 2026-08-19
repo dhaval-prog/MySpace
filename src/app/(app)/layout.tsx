@@ -36,15 +36,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const sidebarMembers = primaryHousehold ? await listHouseholdMembersLite(primaryHousehold.household.id) : [];
 
   const name = profile?.name || user.email?.split("@")[0] || "there";
+  const isGuest = Boolean(user.is_anonymous);
 
   return (
     <div className="flex min-h-svh bg-background text-foreground">
-      <Sidebar members={sidebarMembers} />
+      <Sidebar members={sidebarMembers} isGuest={isGuest} />
       <div className="flex min-w-0 flex-1 flex-col md:pl-64">
-        <Header name={name} email={user.email ?? ""} />
+        <Header name={name} email={user.email ?? ""} isGuest={isGuest} />
         <main className="flex-1 pb-28 md:pb-8">{children}</main>
       </div>
-      <BottomNav />
+      <BottomNav isGuest={isGuest} />
       <Toaster />
     </div>
   );
