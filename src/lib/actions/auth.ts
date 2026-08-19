@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { joinHousehold } from "@/lib/actions/household";
 
 export interface AuthState {
   error?: string;
@@ -154,8 +153,13 @@ export async function signInAsGuest(_prevState: AuthState, formData: FormData): 
 
   const token = extractJoinToken(redirectTo);
   if (token) {
-    const result = await joinHousehold(token);
-    if (!("error" in result)) redirect(`/split?id=${result.householdId}`);
+    // Redeem on this same client instance rather than calling joinHousehold()
+    // (which creates its own fresh server client) — a second client built
+    // from next/headers cookies() isn't reliably seeing the anonymous
+    // session signInAnonymously() just established a moment earlier in this
+    // same action, so the RPC ran with no auth.uid() and silently failed.
+    const { data: joinData, error: joinError } = await supabase.rpc("redeem_household_invite", { p_token: token.trim() });
+    if (!joinError && joinData?.ok) redirect(`/split?id=${joinData.household_id}`);
   }
 
   redirect("/split");
