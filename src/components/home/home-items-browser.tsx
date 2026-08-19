@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ItemGridCard } from "@/components/home/item-grid-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -42,34 +42,42 @@ export function HomeItemsBrowser({
           room pills, and search stay put, cards below them scroll on.
           Desktop keeps its normal flow (md:static). */}
       <div className="sticky top-[61px] z-20 -mx-4 space-y-3 overflow-x-hidden bg-background px-4 pt-1 pb-3 md:static md:mx-0 md:space-y-5 md:px-0 md:pt-0 md:pb-0">
-        {/* The "Search Bar" toggle collapses this independently of the
-            All/Add Items mode fade below — grid-template-rows 0fr/1fr, the
-            same inline-expand trick used elsewhere in the app. */}
-        <div
-          className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
-          style={{ gridTemplateRows: searchOpen ? "1fr" : "0fr" }}
-        >
-          <div className="overflow-hidden">
-            <div
-              className={cn(
-                "relative transition-opacity duration-300 ease-out motion-reduce:transition-none",
-                mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
-              )}
-              aria-hidden={mode !== "all" || !searchOpen}
-            >
-              <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
-                className="h-11 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary"
-                tabIndex={mode === "all" && searchOpen ? 0 : -1}
-              />
-            </div>
+        <div className="flex flex-nowrap items-center gap-3">
+          {/* Search Bar sits first — open by default, it expands to fill the
+              row (flex-1), pushing Add Items/All to the right on the same
+              line; closed, it shrinks back to a compact pill button. */}
+          <div className={cn("flex min-w-0 items-center", searchOpen ? "flex-1" : "shrink-0")}>
+            {searchOpen ? (
+              <div className="relative w-full">
+                <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`Search in ${activeRoomName ?? "My Home"}...`}
+                  className="h-[34px] w-full rounded-full border bg-card pr-9 pl-9 text-sm outline-none focus:border-primary"
+                  tabIndex={mode === "all" ? 0 : -1}
+                />
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  aria-label="Close search"
+                  className="absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full border bg-card px-3.5 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted"
+              >
+                <Search className="size-3.5" />
+                Search Bar
+              </button>
+            )}
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
           {/* A grouped segmented control (not just two more pills in the
               row) so the All/Add Items toggle reads as one intentional
               control at a glance, distinct from the room filter chips. */}
@@ -83,18 +91,6 @@ export function HomeItemsBrowser({
               )}
             >
               Add Items
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchOpen((v) => !v)}
-              aria-pressed={searchOpen}
-              className={cn(
-                "flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
-                searchOpen ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
-              )}
-            >
-              <Search className="size-3.5" />
-              Search Bar
             </button>
             <button
               type="button"
@@ -113,43 +109,38 @@ export function HomeItemsBrowser({
               </span>
             </button>
           </div>
+        </div>
 
-          {/* A max-width transition (not grid-template-columns) so pills
-              never get squeezed into a narrower row and re-wrap onto
-              multiple lines mid-animation — flex-nowrap keeps them on one
-              line always, and dir="rtl" on the clipping box (with dir="ltr"
-              restored on the actual row) makes the reveal uncover from the
-              right edge inward, so it reads as opening from the right
-              rather than growing from the left. */}
+        {/* Room filter chips — their own line below the search/mode row now
+            that Search Bar can claim the rest of that row's width. */}
+        <div
+          dir="rtl"
+          className="overflow-hidden transition-[max-width] duration-500 ease-out motion-reduce:transition-none"
+          style={{ maxWidth: mode === "all" ? "800px" : "0px" }}
+        >
           <div
-            dir="rtl"
-            className="overflow-hidden transition-[max-width] duration-500 ease-out motion-reduce:transition-none"
-            style={{ maxWidth: mode === "all" ? "800px" : "0px" }}
+            dir="ltr"
+            className={cn(
+              "flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 transition-opacity duration-500 ease-out motion-reduce:transition-none",
+              mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
+            )}
           >
-            <div
-              dir="ltr"
-              className={cn(
-                "flex flex-nowrap items-center gap-2 transition-opacity duration-500 ease-out motion-reduce:transition-none",
-                mode === "all" ? "opacity-100" : "pointer-events-none opacity-0"
-              )}
-            >
-              {rooms.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setRoomId(r.id)}
-                  className={cn(
-                    "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors",
-                    roomId === r.id ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
-                  )}
-                >
-                  {r.name}
-                  <span className={cn("font-mono text-[11px]", roomId === r.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                    {r.itemCount}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {rooms.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setRoomId(r.id)}
+                className={cn(
+                  "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition-colors",
+                  roomId === r.id ? "bg-primary text-primary-foreground" : "border bg-card text-foreground"
+                )}
+              >
+                {r.name}
+                <span className={cn("font-mono text-[11px]", roomId === r.id ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                  {r.itemCount}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
