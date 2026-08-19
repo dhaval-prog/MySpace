@@ -1,13 +1,6 @@
 import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
-import {
-  getSplitSummary,
-  getSplitGroupMembers,
-  getSimplifiedBalances,
-  getSplitActivity,
-  listSplitGroups,
-  getMySplitGroupId,
-} from "@/lib/actions/split";
+import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, listSplitGroups } from "@/lib/actions/split";
 import { EmptyState } from "@/components/shared/empty-state";
 import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
@@ -15,7 +8,6 @@ import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { AddExpenseDialog } from "@/components/household/split/add-expense-dialog";
 import { SplitGroupSwitcher, CreateSplitGroupButton } from "@/components/household/split/split-group-switcher";
 import { SplitGroupWorkspace } from "@/components/household/split/split-group-workspace";
-import { SplitOnlyWorkspace } from "@/components/household/split/split-only-workspace";
 import { HeaderActionsPortal } from "@/components/nav/header-actions-portal";
 
 export default async function SplitPage({ searchParams }: { searchParams: Promise<{ id?: string; group?: string }> }) {
@@ -45,26 +37,14 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   if (!context) redirect(`/split?id=${memberships[0].household.id}`);
 
   const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
-
-  if (context.myRole === "split_only") {
-    const groupId = await getMySplitGroupId(householdId);
-    const [splitSummary, splitMembers, activity] = await Promise.all([
-      groupId ? getSplitSummary(householdId, groupId) : Promise.resolve(null),
-      groupId ? getSplitGroupMembers(groupId) : Promise.resolve([]),
-      getSplitActivity(householdId, groupId ?? undefined),
-    ]);
-    return (
-      <SplitOnlyWorkspace
-        householdId={householdId}
-        householdName={context.household.name}
-        currentUserId={myUserId}
-        splitSummary={splitSummary}
-        members={splitMembers}
-        activity={activity}
-        households={memberships}
-      />
-    );
-  }
+  // A split_only member (including a guest) sees this exact same workspace —
+  // listSplitGroups/getSplitGroupMembers/getSplitSummary are already scoped
+  // by RLS to only the group(s) they're actually in (split_groups_select_member,
+  // split_members_select_group_member), so there's nothing extra to hide by
+  // routing them through a different page. Only creating a new group is
+  // actually off-limits for them (can_contribute_to_household() excludes
+  // split_only), so that's the one thing gated below.
+  const canCreateGroup = context.myRole !== "split_only";
 
   const groups = await listSplitGroups(householdId);
   const groupId = group && groups.some((g) => g.id === group) ? group : (groups.find((g) => g.isDefault)?.id ?? groups[0]?.id);
@@ -78,7 +58,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
       <HeaderActionsPortal>
-        {groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
+        {canCreateGroup && groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
       </HeaderActionsPortal>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -86,7 +66,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared Costs</p>
           <div className="flex items-end gap-2.5">
             <h1 className="font-heading text-4xl text-foreground md:text-5xl">Let&apos;s Split</h1>
-            {groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
+            {canCreateGroup && groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Fair and simple expense splitting</p>
         </div>

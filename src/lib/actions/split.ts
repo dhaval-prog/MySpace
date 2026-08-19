@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { displayName } from "@/lib/utils";
 import { getHouseholdContext } from "@/lib/actions/household";
-import { describeActivity } from "@/lib/household-activity-messages";
 import { computeSplit, simplifyDebts, type SplitParticipantInput, type SimplifiedTransfer } from "@/lib/split/split-math";
 import type { SplitExpense, SplitExpenseParticipant, SplitSettlement, SplitShareType, SplitSettlementMethod } from "@/lib/supabase/types";
 
@@ -108,36 +107,6 @@ export async function getDefaultGroupId(householdId: string): Promise<string | n
   const supabase = await createClient();
   const { data } = await supabase.from("split_groups").select("id").eq("household_id", householdId).eq("is_default", true).maybeSingle();
   return data?.id ?? null;
-}
-
-/**
- * The caller's own split group within this household — NOT necessarily the
- * default one. A split_only invite can target any specific group (see
- * generate_invite's groupId param / redeem_household_invite's group_id
- * fallback), so a split_only member landing on /split needs the group they
- * were actually added to, not always the household's default. Falls back to
- * null (never the default group) if they aren't in any group here, so the
- * caller can show "not added yet" instead of someone else's group data.
- */
-export async function getMySplitGroupId(householdId: string): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: groups } = await supabase.from("split_groups").select("id").eq("household_id", householdId);
-  const groupIds = (groups ?? []).map((g) => g.id);
-  if (groupIds.length === 0) return null;
-
-  const { data: membership } = await supabase
-    .from("split_members")
-    .select("group_id")
-    .eq("user_id", user.id)
-    .in("group_id", groupIds)
-    .limit(1)
-    .maybeSingle();
-  return membership?.group_id ?? null;
 }
 
 export interface SplitGroupSummary {
@@ -304,41 +273,6 @@ export async function deleteSplitGroup(groupId: string): Promise<{ ok: true } | 
 
   revalidatePath("/split");
   return { ok: true };
-}
-
-export interface SplitActivityEntry {
-  id: string;
-  actorName: string;
-  message: string;
-  createdAt: string;
-}
-
-/**
- * The expense/settlement-only slice of household_activity — the one feed a
- * split_only member (SPLIT_ACCESS but not HOME_ACCESS) can see, via the
- * household_activity_select_split_activity RLS policy. Filters client-side
- * too, so a full-access caller using the split workspace doesn't see
- * goal/contribution noise mixed in here either — this feed is scoped by
- * kind for everyone, not just by what RLS happens to allow a given role.
- */
-export async function getSplitActivity(householdId: string, groupId?: string): Promise<SplitActivityEntry[]> {
-  const supabase = await createClient();
-  const resolvedGroupId = groupId ?? (await getDefaultGroupId(householdId));
-  if (!resolvedGroupId) return [];
-
-  const [splitMembers, { data: activityRows }] = await Promise.all([
-    getSplitGroupMembers(resolvedGroupId),
-    supabase.from("household_activity").select("*").eq("household_id", householdId).order("created_at", { ascending: false }).limit(20),
-  ]);
-
-  const nameByActor = new Map(splitMembers.map((m) => [m.userId, m.name]));
-  const splitKinds = new Set(["expense_added", "expense_deleted", "settlement_recorded"]);
-  return (activityRows ?? [])
-    .filter((a) => splitKinds.has(a.kind))
-    .map((a) => {
-      const actorName = nameByActor.get(a.actor_user_id) ?? "Someone";
-      return { id: a.id, actorName, message: describeActivity(a.kind, actorName, a.payload), createdAt: a.created_at };
-    });
 }
 
 // ─────────────────────────────────────────────────────────────
