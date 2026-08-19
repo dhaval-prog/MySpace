@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { X, Clock } from "lucide-react";
+import { X, Clock, ChevronDown } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -136,7 +136,7 @@ export function GoalCard({
           e.preventDefault();
           setOpen((v) => !v);
         }}
-        className="w-full cursor-pointer rounded-2xl border bg-card p-5 text-left transition-all duration-200 ease-out hover:z-10 hover:scale-[1.02] hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100"
+        className="relative w-full cursor-pointer rounded-2xl border bg-card p-5 text-left transition-all duration-200 ease-out hover:z-10 hover:scale-[1.02] hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:scale-100"
       >
         <div className="flex items-start gap-3.5">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-xl">{goal.icon}</span>
@@ -286,6 +286,18 @@ export function GoalCard({
             </span>
           )}
         </div>
+
+        {/* Bounces to hint the card expands into the panel below; flips to
+            point up (and stops bouncing) once it's actually open. */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute -bottom-3 left-1/2 z-20 flex size-7 -translate-x-1/2 items-center justify-center rounded-full border bg-card text-primary shadow-sm transition-transform duration-300",
+            open ? "rotate-180" : "animate-bounce motion-reduce:animate-none"
+          )}
+        >
+          <ChevronDown className="size-4" />
+        </span>
       </div>
 
       {canDelete && (
