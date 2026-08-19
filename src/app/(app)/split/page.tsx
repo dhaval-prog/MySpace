@@ -46,6 +46,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   // split_only), so that's the one thing gated below.
   const canCreateGroup = context.myRole !== "split_only";
   const isOwner = context.myRole === "owner";
+  const householdMemberOptions = context.members.map((m) => ({ userId: m.userId, name: m.name, avatarUrl: m.avatarUrl }));
 
   const groups = await listSplitGroups(householdId);
   const groupId = group && groups.some((g) => g.id === group) ? group : (groups.find((g) => g.isDefault)?.id ?? groups[0]?.id);
@@ -64,7 +65,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
       <HeaderActionsPortal>
-        {canCreateGroup && groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
+        {canCreateGroup && groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} householdMembers={householdMemberOptions} iconOnly />}
       </HeaderActionsPortal>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -72,7 +73,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared Costs</p>
           <div className="flex items-end gap-2.5">
             <h1 className="font-heading text-4xl text-foreground md:text-5xl">Let&apos;s Split</h1>
-            {canCreateGroup && groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} iconOnly />}
+            {canCreateGroup && groups.length > 0 && <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} householdMembers={householdMemberOptions} iconOnly />}
           </div>
           <p className="mt-4 text-sm text-muted-foreground">Fair and simple expense splitting</p>
         </div>

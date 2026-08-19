@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
 import { SwipeCarousel } from "@/components/shared/swipe-carousel";
 import { InviteMemberDialog } from "@/components/household/invite-member-dialog";
 import { useHouseholdPresence } from "@/lib/hooks/use-presence";
-import { createSplitGroup, createExpense, deleteSplitGroup, type SplitGroupSummary } from "@/lib/actions/split";
+import { createSplitGroup, createExpense, addSplitGroupMember, deleteSplitGroup, type SplitGroupSummary } from "@/lib/actions/split";
 import { generateInvite } from "@/lib/actions/household";
 import { sendInviteSms } from "@/lib/actions/sms";
 import type { HouseholdRole, SplitShareType } from "@/lib/supabase/types";
@@ -185,14 +186,22 @@ export function SplitGroupSwitcher({
   );
 }
 
+export interface HouseholdMemberOption {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
 /** Standalone "New Group" trigger — lives beside Join with a Code in the page header rather than next to the group carousel, so it's self-contained (own open state) instead of coordinating with SplitGroupSwitcher. */
 export function CreateSplitGroupButton({
   householdId,
   currentUserId,
+  householdMembers = [],
   iconOnly = false,
 }: {
   householdId: string;
   currentUserId: string;
+  householdMembers?: HouseholdMemberOption[];
   iconOnly?: boolean;
 }) {
   const router = useRouter();
@@ -213,6 +222,7 @@ export function CreateSplitGroupButton({
       <CreateSplitGroupDialog
         householdId={householdId}
         currentUserId={currentUserId}
+        householdMembers={householdMembers}
         open={open}
         onOpenChange={setOpen}
         onDone={(groupId) => {
@@ -229,12 +239,14 @@ type Step = "form" | "invite-share";
 function CreateSplitGroupDialog({
   householdId,
   currentUserId,
+  householdMembers,
   open,
   onOpenChange,
   onDone,
 }: {
   householdId: string;
   currentUserId: string;
+  householdMembers: HouseholdMemberOption[];
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onDone: (groupId: string) => void;
@@ -244,9 +256,16 @@ function CreateSplitGroupDialog({
   const [icon, setIcon] = useState(ICON_OPTIONS[0]);
   const [amount, setAmount] = useState("");
   const [splitMethod, setSplitMethod] = useState<SplitShareType>("equal");
+  const [memberIds, setMemberIds] = useState<string[]>([]);
   const [inviteContact, setInviteContact] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const otherMembers = householdMembers.filter((m) => m.userId !== currentUserId);
+
+  function toggleMember(userId: string) {
+    setMemberIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
+  }
 
   const [newGroupId, setNewGroupId] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -260,6 +279,7 @@ function CreateSplitGroupDialog({
     setIcon(ICON_OPTIONS[0]);
     setAmount("");
     setSplitMethod("equal");
+    setMemberIds([]);
     setInviteContact("");
     setError(null);
     setNewGroupId(null);
@@ -369,8 +389,28 @@ function CreateSplitGroupDialog({
                 </div>
               )}
 
+              {otherMembers.length > 0 && (
+                <div className="space-y-2 border-t pt-4">
+                  <Label>Add members already in your household (optional)</Label>
+                  <div className="space-y-1 rounded-lg border p-1.5">
+                    {otherMembers.map((m) => {
+                      const checked = memberIds.includes(m.userId);
+                      return (
+                        <label key={m.userId} className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-sm hover:bg-muted/50">
+                          <Checkbox checked={checked} onCheckedChange={() => toggleMember(m.userId)} />
+                          <Avatar size="sm">
+                            <AvatarFallback>{initials(m.name)}</AvatarFallback>
+                          </Avatar>
+                          <span className="min-w-0 flex-1 truncate">{m.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2 border-t pt-4">
-                <Label htmlFor="split-group-invite">Invite someone (Split Only access, optional)</Label>
+                <Label htmlFor="split-group-invite">Invite someone new (Split Only access, optional)</Label>
                 <Input
                   id="split-group-invite"
                   value={inviteContact}
@@ -417,6 +457,15 @@ function CreateSplitGroupDialog({
                       );
                       if ("error" in expenseResult) {
                         setError(expenseResult.error);
+                        return;
+                      }
+                    }
+
+                    if (memberIds.length > 0) {
+                      const memberResults = await Promise.all(memberIds.map((userId) => addSplitGroupMember(groupId, userId)));
+                      const failed = memberResults.find((r) => "error" in r);
+                      if (failed && "error" in failed) {
+                        setError(failed.error);
                         return;
                       }
                     }
