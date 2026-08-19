@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Receipt, Check, Clock, Trash2, UserRoundX } from "lucide-react";
+import { Receipt, Check, Clock, Trash2, Pencil, UserRoundX } from "lucide-react";
 import { cn, initials, memberAccentClass } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ export function SplitGroupWorkspace({
 }) {
   const [tab, setTab] = useState<Tab>("expenses");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailMode, setDetailMode] = useState<"view" | "edit">("view");
   const [chatMessages, setChatMessages] = useState<SplitChatMessageWithSender[] | null>(null);
 
   useEffect(() => {
@@ -105,7 +106,19 @@ export function SplitGroupWorkspace({
       </div>
 
       {tab === "expenses" && (
-        <ExpensesTab summary={summary} onSelect={setDetailId} currentUserId={currentUserId} isOwner={isOwner} />
+        <ExpensesTab
+          summary={summary}
+          onSelect={(id) => {
+            setDetailId(id);
+            setDetailMode("view");
+          }}
+          onEdit={(id) => {
+            setDetailId(id);
+            setDetailMode("edit");
+          }}
+          currentUserId={currentUserId}
+          isOwner={isOwner}
+        />
       )}
       {tab === "balances" && (
         <BalancesTab
@@ -135,6 +148,7 @@ export function SplitGroupWorkspace({
           }}
           members={members}
           currentUserId={currentUserId}
+          initialMode={detailMode}
         />
       )}
     </div>
@@ -144,11 +158,13 @@ export function SplitGroupWorkspace({
 function ExpensesTab({
   summary,
   onSelect,
+  onEdit,
   currentUserId,
   isOwner,
 }: {
   summary: SplitSummary;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
   currentUserId: string;
   isOwner: boolean;
 }) {
@@ -178,31 +194,66 @@ function ExpensesTab({
           // still needs to reach that account for anything.
           const dimmed = e.payerIsExpiredGuest && !e.settled;
           return (
-            <li key={e.id} className={cn("flex items-center transition-opacity duration-300", dimmed && "opacity-45")}>
-              <button
-                type="button"
-                onClick={() => onSelect(e.id)}
-                className="flex min-w-0 flex-1 items-center gap-3.5 p-4 text-left transition hover:bg-muted/50"
-              >
+            <li key={e.id} className={cn("group flex items-center transition-opacity duration-300 hover:bg-muted/50", dimmed && "opacity-45")}>
+              <button type="button" onClick={() => onSelect(e.id)} className="flex min-w-0 flex-1 items-center gap-3.5 p-4 text-left transition">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
                   <Receipt className="size-4 text-muted-foreground" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{e.description}</span>
-                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="truncate">
-                      Paid by {e.payerName} · {formatDate(e.expenseDate)}
-                    </span>
-                    {dimmed && (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-                        <UserRoundX className="size-3" />
-                        Guest expired
+
+                  {/* Two mirrored 0fr/1fr grid-rows (this app's usual inline-expand
+                      trick) collapse the "Paid by" line and expand the split
+                      breakdown on hover, each cross-fading its own opacity — so
+                      hovering grows the row to reveal who owes what instead of
+                      needing to open the full expense dialog. */}
+                  <div className="grid grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[0fr] motion-reduce:transition-none">
+                    <div className="overflow-hidden">
+                      <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground opacity-100 transition-opacity duration-200 group-hover:opacity-0">
+                        <span className="truncate">
+                          Paid by {e.payerName} · {formatDate(e.expenseDate)}
+                        </span>
+                        {dimmed && (
+                          <span className="flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                            <UserRoundX className="size-3" />
+                            Guest expired
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[1fr] motion-reduce:transition-none">
+                    <div className="overflow-hidden">
+                      <div className="space-y-1 pt-1.5 opacity-0 transition-opacity delay-100 duration-200 group-hover:opacity-100">
+                        <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">Split</p>
+                        <ul className="space-y-1">
+                          {e.participants.map((p) => (
+                            <li key={p.userId} className="flex items-center justify-between gap-2 text-xs">
+                              <span className="min-w-0 truncate">
+                                {p.name}
+                                {p.isPayer && <span className="text-muted-foreground"> (paid)</span>}
+                              </span>
+                              <span className="shrink-0 font-medium">{inr(p.owedAmount)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </span>
               </button>
               <div className="flex shrink-0 items-center gap-1.5 pr-4">
+                {canDelete && (
+                  <button
+                    type="button"
+                    title={`Edit "${e.description}"`}
+                    onClick={() => onEdit(e.id)}
+                    className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                  >
+                    <Pencil className="size-3.5" />
+                    <span className="sr-only">Edit &ldquo;{e.description}&rdquo;</span>
+                  </button>
+                )}
                 {canDelete && (
                   <button
                     type="button"

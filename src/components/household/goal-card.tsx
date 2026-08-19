@@ -186,16 +186,25 @@ export function GoalCard({
             </div>
 
             <div
-              onClick={(e) => e.stopPropagation()}
-              className="col-start-1 row-start-1 space-y-3 rounded-2xl border bg-background p-4 [backface-visibility:hidden] [transform:rotateY(180deg)]"
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setFlipped(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                e.stopPropagation();
+                setFlipped(false);
+              }}
+              className="col-start-1 row-start-1 cursor-pointer space-y-3 rounded-2xl border bg-background p-4 [backface-visibility:hidden] [transform:rotateY(180deg)]"
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Contribute</p>
-                <button type="button" onClick={() => setFlipped(false)} className="text-xs text-muted-foreground hover:text-foreground">
-                  Back
-                </button>
+                <span className="text-xs text-muted-foreground">Back</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                 <Label htmlFor={`contribute-amount-flip-${goal.id}`}>Amount (₹)</Label>
                 <Input
                   id={`contribute-amount-flip-${goal.id}`}
@@ -209,14 +218,20 @@ export function GoalCard({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setSource("personal_vault")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSource("personal_vault");
+                  }}
                   className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${source === "personal_vault" ? "border-primary bg-primary/10" : ""}`}
                 >
                   My Personal Piggy
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSource("external")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSource("external");
+                  }}
                   className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${source === "external" ? "border-primary bg-primary/10" : ""}`}
                 >
                   External / Manual
@@ -226,7 +241,8 @@ export function GoalCard({
               <Button
                 className="w-full"
                 disabled={pending || !canContribute}
-                onClick={() =>
+                onClick={(e) => {
+                  e.stopPropagation();
                   startTransition(async () => {
                     const result = await contributeToGoal(goal.id, contributeAmount, source);
                     if ("error" in result) {
@@ -239,8 +255,8 @@ export function GoalCard({
                     setDetail(refreshed);
                     router.refresh();
                     setFlipped(false);
-                  })
-                }
+                  });
+                }}
               >
                 Contribute {amount ? inr(contributeAmount) : ""}
               </Button>
@@ -371,58 +387,6 @@ export function GoalCard({
                       ))}
                     </ul>
                   )}
-                </div>
-
-                <div className="space-y-3 rounded-xl border bg-background p-3">
-                  <p className="text-sm font-medium">Contribute</p>
-                  <div className="space-y-2">
-                    <Label htmlFor={`contribute-amount-${goal.id}`}>Amount (₹)</Label>
-                    <Input
-                      id={`contribute-amount-${goal.id}`}
-                      type="number"
-                      min={1}
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="2000"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSource("personal_vault")}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${source === "personal_vault" ? "border-primary bg-primary/10" : ""}`}
-                    >
-                      My Personal Piggy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSource("external")}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${source === "external" ? "border-primary bg-primary/10" : ""}`}
-                    >
-                      External / Manual
-                    </button>
-                  </div>
-                  {error && <p className="text-sm text-destructive">{error}</p>}
-                  <Button
-                    className="w-full"
-                    disabled={pending || !canContribute}
-                    onClick={() =>
-                      startTransition(async () => {
-                        const result = await contributeToGoal(goal.id, contributeAmount, source);
-                        if ("error" in result) {
-                          setError(result.error);
-                          return;
-                        }
-                        setAmount("");
-                        setError(null);
-                        const refreshed = await getGoalDetail(goal.id);
-                        setDetail(refreshed);
-                        router.refresh();
-                      })
-                    }
-                  >
-                    Contribute {amount ? inr(contributeAmount) : ""}
-                  </Button>
                 </div>
               </div>
             ) : (

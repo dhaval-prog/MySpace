@@ -66,6 +66,15 @@ export interface SplitExpenseSummary {
   settled: boolean;
   /** True when the payer's guest access has passed its 7-day window — the UI dims this row (while still unsettled) so other members know that account can no longer be reached to manage it. Always false when the service role key isn't configured. */
   payerIsExpiredGuest: boolean;
+  /** Per-participant split, payer first — lets the expense row's hover reveal show who owes what without a second round trip to getExpenseDetail. */
+  participants: SplitExpenseParticipantPreview[];
+}
+
+export interface SplitExpenseParticipantPreview {
+  userId: string;
+  name: string;
+  owedAmount: number;
+  isPayer: boolean;
 }
 
 export interface SplitSummary {
@@ -443,6 +452,14 @@ export async function getSplitSummary(householdId: string, groupId?: string): Pr
       createdAt: e.created_at,
       settled,
       payerIsExpiredGuest: expiredGuestPayerIds.has(e.paid_by),
+      participants: parts
+        .map((p) => ({
+          userId: p.user_id,
+          name: nameById.get(p.user_id) ?? "Member",
+          owedAmount: p.owed_amount,
+          isPayer: p.user_id === e.paid_by,
+        }))
+        .sort((a, b) => (a.isPayer === b.isPayer ? 0 : a.isPayer ? -1 : 1)),
     };
   });
 

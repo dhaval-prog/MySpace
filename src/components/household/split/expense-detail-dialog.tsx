@@ -21,17 +21,20 @@ export function ExpenseDetailDialog({
   onOpenChange,
   members,
   currentUserId,
+  initialMode = "view",
 }: {
   expenseId: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   members: HouseholdMemberLite[];
   currentUserId: string;
+  /** Lets the expense row's own Edit icon skip straight past the view screen — canEdit still gates whether edit mode actually renders once the detail loads. */
+  initialMode?: "view" | "edit";
 }) {
   const router = useRouter();
   const [detail, setDetail] = useState<SplitExpenseDetail | null>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [mode, setMode] = useState<"view" | "edit">(initialMode);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -39,7 +42,7 @@ export function ExpenseDetailDialog({
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMode("view");
+    setMode(initialMode);
     setConfirmDelete(false);
     setError(null);
     setLoading(true);
@@ -47,6 +50,7 @@ export function ExpenseDetailDialog({
       setDetail(d);
       setLoading(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, expenseId]);
 
   return (
