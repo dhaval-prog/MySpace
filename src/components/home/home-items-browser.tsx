@@ -23,7 +23,7 @@ export function HomeItemsBrowser({
   const [mode, setMode] = useState<Mode>("all");
   const [roomId, setRoomId] = useState<string | "all">("all");
   const [query, setQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(true);
 
   const activeRoomName = roomId === "all" ? null : (rooms.find((r) => r.id === roomId)?.name ?? null);
 
@@ -86,6 +86,18 @@ export function HomeItemsBrowser({
             </button>
             <button
               type="button"
+              onClick={() => setSearchOpen((v) => !v)}
+              aria-pressed={searchOpen}
+              className={cn(
+                "flex h-[30px] shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
+                searchOpen ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+              )}
+            >
+              <Search className="size-3.5" />
+              Search Bar
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setMode("all");
                 setRoomId("all");
@@ -101,19 +113,6 @@ export function HomeItemsBrowser({
               </span>
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setSearchOpen((v) => !v)}
-            aria-pressed={searchOpen}
-            className={cn(
-              "flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-colors",
-              searchOpen ? "bg-primary text-primary-foreground" : "border bg-card text-foreground hover:bg-muted"
-            )}
-          >
-            <Search className="size-3.5" />
-            Search Bar
-          </button>
 
           {/* A max-width transition (not grid-template-columns) so pills
               never get squeezed into a narrower row and re-wrap onto
