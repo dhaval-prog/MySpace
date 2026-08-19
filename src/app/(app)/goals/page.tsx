@@ -49,7 +49,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
       <HeaderActionsPortal>
-        <GoalsOptionsMenu currentId={householdId} canInvite={canInvite} />
+        <CreateGoalDialog householdId={householdId} iconOnly />
       </HeaderActionsPortal>
 
       <div className="hidden md:block">
@@ -64,11 +64,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
       <HouseholdCardRow
         households={memberships}
         currentId={householdId}
-        optionsMenu={
-          <span className="hidden md:inline-flex">
-            <GoalsOptionsMenu currentId={householdId} canInvite={canInvite} />
-          </span>
-        }
+        optionsMenu={<GoalsOptionsMenu currentId={householdId} canInvite={canInvite} />}
       />
 
       <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
