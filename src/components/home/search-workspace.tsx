@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Search as SearchIcon, Navigation, Mic, ChevronLeft, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,39 +10,123 @@ import { ListRow } from "@/components/layout/list-row";
 import { RoundIconButton } from "@/components/layout/page-band";
 import { getIcon } from "@/lib/icon-map";
 import { categoryIcon } from "@/lib/constants";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
-import { searchItems, type SearchResult } from "@/lib/actions/search";
-
-const RECENT_KEY = "myspace.recent-searches";
-
-function loadRecent(): string[] {
-  try {
-    const raw = sessionStorage.getItem(RECENT_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveRecent(query: string) {
-  try {
-    const existing = loadRecent().filter((q) => q.toLowerCase() !== query.toLowerCase());
-    sessionStorage.setItem(RECENT_KEY, JSON.stringify([query, ...existing].slice(0, 5)));
-  } catch {
-    // sessionStorage unavailable — recent list just won't persist.
-  }
-}
+import { useHomeSearch } from "@/lib/hooks/use-home-search";
+import type { SearchResult } from "@/lib/actions/search";
 
 /** A count badge in a light-green pill, e.g. "Results <3>" / "Also matched <2>" — the same accent pair used for pale-green badges everywhere else in the app. */
-function CountPill({ children }: { children: React.ReactNode }) {
+export function CountPill({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">{children}</span>;
+}
+
+/**
+ * The "Recent searches" OR "results" body of a search UI — everything below
+ * the input itself. Shared between the dedicated Search page and the
+ * inline panel embedded on My Home, so both read identically once a query
+ * is active.
+ */
+export function SearchResultsPanel({
+  q,
+  pending,
+  results,
+  recent,
+  totalItems,
+  onPickRecent,
+}: {
+  q: string;
+  pending: boolean;
+  results: SearchResult[];
+  recent: string[];
+  totalItems: number;
+  onPickRecent: (value: string) => void;
+}) {
+  const best = results[0] ?? null;
+  const also = results.slice(1);
+
+  if (!q) {
+    return (
+      <Card className="p-5">
+        <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Recent</p>
+        {recent.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">Say it or type it — search {totalItems} items across your home.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {recent.map((r) => (
+              <button key={r} type="button" onClick={() => onPickRecent(r)} className="flex w-full items-center gap-3 rounded-2xl bg-muted px-4 py-3 text-left text-sm font-medium hover:bg-muted/70">
+                <SearchIcon className="size-4 text-muted-foreground" />
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between px-1">
+        <p className="flex items-center gap-1.5 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
+          Results
+          <CountPill>{pending ? "…" : results.length}</CountPill>
+        </p>
+        <p className="text-xs text-muted-foreground">{totalItems} items searched</p>
+      </div>
+
+      {best ? (
+        <Card className="p-5">
+          <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">Best match</p>
+          <p className="mt-1 font-heading text-xl">{best.name}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{best.roomName}</span>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{best.furnitureName}</span>
+            {best.container && (
+              <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">{best.container}</span>
+            )}
+            {best.expiryLabel && <Badge variant={best.expiryLevel === "expired" ? "destructive" : "outline"}>{best.expiryLabel}</Badge>}
+          </div>
+          <Button className="mt-4 w-full rounded-2xl" render={<Link href={`/items/${best.id}`} />}>
+            <Navigation className="size-4" />
+            Take me there
+          </Button>
+        </Card>
+      ) : !pending ? (
+        <Card className="p-6 text-center">
+          <p className="text-sm text-muted-foreground">No items match &ldquo;{q}&rdquo;.</p>
+        </Card>
+      ) : null}
+
+      {also.length > 0 && (
+        <div>
+          <p className="flex items-center gap-1.5 px-1 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
+            Also matched
+            <CountPill>{also.length}</CountPill>
+          </p>
+          <div className="mt-2 space-y-2">
+            {also.map((item) => {
+              const ItemIcon = getIcon(categoryIcon(item.category));
+              return (
+                <ListRow
+                  key={item.id}
+                  href={`/items/${item.id}`}
+                  icon={<ItemIcon className="size-4.5" />}
+                  title={item.name}
+                  subtitle={`${item.roomName} → ${item.furnitureName}`}
+                  trailing={item.expiryLabel ? <Badge variant={item.expiryLevel === "expired" ? "destructive" : "outline"}>{item.expiryLabel}</Badge> : undefined}
+                  chevron={!item.expiryLabel}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 /**
  * The Search page's workspace — one component, two renderings. `variant="mobile"`
  * embeds the search input directly into the gradient band (back/title/profile
- * row + input, replacing the standalone MobileBand for this page) so the input
+ * row + input pill, replacing the standalone MobileBand for this page) so the input
  * reads as part of the header, per the mockup. `variant="desktop"` (the
  * default) keeps the input in its own white card, as the desktop layout
  * already had it. Each breakpoint gets its own instance (see search/page.tsx),
@@ -59,41 +142,7 @@ export function SearchWorkspace({
   totalItems: number;
   variant?: "mobile" | "desktop";
 }) {
-  const [query, setQuery] = useState("");
-  const [recent, setRecent] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadRecent()));
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [pending, startTransition] = useTransition();
-  const debouncedQuery = useDebouncedValue(query, 250);
-  const requestIdRef = useRef(0);
-  const voice = useSpeechRecognition();
-
-  const q = debouncedQuery.trim();
-
-  useEffect(() => {
-    if (!q) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setResults([]);
-      return;
-    }
-    const requestId = ++requestIdRef.current;
-    startTransition(async () => {
-      const found = await searchItems(homeId, q);
-      // Drop stale responses — a slower earlier request resolving after a
-      // faster later one would otherwise flash outdated results back in.
-      if (requestId === requestIdRef.current) setResults(found);
-    });
-  }, [q, homeId]);
-
-  const best = results[0] ?? null;
-  const also = results.slice(1);
-
-  function commitSearch(value: string) {
-    if (!value.trim()) return;
-    saveRecent(value.trim());
-    setRecent(loadRecent());
-  }
-
-  const canVoiceSearch = useMemo(() => voice.isSupported, [voice.isSupported]);
+  const { query, setQuery, q, results, pending, recent, commitSearch, voice, canVoiceSearch } = useHomeSearch(homeId);
 
   const inputBar = (
     <div className="relative">
@@ -160,81 +209,7 @@ export function SearchWorkspace({
       )}
 
       <div className={cn("space-y-4", variant === "mobile" && "px-4")}>
-        {!q ? (
-          <Card className="p-5">
-            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Recent</p>
-            {recent.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">Say it or type it — search {totalItems} items across your home.</p>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {recent.map((r) => (
-                  <button key={r} type="button" onClick={() => setQuery(r)} className="flex w-full items-center gap-3 rounded-2xl bg-muted px-4 py-3 text-left text-sm font-medium hover:bg-muted/70">
-                    <SearchIcon className="size-4 text-muted-foreground" />
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
-          </Card>
-        ) : (
-          <>
-            <div className="flex items-center justify-between px-1">
-              <p className="flex items-center gap-1.5 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-                Results
-                <CountPill>{pending ? "…" : results.length}</CountPill>
-              </p>
-              <p className="text-xs text-muted-foreground">{totalItems} items searched</p>
-            </div>
-
-            {best ? (
-              <Card className="p-5">
-                <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">Best match</p>
-                <p className="mt-1 font-heading text-xl">{best.name}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{best.roomName}</span>
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{best.furnitureName}</span>
-                  {best.container && (
-                    <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">{best.container}</span>
-                  )}
-                  {best.expiryLabel && <Badge variant={best.expiryLevel === "expired" ? "destructive" : "outline"}>{best.expiryLabel}</Badge>}
-                </div>
-                <Button className="mt-4 w-full rounded-2xl" render={<Link href={`/items/${best.id}`} />}>
-                  <Navigation className="size-4" />
-                  Take me there
-                </Button>
-              </Card>
-            ) : !pending ? (
-              <Card className="p-6 text-center">
-                <p className="text-sm text-muted-foreground">No items match &ldquo;{q}&rdquo;.</p>
-              </Card>
-            ) : null}
-
-            {also.length > 0 && (
-              <div>
-                <p className="flex items-center gap-1.5 px-1 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-                  Also matched
-                  <CountPill>{also.length}</CountPill>
-                </p>
-                <div className="mt-2 space-y-2">
-                  {also.map((item) => {
-                    const ItemIcon = getIcon(categoryIcon(item.category));
-                    return (
-                      <ListRow
-                        key={item.id}
-                        href={`/items/${item.id}`}
-                        icon={<ItemIcon className="size-4.5" />}
-                        title={item.name}
-                        subtitle={`${item.roomName} → ${item.furnitureName}`}
-                        trailing={item.expiryLabel ? <Badge variant={item.expiryLevel === "expired" ? "destructive" : "outline"}>{item.expiryLabel}</Badge> : undefined}
-                        chevron={!item.expiryLabel}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        <SearchResultsPanel q={q} pending={pending} results={results} recent={recent} totalItems={totalItems} onPickRecent={setQuery} />
       </div>
     </div>
   );

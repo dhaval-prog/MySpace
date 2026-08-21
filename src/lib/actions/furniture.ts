@@ -67,6 +67,7 @@ export async function renameFurniture(
   // furniture's own name.
   await supabase.from("storage_locations").update({ name }).eq("furniture_id", furnitureId);
   revalidatePath(`/home/rooms/${roomId}/furniture/${furnitureId}`);
+  revalidatePath(`/home/rooms/${roomId}`);
 }
 
 export async function deleteFurniture(furnitureId: string, roomId: string) {

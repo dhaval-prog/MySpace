@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getHomeItemsView } from "@/lib/home-data";
 import type { HomeItemsView } from "@/lib/home-data";
 import { expiryStatus, isUrgentExpiry, expiryBadgeLabel } from "@/lib/expiry";
-import { getIcon, getCompactIcon } from "@/lib/icon-map";
+import { getIcon } from "@/lib/icon-map";
 import { categoryIcon } from "@/lib/constants";
 import { cn, capitalize, spellSmallNumber } from "@/lib/utils";
 import { listMyHouseholds } from "@/lib/actions/household";
@@ -13,9 +12,9 @@ import { getExpenseStats } from "@/lib/actions/expenses";
 import { getHouseholdSummary } from "@/lib/actions/household-dashboard";
 import { listNotifications } from "@/lib/actions/notifications";
 import { Card } from "@/components/ui/card";
-import { AddRoomDialog } from "@/components/home/add-room-dialog";
 import { HomeActionsMenu } from "@/components/home/home-actions-menu";
 import { NewHomeSetup } from "@/components/home/new-home-setup";
+import { RoomsSearchPanel } from "@/components/home/rooms-search-panel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { NotificationBell } from "@/components/nav/notification-bell";
 import { MobileBand, DesktopBand, MobileHeroOverlap } from "@/components/layout/page-band";
@@ -204,55 +203,14 @@ export default async function HomePage({
           <ExpiringSoonList items={attention} />
         </Card>
 
-        <Link
-          href="/search"
-          className="flex items-center gap-2.5 rounded-2xl bg-white px-4 py-3 text-sm text-muted-foreground shadow-none transition-colors hover:bg-white/80"
-        >
-          <Search className="size-4.5 shrink-0" />
-          Search your home…
-        </Link>
-
-        {rooms.length === 0 ? (
-          <EmptyState
-            icon="DoorOpen"
-            title="No rooms yet"
-            description="Add your first room to start mapping out this home."
-            action={<AddRoomDialog homeId={homeId} />}
-          />
-        ) : (
-          <div>
-            <div className="flex items-center justify-between px-1">
-              <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Rooms {rooms.length}</p>
-              <Link href="/items" className="text-sm font-medium text-primary">
-                See all
-              </Link>
-            </div>
-            <div className="mt-2 space-y-2">
-              {rooms.map((r) => {
-                const RoomIcon = getCompactIcon(r.icon);
-                const isMostUsed = r.id === mostUsedRoomId;
-                return (
-                  <ListRow
-                    key={r.id}
-                    href={`/home/rooms/${r.id}`}
-                    icon={<RoomIcon className="size-4.5" />}
-                    iconClassName={isMostUsed ? "bg-chart-2 text-foreground" : undefined}
-                    title={r.name}
-                    subtitle={`${r.itemCount} items · ${r.placeCount} places`}
-                    trailing={
-                      isMostUsed ? (
-                        <span className="shrink-0 rounded-full bg-positive/10 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] text-positive uppercase">
-                          Most used
-                        </span>
-                      ) : undefined
-                    }
-                    barPct={isMostUsed ? mostUsedPct : undefined}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <RoomsSearchPanel
+          homeId={homeId}
+          totalItems={totals.items}
+          rooms={rooms}
+          mostUsedRoomId={mostUsedRoomId}
+          mostUsedPct={mostUsedPct}
+          variant="mobile"
+        />
 
         {householdSummary && householdSummary.activity.length > 0 && (
           <Card className="bg-secondary p-5 text-secondary-foreground">
@@ -269,55 +227,16 @@ export default async function HomePage({
         )}
       </MobileHeroOverlap>
 
-      <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-[3fr_7fr]">
+      <div className="hidden gap-6 px-8 pb-8 md:mt-6 md:grid md:grid-cols-[3fr_7fr]">
         <div className="space-y-4">
-          <Link
-            href="/search"
-            className="flex items-center gap-2.5 rounded-2xl bg-white px-4 py-3 text-sm text-muted-foreground shadow-none transition-colors hover:bg-muted/60"
-          >
-            <Search className="size-4.5 shrink-0" />
-            Search your home…
-          </Link>
-
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Rooms</p>
-            <Link href="/items" className="text-sm font-medium text-primary">
-              Manage places
-            </Link>
-          </div>
-          {rooms.length === 0 ? (
-            <EmptyState
-              icon="DoorOpen"
-              title="No rooms yet"
-              description="Add your first room to start mapping out this home."
-              action={<AddRoomDialog homeId={homeId} />}
-            />
-          ) : (
-            <div className="space-y-2">
-              {rooms.map((r) => {
-                const RoomIcon = getCompactIcon(r.icon);
-                const isMostUsed = r.id === mostUsedRoomId;
-                return (
-                  <ListRow
-                    key={r.id}
-                    href={`/home/rooms/${r.id}`}
-                    icon={<RoomIcon className="size-4.5" />}
-                    iconClassName={isMostUsed ? "bg-chart-2 text-foreground" : undefined}
-                    title={r.name}
-                    subtitle={`${r.itemCount} items · ${r.placeCount} places`}
-                    trailing={
-                      isMostUsed ? (
-                        <span className="shrink-0 rounded-full bg-positive/10 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] text-positive uppercase">
-                          Most used
-                        </span>
-                      ) : undefined
-                    }
-                    barPct={isMostUsed ? mostUsedPct : undefined}
-                  />
-                );
-              })}
-            </div>
-          )}
+          <RoomsSearchPanel
+            homeId={homeId}
+            totalItems={totals.items}
+            rooms={rooms}
+            mostUsedRoomId={mostUsedRoomId}
+            mostUsedPct={mostUsedPct}
+            variant="desktop"
+          />
 
           {householdSummary && householdSummary.activity.length > 0 && (
             <Card className="bg-secondary p-5 text-secondary-foreground">
