@@ -14,12 +14,24 @@ import type { HouseholdGoalType } from "@/lib/supabase/types";
 const GOAL_ICON_PRESETS = ["🎯", "✈️", "🏠", "📺", "🧊", "🎓", "🚗", "💍"];
 const BUDGET_ICON_PRESETS = ["💳", "🏠", "🛒", "🎉", "🛍️", "💡", "🚗", "📅"];
 
-export function CreateGoalDialog({ householdId, iconOnly = false }: { householdId: string; iconOnly?: boolean }) {
+export function CreateGoalDialog({
+  householdId,
+  iconOnly = false,
+  defaultGoalType = "saving",
+  triggerLabel,
+  trigger,
+}: {
+  householdId: string;
+  iconOnly?: boolean;
+  defaultGoalType?: HouseholdGoalType;
+  triggerLabel?: string;
+  trigger?: React.ReactElement;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [goalType, setGoalType] = useState<HouseholdGoalType>("saving");
+  const [goalType, setGoalType] = useState<HouseholdGoalType>(defaultGoalType);
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState(GOAL_ICON_PRESETS[0]);
+  const [icon, setIcon] = useState(defaultGoalType === "spending" ? BUDGET_ICON_PRESETS[0] : GOAL_ICON_PRESETS[0]);
   const [targetAmount, setTargetAmount] = useState("");
   const [deadline, setDeadline] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +44,9 @@ export function CreateGoalDialog({ householdId, iconOnly = false }: { householdI
   const canSubmit = name.trim().length > 0 && Number.isFinite(amount) && amount > 0;
 
   function resetAll() {
-    setGoalType("saving");
+    setGoalType(defaultGoalType);
     setName("");
-    setIcon(GOAL_ICON_PRESETS[0]);
+    setIcon(defaultGoalType === "spending" ? BUDGET_ICON_PRESETS[0] : GOAL_ICON_PRESETS[0]);
     setTargetAmount("");
     setDeadline("");
     setError(null);
@@ -50,16 +62,17 @@ export function CreateGoalDialog({ householdId, iconOnly = false }: { householdI
     >
       <DialogTrigger
         render={
-          iconOnly ? (
+          trigger ??
+          (iconOnly ? (
             <Button size="icon-sm" aria-label="New Goal">
               <Plus className="size-4" />
             </Button>
           ) : (
             <Button size="sm">
               <Plus className="size-4" />
-              New Goal
+              {triggerLabel ?? "New Goal"}
             </Button>
-          )
+          ))
         }
       />
       <DialogContent>

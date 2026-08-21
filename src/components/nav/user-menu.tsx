@@ -17,19 +17,33 @@ import { SignInPromptDialog } from "@/components/nav/sign-in-prompt-dialog";
 import { signOut } from "@/lib/actions/auth";
 import { initials } from "@/lib/utils";
 
-export function UserMenu({ name, email, isGuest = false }: { name: string; email: string; isGuest?: boolean }) {
+export function UserMenu({
+  name,
+  email,
+  isGuest = false,
+  trigger,
+}: {
+  name: string;
+  email: string;
+  isGuest?: boolean;
+  trigger?: React.ReactElement;
+}) {
   const [promptOpen, setPromptOpen] = useState(false);
 
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className="outline-none">
-          <Avatar className="size-9 border">
-            <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
-              {initials(name || email)}
-            </AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
+        {trigger ? (
+          <DropdownMenuTrigger render={trigger} />
+        ) : (
+          <DropdownMenuTrigger className="outline-none">
+            <Avatar className="size-9 border">
+              <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+                {initials(name || email)}
+              </AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+        )}
         <DropdownMenuContent align="end" className="w-56">
           {/* Menu.GroupLabel (DropdownMenuLabel) requires a Menu.Group ancestor to register its
               label id — used bare, Base UI throws error #31 the instant the menu opens. */}

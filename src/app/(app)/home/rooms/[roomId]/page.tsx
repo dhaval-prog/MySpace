@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Home as HomeIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getCompactIcon } from "@/lib/icon-map";
 import { AddFurnitureDialog } from "@/components/home/add-furniture-dialog";
 import { FurnitureCard } from "@/components/home/furniture-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { MobileBand, DesktopBand, MobileHeroOverlap } from "@/components/layout/page-band";
+import { Card } from "@/components/ui/card";
 import type { RoomType } from "@/lib/constants";
 
 export default async function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
@@ -42,47 +41,57 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     countByFurniture.set(fId, (countByFurniture.get(fId) ?? 0) + 1);
   }
 
-  const RoomIcon = getCompactIcon(room.icon);
+  const placeCount = (furniture ?? []).length;
+  const itemCount = (items ?? []).length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href={`/home?id=${home.id}`} className="flex items-center gap-1 hover:text-foreground">
-          <HomeIcon className="size-3.5" />
-          {home.name}
-        </Link>
-        <ChevronRight className="size-3.5 opacity-50" />
-        <span className="flex items-center gap-1 font-medium text-foreground">
-          <RoomIcon className="size-3.5" />
-          {room.name}
-        </span>
-      </nav>
+    <div>
+      <MobileBand title={room.name} backHref={`/home?id=${home.id}`} stats={[{ label: "Items here", value: itemCount }, { label: "Places", value: placeCount }]} />
+      <DesktopBand
+        breadcrumb={`My Home → ${room.name}`}
+        title={room.name}
+        subtitle={`${itemCount} items across ${placeCount} place${placeCount === 1 ? "" : "s"}`}
+        action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{room.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {(furniture ?? []).length} place{(furniture ?? []).length === 1 ? "" : "s"}
-          </p>
-        </div>
-        <AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />
+      <MobileHeroOverlap className="pb-6">
+        {placeCount === 0 ? (
+          <EmptyState
+            icon={room.icon}
+            isRoomIcon
+            title="No places yet"
+            description="This room is empty. Add your first place — a fridge, a wardrobe, a shelf — to start organizing your belongings."
+            action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
+          />
+        ) : (
+          <Card className="p-5">
+            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Places {placeCount}</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {(furniture ?? []).map((f) => (
+                <FurnitureCard key={f.id} roomId={roomId} furniture={f} itemCount={countByFurniture.get(f.id) ?? 0} />
+              ))}
+            </div>
+          </Card>
+        )}
+      </MobileHeroOverlap>
+
+      <div className="hidden px-8 pb-8 md:block">
+        {placeCount === 0 ? (
+          <EmptyState
+            icon={room.icon}
+            isRoomIcon
+            title="No places yet"
+            description="This room is empty. Add your first place — a fridge, a wardrobe, a shelf — to start organizing your belongings."
+            action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {(furniture ?? []).map((f) => (
+              <FurnitureCard key={f.id} roomId={roomId} furniture={f} itemCount={countByFurniture.get(f.id) ?? 0} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {(furniture ?? []).length === 0 ? (
-        <EmptyState
-          icon={room.icon}
-          isRoomIcon
-          title="No places yet"
-          description="This room is empty. Add your first place — a fridge, a wardrobe, a shelf — to start organizing your belongings."
-          action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
-        />
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {(furniture ?? []).map((f) => (
-            <FurnitureCard key={f.id} roomId={roomId} furniture={f} itemCount={countByFurniture.get(f.id) ?? 0} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

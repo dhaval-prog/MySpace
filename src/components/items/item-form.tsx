@@ -31,7 +31,7 @@ const STEP_TITLE: Record<Step, string> = {
  * details, one `<form>` the whole way through so the final step's submit
  * button is the only real POST. `homeId` is always known by the time this
  * renders (the caller is always scoped to one home already — see
- * items/new/page.tsx and HomeItemsBrowser), so there's no separate "which
+ * items/new/page.tsx), so there's no separate "which
  * home" step. When roomId+furnitureId are already known too (adding from a
  * specific Place's own page), the flow starts straight at step 4 instead —
  * "Change" drops back to step 2 without losing the name already typed.

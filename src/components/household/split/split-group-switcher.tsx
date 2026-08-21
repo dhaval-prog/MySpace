@@ -77,7 +77,7 @@ export function SplitGroupSwitcher({
           if (g) router.push(`/split?id=${householdId}&group=${g.id}`);
         }}
         slides={rows.map((row, rowIndex) => (
-          <div key={rowIndex} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div key={rowIndex} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {row.map((g) => {
               const canInvite = myRole === "owner" || myRole === "co_owner" || g.createdBy === currentUserId;
               const canDelete = groups.length > 1 && (myRole === "owner" || g.createdBy === currentUserId);
