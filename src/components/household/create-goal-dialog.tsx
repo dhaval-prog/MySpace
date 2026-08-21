@@ -10,9 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createGoal } from "@/lib/actions/household-goals";
 import type { HouseholdGoalType } from "@/lib/supabase/types";
+import type { ExpenseCategoryOption } from "@/lib/actions/expenses";
 
 const GOAL_ICON_PRESETS = ["🎯", "✈️", "🏠", "📺", "🧊", "🎓", "🚗", "💍"];
 const BUDGET_ICON_PRESETS = ["💳", "🏠", "🛒", "🎉", "🛍️", "💡", "🚗", "📅"];
+const RESET_DAY_PRESETS = [1, 5, 15, 25];
+const AMOUNT_PRESETS = [5000, 10000, 15000, 25000];
+
+/** The next time this day-of-month comes around — today counts as "already happened", so picking the current day rolls to next month rather than backdating to a date that's already passed. */
+function nextResetDate(dayOfMonth: number): string {
+  const now = new Date();
+  const candidate = new Date(now.getFullYear(), now.getMonth(), dayOfMonth);
+  if (candidate <= now) candidate.setMonth(candidate.getMonth() + 1);
+  return candidate.toISOString().slice(0, 10);
+}
 
 export function CreateGoalDialog({
   householdId,
@@ -20,12 +31,15 @@ export function CreateGoalDialog({
   defaultGoalType = "saving",
   triggerLabel,
   trigger,
+  categories,
 }: {
   householdId: string;
   iconOnly?: boolean;
   defaultGoalType?: HouseholdGoalType;
   triggerLabel?: string;
   trigger?: React.ReactElement;
+  /** Household expense categories — offered as quick-pick name+icon pills when creating a spending budget, so a budget can start out matching a real category instead of always being typed from scratch. */
+  categories?: ExpenseCategoryOption[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -34,6 +48,7 @@ export function CreateGoalDialog({
   const [icon, setIcon] = useState(defaultGoalType === "spending" ? BUDGET_ICON_PRESETS[0] : GOAL_ICON_PRESETS[0]);
   const [targetAmount, setTargetAmount] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [showCustomDate, setShowCustomDate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -49,6 +64,7 @@ export function CreateGoalDialog({
     setIcon(defaultGoalType === "spending" ? BUDGET_ICON_PRESETS[0] : GOAL_ICON_PRESETS[0]);
     setTargetAmount("");
     setDeadline("");
+    setShowCustomDate(false);
     setError(null);
   }
 
@@ -103,43 +119,158 @@ export function CreateGoalDialog({
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {iconPresets.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => setIcon(emoji)}
-                className={`flex size-9 items-center justify-center rounded-full border text-lg ${icon === emoji ? "border-primary bg-primary/10" : "border-transparent bg-muted"}`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="goal-name">{isSpending ? "Budget name" : "Goal name"}</Label>
-            <Input
-              id="goal-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={isSpending ? "e.g. Monthly Household" : "e.g. Family Vacation"}
-              autoFocus
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="goal-target">{isSpending ? "Budget amount (₹)" : "Target amount (₹)"}</Label>
-            <Input
-              id="goal-target"
-              type="number"
-              min={1}
-              value={targetAmount}
-              onChange={(e) => setTargetAmount(e.target.value)}
-              placeholder="60000"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="goal-deadline">{isSpending ? "Resets by (optional)" : "Deadline (optional)"}</Label>
-            <Input id="goal-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-          </div>
+          {isSpending ? (
+            <>
+              <p className="-mt-1 text-xs text-muted-foreground">Name it, set the amount, pick the day it resets.</p>
+
+              <div className="space-y-2">
+                <Label>Name</Label>
+                {categories && categories.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {categories.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setName(c.name);
+                          setIcon(c.icon);
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium",
+                          name === c.name && icon === c.icon ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-muted"
+                        )}
+                      >
+                        <span>{c.icon}</span>
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {iconPresets.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setIcon(emoji)}
+                        className={`flex size-9 items-center justify-center rounded-full border text-lg ${icon === emoji ? "border-primary bg-primary/10" : "border-transparent bg-muted"}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <Input
+                  id="goal-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Or type a custom name"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Resets on</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {RESET_DAY_PRESETS.map((day) => {
+                    const candidate = nextResetDate(day);
+                    const active = !showCustomDate && deadline === candidate;
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setDeadline(candidate);
+                          setShowCustomDate(false);
+                        }}
+                        className={cn(
+                          "rounded-full border px-3.5 py-1.5 text-sm font-medium",
+                          active ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-muted"
+                        )}
+                      >
+                        {day}
+                        {day === 1 ? "st" : day === 5 ? "th" : day === 15 ? "th" : "th"}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomDate(true)}
+                    className={cn(
+                      "rounded-full border px-3.5 py-1.5 text-sm font-medium",
+                      showCustomDate ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-muted"
+                    )}
+                  >
+                    Custom
+                  </button>
+                </div>
+                {showCustomDate && (
+                  <Input id="goal-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="mt-1.5" />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="goal-target">Budget amount</Label>
+                <Input
+                  id="goal-target"
+                  type="number"
+                  min={1}
+                  value={targetAmount}
+                  onChange={(e) => setTargetAmount(e.target.value)}
+                  placeholder="10000"
+                  className="font-heading text-2xl"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {AMOUNT_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setTargetAmount(String(preset))}
+                      className={cn(
+                        "rounded-full border px-3.5 py-1.5 text-sm font-medium",
+                        amount === preset ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-muted"
+                      )}
+                    >
+                      ₹{preset.toLocaleString("en-IN")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {iconPresets.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setIcon(emoji)}
+                    className={`flex size-9 items-center justify-center rounded-full border text-lg ${icon === emoji ? "border-primary bg-primary/10" : "border-transparent bg-muted"}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="goal-name">Goal name</Label>
+                <Input id="goal-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Family Vacation" autoFocus />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="goal-target">Target amount (₹)</Label>
+                <Input
+                  id="goal-target"
+                  type="number"
+                  min={1}
+                  value={targetAmount}
+                  onChange={(e) => setTargetAmount(e.target.value)}
+                  placeholder="60000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="goal-deadline">Deadline (optional)</Label>
+                <Input id="goal-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+              </div>
+            </>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>

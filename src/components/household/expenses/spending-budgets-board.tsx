@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, ArrowUpRight } from "lucide-react";
+import { Pencil, Trash2, ArrowUpRight, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,6 +18,24 @@ function inr(n: number): string {
 function resetLabel(deadline: string | null): string {
   if (!deadline) return "No reset date";
   return `Resets on ${new Date(deadline).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}`;
+}
+
+/** One row in a budget's recent-expenses list — a plain "money went out" arrow rather than the expense's own category emoji, since every row here already sits under one focused budget. */
+function RecentExpenseRow({ expense }: { expense: ExpenseSummary }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-muted px-3 py-2.5">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+        <ArrowUpRight className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{expense.description}</span>
+        <span className="block text-xs text-muted-foreground">
+          {new Date(expense.expenseDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+        </span>
+      </span>
+      <span className="shrink-0 text-sm font-medium text-destructive">-{inr(expense.amount)}</span>
+    </div>
+  );
 }
 
 const CARD_THEMES = [
@@ -44,13 +62,15 @@ export function SpendingBudgetsBoard({
   const [now] = useState(() => Date.now());
   const [selectedId, setSelectedId] = useState<string | null>(spendingGoals[0]?.goal.id ?? null);
   const [expenses, setExpenses] = useState<ExpenseSummary[] | null>(null);
+  const [showAllRecent, setShowAllRecent] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<HouseholdGoalSummary | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, startDeleteTransition] = useTransition();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowAllRecent(false);
     if (!selectedId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExpenses([]);
       return;
     }
@@ -65,7 +85,7 @@ export function SpendingBudgetsBoard({
       <div className="rounded-2xl bg-white p-8 text-center">
         <p className="text-sm text-muted-foreground">No spending budgets yet — create one to start tracking a category.</p>
         <div className="mt-4 flex justify-center">
-          <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create Budget" />
+          <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create Budget" categories={categories} />
         </div>
       </div>
     );
@@ -76,12 +96,32 @@ export function SpendingBudgetsBoard({
       <div>
         <div className="flex items-center justify-between px-1">
           <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-            Your cards <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-accent-foreground">{spendingGoals.length}</span>
+            Your cards{" "}
+            <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-accent-foreground">
+              {spendingGoals.length} budget{spendingGoals.length === 1 ? "" : "s"}
+            </span>
           </p>
-          <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create" iconOnly />
+          <div className="flex items-center gap-3">
+            <p className="hidden text-xs text-muted-foreground md:block">Click a card to focus it</p>
+            <CreateGoalDialog
+              householdId={householdId}
+              defaultGoalType="spending"
+              categories={categories}
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Create spending budget"
+                  className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground md:size-8 md:justify-center md:px-0 md:py-0"
+                >
+                  <Plus className="size-4" />
+                  <span className="md:hidden">Create</span>
+                </button>
+              }
+            />
+          </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-3 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] md:grid md:grid-cols-2 md:overflow-visible [&::-webkit-scrollbar]:hidden">
           {spendingGoals.map((g, i) => {
             const remaining = Math.max(g.goal.target_amount - g.currentAmount, 0);
             const isActive = g.goal.id === selectedId;
@@ -91,7 +131,7 @@ export function SpendingBudgetsBoard({
                 type="button"
                 onClick={() => setSelectedId(g.goal.id)}
                 className={cn(
-                  "flex flex-col gap-3 rounded-3xl p-5 text-left text-white shadow-sm transition-transform",
+                  "flex w-[78%] shrink-0 flex-col gap-3 rounded-3xl p-5 text-left text-white shadow-sm transition-transform sm:w-[46%] md:w-auto md:shrink",
                   CARD_THEMES[i % CARD_THEMES.length],
                   isActive ? "ring-2 ring-foreground/40" : "opacity-90 hover:opacity-100"
                 )}
@@ -175,29 +215,35 @@ export function SpendingBudgetsBoard({
             </div>
 
             <div className="mt-5">
-              <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-                Recent expenses {expenses ? `· ${expenses.length}` : ""}
-              </p>
-              <div className="mt-2 space-y-1.5">
-                {expenses === null ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">Loading…</p>
-                ) : expenses.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">No expenses logged against this budget yet.</p>
-                ) : (
-                  expenses.slice(0, 6).map((e) => (
-                    <div key={e.id} className="flex items-center gap-3 rounded-2xl bg-muted px-3 py-2.5">
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-sm">{e.categoryIcon}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{e.description}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {new Date(e.expenseDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-sm font-medium text-destructive">-{inr(e.amount)}</span>
-                    </div>
-                  ))
+              <div className="flex items-center justify-between">
+                <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase md:hidden">Recent in {selected.goal.name}</p>
+                <p className="hidden font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase md:block">
+                  Recent expenses {expenses ? `· ${expenses.length}` : ""}
+                </p>
+                {expenses && expenses.length > 3 && (
+                  <button type="button" onClick={() => setShowAllRecent((v) => !v)} className="text-sm font-medium text-primary md:hidden">
+                    {showAllRecent ? "Show less" : "See all"}
+                  </button>
                 )}
               </div>
+              {expenses === null ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">Loading…</p>
+              ) : expenses.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">No expenses logged against this budget yet.</p>
+              ) : (
+                <>
+                  <div className="mt-2 space-y-1.5 md:hidden">
+                    {expenses.slice(0, showAllRecent ? undefined : 3).map((e) => (
+                      <RecentExpenseRow key={e.id} expense={e} />
+                    ))}
+                  </div>
+                  <div className="mt-2 hidden space-y-1.5 md:block">
+                    {expenses.slice(0, 6).map((e) => (
+                      <RecentExpenseRow key={e.id} expense={e} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </>
         ) : (
