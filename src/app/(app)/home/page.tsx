@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getHomeItemsView } from "@/lib/home-data";
+import type { HomeItemsView } from "@/lib/home-data";
 import { expiryStatus, isUrgentExpiry, expiryBadgeLabel } from "@/lib/expiry";
 import { getIcon } from "@/lib/icon-map";
 import { categoryIcon } from "@/lib/constants";
@@ -17,7 +18,6 @@ import { AddRoomDialog } from "@/components/home/add-room-dialog";
 import { HomeActionsMenu } from "@/components/home/home-actions-menu";
 import { NewHomeSetup } from "@/components/home/new-home-setup";
 import { EmptyState } from "@/components/shared/empty-state";
-import { ExpiringSoonSlider } from "@/components/home/expiring-soon-slider";
 import { NotificationBell } from "@/components/nav/notification-bell";
 import { MobileBand, DesktopBand, MobileHeroOverlap } from "@/components/layout/page-band";
 import { ListRow } from "@/components/layout/list-row";
@@ -25,6 +25,51 @@ import { StatChip } from "@/components/layout/stat-chip";
 
 function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+/** The "EXPIRING SOON" rows inside the Needs Attention card — a colored
+ * category icon (urgency-tinted) plus a compact day-count badge. Shared
+ * between the mobile hero card and the desktop attention card so the two
+ * breakpoints never drift apart. */
+function ExpiringSoonList({ items }: { items: HomeItemsView["items"] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-5">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Expiring soon</p>
+        <p className="text-xs text-muted-foreground">
+          {items.length} item{items.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div className="mt-2 space-y-2">
+        {items.map((item) => {
+          const status = expiryStatus(item.expiry_date);
+          const urgent = status.level === "expired" || isUrgentExpiry(item.expiry_date);
+          const ItemIcon = getIcon(categoryIcon(item.category));
+          return (
+            <ListRow
+              key={item.id}
+              href={`/items/${item.id}`}
+              icon={<ItemIcon className="size-4.5" />}
+              iconClassName={cn("rounded-full", urgent ? "bg-blush-tint text-destructive" : "bg-accent text-accent-foreground")}
+              title={item.name}
+              subtitle={`${item.roomName} → ${item.furnitureName}`}
+              trailing={
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] uppercase",
+                    urgent ? "bg-blush-tint text-destructive" : "bg-positive/10 text-positive"
+                  )}
+                >
+                  {expiryBadgeLabel(item.expiry_date)}
+                </span>
+              }
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default async function HomePage({
@@ -140,6 +185,8 @@ export default async function HomePage({
             <div className="h-full rounded-full bg-secondary" style={{ width: `${inGoodOrderPct}%` }} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground uppercase">{inGoodOrderPct}% of the {home.name.toLowerCase()} is in good order</p>
+
+          <ExpiringSoonList items={attention} />
         </Card>
 
         <Link
@@ -149,8 +196,6 @@ export default async function HomePage({
           <Search className="size-4.5 shrink-0" />
           Search your home…
         </Link>
-
-        <ExpiringSoonSlider items={items} />
 
         {rooms.length === 0 ? (
           <EmptyState
@@ -176,7 +221,7 @@ export default async function HomePage({
                     key={r.id}
                     href={`/home/rooms/${r.id}`}
                     icon={<RoomIcon className="size-4.5" />}
-                    iconClassName="bg-chart-2 text-foreground"
+                    iconClassName={isMostUsed ? "bg-chart-2 text-foreground" : undefined}
                     title={r.name}
                     subtitle={`${r.itemCount} items · ${r.placeCount} places`}
                     trailing={
@@ -211,8 +256,6 @@ export default async function HomePage({
 
       <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-[1fr_1fr]">
         <div className="space-y-4">
-          <ExpiringSoonSlider items={items} />
-
           <div className="flex items-center justify-between">
             <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Rooms</p>
             <Link href="/items" className="text-sm font-medium text-primary">
@@ -236,7 +279,7 @@ export default async function HomePage({
                     key={r.id}
                     href={`/home/rooms/${r.id}`}
                     icon={<RoomIcon className="size-4.5" />}
-                    iconClassName="bg-chart-2 text-foreground"
+                    iconClassName={isMostUsed ? "bg-chart-2 text-foreground" : undefined}
                     title={r.name}
                     subtitle={`${r.itemCount} items · ${r.placeCount} places`}
                     trailing={
@@ -268,63 +311,40 @@ export default async function HomePage({
           )}
         </div>
 
-        <Card className="p-6">
-          <div className="flex items-start justify-between">
-            <p className="font-heading text-2xl leading-tight text-foreground">{headlineWords ?? "All in order"}</p>
-            {stats && <p className="font-heading text-2xl text-foreground">{inr(stats.totalThisMonth)}</p>}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Needs attention</p>
+            <Link href="/items" className="text-sm font-medium text-primary">
+              Today
+            </Link>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{attentionSentence}</p>
+          <Card className="p-6">
+            <div className="flex items-start justify-between">
+              <p className="font-heading text-2xl leading-tight text-foreground">{headlineWords ?? "All in order"}</p>
+              {stats && <p className="font-heading text-2xl text-foreground">{inr(stats.totalThisMonth)}</p>}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{attentionSentence}</p>
 
-          <div className="mt-4 grid grid-cols-4 gap-2">
-            <StatChip label="Expired" value={expiredItems.length} tone="destructive" />
-            <StatChip label="Soon" value={soonItems.length} />
-            <StatChip label="Fine" value={fineCount} />
-            <StatChip label="Spent" value={stats ? inr(stats.totalThisMonth) : "—"} />
-          </div>
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              <StatChip label="Expired" value={expiredItems.length} tone="destructive" />
+              <StatChip label="Soon" value={soonItems.length} />
+              <StatChip label="Fine" value={fineCount} />
+              <StatChip label="Spent" value={stats ? inr(stats.totalThisMonth) : "—"} />
+            </div>
 
-          {attention.length > 0 && (
+            <ExpiringSoonList items={attention} />
+
             <div className="mt-5">
-              <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Needs attention</p>
-              <div className="mt-2 space-y-2">
-                {attention.map((item) => {
-                  const status = expiryStatus(item.expiry_date);
-                  const urgent = status.level === "expired" || isUrgentExpiry(item.expiry_date);
-                  const ItemIcon = getIcon(categoryIcon(item.category));
-                  return (
-                    <ListRow
-                      key={item.id}
-                      href={`/items/${item.id}`}
-                      icon={<ItemIcon className="size-4.5" />}
-                      iconClassName={cn("rounded-full", urgent ? "bg-blush-tint text-destructive" : "bg-accent text-accent-foreground")}
-                      title={item.name}
-                      subtitle={`${item.roomName} → ${item.furnitureName}`}
-                      trailing={
-                        <span
-                          className={cn(
-                            "shrink-0 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] uppercase",
-                            urgent ? "bg-blush-tint text-destructive" : "bg-positive/10 text-positive"
-                          )}
-                        >
-                          {expiryBadgeLabel(item.expiry_date)}
-                        </span>
-                      }
-                    />
-                  );
-                })}
+              <div className="flex items-center justify-between text-xs text-muted-foreground uppercase">
+                <span>Order of the flat</span>
+                <span>{inGoodOrderPct}% filed and in date</span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-secondary" style={{ width: `${inGoodOrderPct}%` }} />
               </div>
             </div>
-          )}
-
-          <div className="mt-5">
-            <div className="flex items-center justify-between text-xs text-muted-foreground uppercase">
-              <span>Order of the flat</span>
-              <span>{inGoodOrderPct}% filed and in date</span>
-            </div>
-            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-secondary" style={{ width: `${inGoodOrderPct}%` }} />
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );
