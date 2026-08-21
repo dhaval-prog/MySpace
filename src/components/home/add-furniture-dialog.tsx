@@ -12,7 +12,16 @@ import { FURNITURE_BY_ROOM_TYPE, GENERIC_FURNITURE, type RoomType } from "@/lib/
 import { addFurniture } from "@/lib/actions/furniture";
 import { cn } from "@/lib/utils";
 
-export function AddFurnitureDialog({ roomId, roomType }: { roomId: string; roomType: RoomType }) {
+export function AddFurnitureDialog({
+  roomId,
+  roomType,
+  trigger,
+}: {
+  roomId: string;
+  roomType: RoomType;
+  /** Custom trigger element (a single focusable child) — defaults to the "+ Add Place" button. */
+  trigger?: React.ReactElement;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<{ name: string; type: string; icon: string } | null>(null);
@@ -39,10 +48,12 @@ export function AddFurnitureDialog({ roomId, roomType }: { roomId: string; roomT
     >
       <DialogTrigger
         render={
-          <Button>
-            <Plus className="size-4" />
-            Add Place
-          </Button>
+          trigger ?? (
+            <Button>
+              <Plus className="size-4" />
+              Add Place
+            </Button>
+          )
         }
       />
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
