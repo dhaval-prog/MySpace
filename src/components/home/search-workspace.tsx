@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Search as SearchIcon, Navigation } from "lucide-react";
+import { Search as SearchIcon, Navigation, Mic } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ListRow } from "@/components/layout/list-row";
-import type { HomeItemsView } from "@/lib/home-data";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
+import { searchItems, type SearchResult } from "@/lib/actions/search";
 
 const RECENT_KEY = "myspace.recent-searches";
 
@@ -28,15 +32,31 @@ function saveRecent(query: string) {
   }
 }
 
-export function SearchWorkspace({ items, totalItems }: { items: HomeItemsView["items"]; totalItems: number }) {
+export function SearchWorkspace({ homeId, totalItems }: { homeId: string; totalItems: number }) {
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<string[]>(() => (typeof window === "undefined" ? [] : loadRecent()));
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [pending, startTransition] = useTransition();
+  const debouncedQuery = useDebouncedValue(query, 250);
+  const requestIdRef = useRef(0);
+  const voice = useSpeechRecognition();
 
-  const q = query.trim().toLowerCase();
-  const results = useMemo(() => {
-    if (!q) return [];
-    return items.filter((item) => item.name.toLowerCase().includes(q));
-  }, [items, q]);
+  const q = debouncedQuery.trim();
+
+  useEffect(() => {
+    if (!q) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResults([]);
+      return;
+    }
+    const requestId = ++requestIdRef.current;
+    startTransition(async () => {
+      const found = await searchItems(homeId, q);
+      // Drop stale responses — a slower earlier request resolving after a
+      // faster later one would otherwise flash outdated results back in.
+      if (requestId === requestIdRef.current) setResults(found);
+    });
+  }, [q, homeId]);
 
   const best = results[0] ?? null;
   const also = results.slice(1);
@@ -46,6 +66,8 @@ export function SearchWorkspace({ items, totalItems }: { items: HomeItemsView["i
     saveRecent(value.trim());
     setRecent(loadRecent());
   }
+
+  const canVoiceSearch = useMemo(() => voice.isSupported, [voice.isSupported]);
 
   return (
     <div className="space-y-4">
@@ -58,10 +80,31 @@ export function SearchWorkspace({ items, totalItems }: { items: HomeItemsView["i
             onBlur={() => commitSearch(query)}
             onKeyDown={(e) => e.key === "Enter" && commitSearch(query)}
             placeholder="Search your items…"
-            className="w-full rounded-2xl bg-muted py-3.5 pl-11 pr-4 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+            className="w-full rounded-2xl bg-muted py-3.5 pr-11 pl-11 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
             autoFocus
           />
+          {canVoiceSearch && (
+            <button
+              type="button"
+              aria-label={voice.isListening ? "Stop voice search" : "Search by voice"}
+              onClick={() =>
+                voice.isListening
+                  ? voice.stop()
+                  : voice.start((transcript) => {
+                      setQuery(transcript);
+                      commitSearch(transcript);
+                    })
+              }
+              className={cn(
+                "absolute top-1/2 right-3 flex size-7 -translate-y-1/2 items-center justify-center rounded-full transition-colors",
+                voice.isListening ? "bg-destructive text-destructive-foreground" : "text-muted-foreground hover:bg-black/5 hover:text-foreground"
+              )}
+            >
+              <Mic className={cn("size-4", voice.isListening && "animate-pulse")} />
+            </button>
+          )}
         </div>
+        {voice.error && <p className="mt-2 text-xs text-destructive">Couldn&apos;t hear that — try typing instead.</p>}
       </Card>
 
       {!q ? (
@@ -83,7 +126,7 @@ export function SearchWorkspace({ items, totalItems }: { items: HomeItemsView["i
       ) : (
         <>
           <div className="flex items-center justify-between px-1">
-            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Results {results.length}</p>
+            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Results {pending ? "…" : results.length}</p>
             <p className="text-xs text-muted-foreground">{totalItems} items searched</p>
           </div>
 
@@ -91,27 +134,35 @@ export function SearchWorkspace({ items, totalItems }: { items: HomeItemsView["i
             <Card className="p-5">
               <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">Best match</p>
               <p className="mt-1 font-heading text-xl">{best.name}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{best.roomName}</span>
                 <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{best.furnitureName}</span>
+                {best.expiryLabel && <Badge variant={best.expiryLevel === "expired" ? "destructive" : "outline"}>{best.expiryLabel}</Badge>}
               </div>
               <Button className="mt-4 w-full rounded-2xl" render={<Link href={`/items/${best.id}`} />}>
                 <Navigation className="size-4" />
                 Take me there
               </Button>
             </Card>
-          ) : (
+          ) : !pending ? (
             <Card className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">No items match &ldquo;{query}&rdquo;.</p>
+              <p className="text-sm text-muted-foreground">No items match &ldquo;{q}&rdquo;.</p>
             </Card>
-          )}
+          ) : null}
 
           {also.length > 0 && (
             <div>
               <p className="px-1 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Also matched {also.length}</p>
               <div className="mt-2 space-y-2">
-                {also.slice(0, 8).map((item) => (
-                  <ListRow key={item.id} href={`/items/${item.id}`} title={item.name} subtitle={`${item.roomName} → ${item.furnitureName}`} chevron />
+                {also.map((item) => (
+                  <ListRow
+                    key={item.id}
+                    href={`/items/${item.id}`}
+                    title={item.name}
+                    subtitle={`${item.roomName} → ${item.furnitureName}`}
+                    trailing={item.expiryLabel ? <Badge variant={item.expiryLevel === "expired" ? "destructive" : "outline"}>{item.expiryLabel}</Badge> : undefined}
+                    chevron={!item.expiryLabel}
+                  />
                 ))}
               </div>
             </div>

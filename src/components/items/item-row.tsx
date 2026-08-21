@@ -20,7 +20,6 @@ export function ItemRow({ item }: { item: Item }) {
           width={46}
           height={46}
           className="size-[46px] shrink-0 rounded-2xl object-cover"
-          unoptimized
         />
       ) : (
         <span className="flex size-[46px] shrink-0 items-center justify-center rounded-2xl bg-muted text-primary">

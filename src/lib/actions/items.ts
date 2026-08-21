@@ -4,9 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { buildLocationIndex, pathForStorageLocation, type LocationNode } from "@/lib/location";
+import { getItemsWithPaths, type ItemsPage } from "@/lib/items-data";
 import type { Item } from "@/lib/supabase/types";
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+/** Client-callable page fetch for the All Items "Load more" button — see getItemsWithPaths for why this is paginated at all. */
+export async function loadMoreItems(offset: number): Promise<ItemsPage> {
+  const supabase = await createClient();
+  return getItemsWithPaths(supabase, { offset });
+}
 
 export interface ItemFormState {
   error?: string;

@@ -25,7 +25,6 @@ export function ItemList({ results }: { results: { item: Item; path: LocationNod
                 width={48}
                 height={48}
                 className="size-12 shrink-0 rounded-lg object-cover"
-                unoptimized
               />
             ) : (
               <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">

@@ -83,6 +83,18 @@ export type Item = {
   updated_at: string;
 };
 
+export type ItemExpiryNotificationKind = "7day" | "1day" | "expired";
+
+export type ItemExpiryNotification = {
+  id: string;
+  item_id: string;
+  user_id: string;
+  kind: ItemExpiryNotificationKind;
+  expiry_date: string;
+  read_at: string | null;
+  created_at: string;
+};
+
 export type VaultTransactionType = "add" | "deduct" | "recurring";
 export type VaultTransactionSource = "manual" | "voice" | "machine" | "scheduled";
 
@@ -464,6 +476,12 @@ export type Database = {
         Row: Item;
         Insert: Partial<Item> & { name: string; storage_location_id: string };
         Update: Partial<Item>;
+        Relationships: [];
+      };
+      item_expiry_notifications: {
+        Row: ItemExpiryNotification;
+        Insert: Partial<ItemExpiryNotification> & { item_id: string; user_id: string; kind: ItemExpiryNotificationKind; expiry_date: string };
+        Update: Partial<ItemExpiryNotification>;
         Relationships: [];
       };
       vault_transactions: {

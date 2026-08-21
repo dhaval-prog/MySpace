@@ -3,12 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Package, Target, Wallet, Receipt, PiggyBank, Users, Lock, Bell, type LucideIcon } from "lucide-react";
+import { Home, Search, Package, Target, Wallet, Receipt, PiggyBank, Users, Lock, type LucideIcon } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { NAV_ITEMS } from "@/components/nav/nav-items";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserMenu } from "@/components/nav/user-menu";
+import { NotificationBell } from "@/components/nav/notification-bell";
 import { SignInPromptDialog } from "@/components/nav/sign-in-prompt-dialog";
+import type { ExpiryNotification } from "@/lib/actions/notifications";
 
 const ICONS: Record<string, LucideIcon> = {
   Home,
@@ -26,11 +28,13 @@ export function Sidebar({
   email,
   householdName,
   isGuest = false,
+  notifications = [],
 }: {
   name: string;
   email: string;
   householdName?: string | null;
   isGuest?: boolean;
+  notifications?: ExpiryNotification[];
 }) {
   const pathname = usePathname();
   const [promptOpen, setPromptOpen] = useState(false);
@@ -45,9 +49,7 @@ export function Sidebar({
           <p className="truncate text-base font-semibold text-white">My Space</p>
           <p className="truncate text-[11px] text-sidebar-foreground/80">Everything in one place</p>
         </div>
-        <Link href="/alerts" aria-label="Alerts" className="flex size-8 shrink-0 items-center justify-center rounded-full text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-white">
-          <Bell className="size-4" />
-        </Link>
+        <NotificationBell notifications={notifications} className="size-8 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white" />
       </div>
 
       <nav className="flex flex-col gap-0.5">

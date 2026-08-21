@@ -2,14 +2,13 @@ import Link from "next/link";
 import { User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getItemsWithPaths } from "@/lib/items-data";
-import { ItemList } from "@/components/items/item-list";
+import { ItemListPaginated } from "@/components/items/item-list-paginated";
 import { EmptyState } from "@/components/shared/empty-state";
-import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
-import { Card } from "@/components/ui/card";
+import { MobileBand, DesktopBand, RoundIconButton } from "@/components/layout/page-band";
 
 export default async function AllItemsPage() {
   const supabase = await createClient();
-  const results = await getItemsWithPaths(supabase);
+  const page = await getItemsWithPaths(supabase);
 
   return (
     <div>
@@ -24,7 +23,7 @@ export default async function AllItemsPage() {
       />
       <DesktopBand
         breadcrumb="Items · Andheri Flat"
-        title={`${results.length} item${results.length === 1 ? "" : "s"} filed`}
+        title={`${page.total} item${page.total === 1 ? "" : "s"} filed`}
         subtitle="Everything across your home, searchable by name or place."
         action={
           <Link href="/items/new" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/85">
@@ -33,22 +32,17 @@ export default async function AllItemsPage() {
         }
       />
 
-      <MobileHeroOverlap className="pb-6">
-        {results.length === 0 ? (
-          <Card className="p-8 text-center">
-            <p className="text-sm text-muted-foreground">Nothing stored here yet.</p>
-          </Card>
-        ) : (
-          <ItemList results={results} />
-        )}
-      </MobileHeroOverlap>
-
-      <div className="hidden px-8 pb-8 md:block">
-        {results.length === 0 ? (
+      {/* Same negative-margin band overlap MobileHeroOverlap uses, applied
+          directly (rather than via that helper) so the item list itself —
+          data, not just markup — renders once and is simply restyled for
+          desktop's wider, non-overlapping container, instead of appearing
+          twice in the page. */}
+      <div className="relative z-10 -mt-9 px-4 pb-8 md:mt-0 md:px-8">
+        {page.total === 0 ? (
           <EmptyState icon="Package" title="No items yet" description="Nothing stored here yet." />
         ) : (
-          <div className="max-w-3xl">
-            <ItemList results={results} />
+          <div className="md:max-w-3xl">
+            <ItemListPaginated initial={page} />
           </div>
         )}
       </div>

@@ -63,11 +63,20 @@ export interface UseSpeechRecognitionResult {
  * browsers without the API so text search keeps working unaffected.
  */
 export function useSpeechRecognition(): UseSpeechRecognitionResult {
-  const [isSupported] = useState(() => getSpeechRecognitionConstructor() !== null);
+  // Starts false on both server and client so SSR markup always matches
+  // the first client render (a mic button that's there-or-not depending
+  // on browser support would otherwise be a hydration mismatch) — flips
+  // to the real answer in an effect, after hydration.
+  const [isSupported, setIsSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [error, setError] = useState<VoiceErrorKind | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsSupported(getSpeechRecognitionConstructor() !== null);
+  }, []);
 
   useEffect(() => {
     return () => {

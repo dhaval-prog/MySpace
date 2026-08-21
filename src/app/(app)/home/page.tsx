@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getHomeItemsView } from "@/lib/home-data";
 import { expiryStatus } from "@/lib/expiry";
@@ -8,13 +8,16 @@ import { getIcon } from "@/lib/icon-map";
 import { listMyHouseholds } from "@/lib/actions/household";
 import { getExpenseStats } from "@/lib/actions/expenses";
 import { getHouseholdSummary } from "@/lib/actions/household-dashboard";
+import { listNotifications } from "@/lib/actions/notifications";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AddRoomDialog } from "@/components/home/add-room-dialog";
 import { HomeActionsMenu } from "@/components/home/home-actions-menu";
 import { NewHomeSetup } from "@/components/home/new-home-setup";
 import { EmptyState } from "@/components/shared/empty-state";
-import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
+import { ExpiringSoonSlider } from "@/components/home/expiring-soon-slider";
+import { NotificationBell } from "@/components/nav/notification-bell";
+import { MobileBand, DesktopBand, MobileHeroOverlap } from "@/components/layout/page-band";
 import { ListRow } from "@/components/layout/list-row";
 import { StatChip } from "@/components/layout/stat-chip";
 
@@ -61,9 +64,11 @@ export default async function HomePage({
 
   const memberships = await listMyHouseholds();
   const primaryHousehold = memberships[0];
-  const [stats, householdSummary] = primaryHousehold
-    ? await Promise.all([getExpenseStats(primaryHousehold.household.id), getHouseholdSummary(primaryHousehold.household.id)])
-    : [null, null];
+  const [stats, householdSummary, notifications] = await Promise.all([
+    primaryHousehold ? getExpenseStats(primaryHousehold.household.id) : Promise.resolve(null),
+    primaryHousehold ? getHouseholdSummary(primaryHousehold.household.id) : Promise.resolve(null),
+    listNotifications(),
+  ]);
 
   const statuses = items.map((item) => expiryStatus(item.expiry_date));
   const expiredItems = items.filter((_, i) => statuses[i].level === "expired");
@@ -78,11 +83,7 @@ export default async function HomePage({
     <div>
       <MobileBand
         title="My Home"
-        right={
-          <RoundIconButton href="/alerts" ariaLabel="Alerts">
-            <Bell className="size-4.5" />
-          </RoundIconButton>
-        }
+        right={<NotificationBell notifications={notifications} className="bg-white/70 hover:bg-white/90" />}
         stats={[
           { label: "Items filed", value: totals.items },
           { label: "Needs a look", value: needsLookCount, tone: needsLookCount > 0 ? "destructive" : "default" },
@@ -138,6 +139,16 @@ export default async function HomePage({
           <p className="mt-2 text-xs text-muted-foreground uppercase">{inGoodOrderPct}% of the {home.name.toLowerCase()} is in good order</p>
         </Card>
 
+        <Link
+          href="/search"
+          className="flex items-center gap-2.5 rounded-2xl bg-white px-4 py-3 text-sm text-muted-foreground shadow-none transition-colors hover:bg-white/80"
+        >
+          <Search className="size-4.5 shrink-0" />
+          Search your home…
+        </Link>
+
+        <ExpiringSoonSlider items={items} />
+
         {rooms.length === 0 ? (
           <EmptyState
             icon="DoorOpen"
@@ -171,26 +182,6 @@ export default async function HomePage({
           </div>
         )}
 
-        {attention.length > 0 && (
-          <div>
-            <p className="px-1 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Needs attention</p>
-            <div className="mt-2 space-y-2">
-              {attention.map((item) => {
-                const status = expiryStatus(item.expiry_date);
-                return (
-                  <ListRow
-                    key={item.id}
-                    href={`/items/${item.id}`}
-                    title={item.name}
-                    subtitle={`${item.roomName} → ${item.furnitureName}`}
-                    trailing={<Badge variant={status.level === "expired" ? "destructive" : "outline"}>{status.label}</Badge>}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {householdSummary && householdSummary.activity.length > 0 && (
           <Card className="bg-secondary p-5 text-secondary-foreground">
             <p className="font-mono text-xs font-medium tracking-[0.14em] uppercase opacity-80">Household activity</p>
@@ -208,6 +199,8 @@ export default async function HomePage({
 
       <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-[1fr_1fr]">
         <div className="space-y-4">
+          <ExpiringSoonSlider items={items} />
+
           <div className="flex items-center justify-between">
             <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Rooms</p>
             <Link href="/items" className="text-sm font-medium text-primary">
@@ -275,7 +268,7 @@ export default async function HomePage({
 
           {attention.length > 0 && (
             <div className="mt-5">
-              <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Expiring soon</p>
+              <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Needs attention</p>
               <div className="mt-2 space-y-2">
                 {attention.map((item) => {
                   const status = expiryStatus(item.expiry_date);

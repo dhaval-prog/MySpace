@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { AlertTriangle, Clock, Wallet, Target } from "lucide-react";
+import { AlertTriangle, Clock, CalendarClock, Wallet, Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getHomeItemsView } from "@/lib/home-data";
-import { expiryStatus } from "@/lib/expiry";
 import { listMyHouseholds } from "@/lib/actions/household";
 import { listGoals } from "@/lib/actions/household-goals";
+import { listNotifications, type ExpiryNotification } from "@/lib/actions/notifications";
+import { MarkAllReadButton } from "@/components/nav/mark-all-read-button";
 import { MobileBand, DesktopBand, MobileHeroOverlap } from "@/components/layout/page-band";
 import { ListRow } from "@/components/layout/list-row";
 import { Card } from "@/components/ui/card";
@@ -18,64 +18,67 @@ interface Alert {
   href: string;
   urgent: boolean;
   badge: string;
+  read: boolean;
 }
 
-export default async function AlertsPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
-  const { id } = await searchParams;
+const KIND_ICON: Record<ExpiryNotification["kind"], typeof AlertTriangle> = {
+  expired: AlertTriangle,
+  "1day": Clock,
+  "7day": CalendarClock,
+};
+
+function expiryAlert(n: ExpiryNotification): Alert {
+  const title =
+    n.kind === "expired" ? `${n.itemName} expired today` : n.kind === "1day" ? `${n.itemName} expires tomorrow` : `${n.itemName} expires soon`;
+  const Icon = KIND_ICON[n.kind];
+  return {
+    id: n.id,
+    icon: <Icon className="size-4.5" />,
+    title,
+    subtitle: `${n.roomName} → ${n.furnitureName}`,
+    href: `/items/${n.itemId}`,
+    urgent: n.kind === "expired",
+    badge: n.kind === "expired" ? "Expired" : n.kind === "1day" ? "Tomorrow" : "This week",
+    read: !!n.readAt,
+  };
+}
+
+export default async function AlertsPage() {
   const supabase = await createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session?.user) redirect("/login");
 
-  const { data: homes } = await supabase.from("homes").select("id, name").order("created_at", { ascending: true });
-  const homeId = id && homes?.some((h) => h.id === id) ? id : homes?.[0]?.id;
-  const data = homeId ? await getHomeItemsView(supabase, homeId) : null;
-
-  const memberships = await listMyHouseholds();
+  const [notifications, memberships] = await Promise.all([listNotifications(), listMyHouseholds()]);
   const primaryHousehold = memberships[0];
   const goals = primaryHousehold ? await listGoals(primaryHousehold.household.id, { status: "active" }) : [];
 
-  const alerts: Alert[] = [];
+  const today: Alert[] = [];
+  const tomorrow: Alert[] = [];
+  const thisWeek: Alert[] = [];
 
-  for (const item of data?.items ?? []) {
-    const status = expiryStatus(item.expiry_date);
-    if (status.level === "expired") {
-      alerts.push({
-        id: `item-${item.id}`,
-        icon: <AlertTriangle className="size-4.5" />,
-        title: `${item.name} has expired`,
-        subtitle: `${item.roomName} → ${item.furnitureName}`,
-        href: `/items/${item.id}`,
-        urgent: true,
-        badge: "Expired",
-      });
-    } else if (status.level === "soon") {
-      alerts.push({
-        id: `item-${item.id}`,
-        icon: <Clock className="size-4.5" />,
-        title: `${item.name} ${status.label.toLowerCase()}`,
-        subtitle: `${item.roomName} → ${item.furnitureName}`,
-        href: `/items/${item.id}`,
-        urgent: false,
-        badge: status.label,
-      });
-    }
+  for (const n of notifications) {
+    const alert = expiryAlert(n);
+    if (n.kind === "expired") today.push(alert);
+    else if (n.kind === "1day") tomorrow.push(alert);
+    else thisWeek.push(alert);
   }
 
   for (const g of goals) {
     if (g.goal.goal_type === "spending" && g.progressPct >= 90) {
-      alerts.push({
+      thisWeek.push({
         id: `budget-${g.goal.id}`,
         icon: <Wallet className="size-4.5" />,
         title: `${g.goal.name} budget nearly used up`,
-        subtitle: `${g.progressPct}% of ${g.goal.target_amount.toLocaleString("en-IN")} spent`,
+        subtitle: `${g.progressPct}% of ₹${g.goal.target_amount.toLocaleString("en-IN")} spent`,
         href: "/expenses",
         urgent: g.progressPct >= 100,
         badge: `${g.progressPct}%`,
+        read: true,
       });
     } else if (g.goal.goal_type === "saving" && g.progressPct >= 50) {
-      alerts.push({
+      thisWeek.push({
         id: `goal-${g.goal.id}`,
         icon: <Target className="size-4.5" />,
         title: `${g.goal.name} crossed ${g.progressPct}%`,
@@ -83,12 +86,18 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
         href: "/goals",
         urgent: false,
         badge: `${g.progressPct}%`,
+        read: true,
       });
     }
   }
 
-  const today = alerts.filter((a) => a.urgent);
-  const thisWeek = alerts.filter((a) => !a.urgent);
+  const total = today.length + tomorrow.length + thisWeek.length;
+  const unread = notifications.filter((n) => !n.readAt).length;
+  const groups = [
+    { title: "Today", alerts: today },
+    { title: "Tomorrow", alerts: tomorrow },
+    { title: "This Week", alerts: thisWeek },
+  ].filter((g) => g.alerts.length > 0);
 
   return (
     <div>
@@ -97,38 +106,42 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
         backHref="/home"
         stats={[
           { label: "Needs you today", value: today.length, tone: today.length > 0 ? "destructive" : "default" },
-          { label: "This week", value: thisWeek.length },
+          { label: "This week", value: tomorrow.length + thisWeek.length },
         ]}
       />
       <DesktopBand
-        breadcrumb="Notifications · Andheri Flat"
-        title={alerts.length > 0 ? `${alerts.length} thing${alerts.length === 1 ? "" : "s"} need${alerts.length === 1 ? "s" : ""} you today` : "You're all caught up"}
-        subtitle={`${alerts.length} alert${alerts.length === 1 ? "" : "s"} this week · grouped by when they matter`}
+        breadcrumb="Notifications"
+        title={total > 0 ? `${total} thing${total === 1 ? "" : "s"} need${total === 1 ? "s" : ""} your attention` : "You're all caught up"}
+        subtitle={`${total} alert${total === 1 ? "" : "s"} · grouped by when they matter`}
+        action={unread > 0 ? <MarkAllReadButton /> : undefined}
       />
 
       <MobileHeroOverlap className="space-y-4 pb-6">
-        {alerts.length === 0 ? (
+        {unread > 0 && (
+          <div className="flex justify-end">
+            <MarkAllReadButton />
+          </div>
+        )}
+        {groups.length === 0 ? (
           <Card className="p-8 text-center">
             <p className="text-sm text-muted-foreground">You&apos;re all caught up — nothing new yet.</p>
           </Card>
         ) : (
-          <>
-            {today.length > 0 && <AlertGroup title="Today" alerts={today} />}
-            {thisWeek.length > 0 && <AlertGroup title="This week" alerts={thisWeek} />}
-          </>
+          groups.map((g) => <AlertGroup key={g.title} title={g.title} alerts={g.alerts} />)
         )}
       </MobileHeroOverlap>
 
-      <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-2">
-        {alerts.length === 0 ? (
-          <Card className="col-span-2 p-8 text-center">
+      <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-3">
+        {groups.length === 0 ? (
+          <Card className="col-span-3 p-8 text-center">
             <p className="text-sm text-muted-foreground">You&apos;re all caught up — nothing new yet.</p>
           </Card>
         ) : (
-          <>
-            <div className="space-y-3">{today.length > 0 && <AlertGroup title="Today" alerts={today} />}</div>
-            <div className="space-y-3">{thisWeek.length > 0 && <AlertGroup title="This week" alerts={thisWeek} />}</div>
-          </>
+          groups.map((g) => (
+            <div key={g.title} className="space-y-3">
+              <AlertGroup title={g.title} alerts={g.alerts} />
+            </div>
+          ))
         )}
       </div>
     </div>
@@ -149,7 +162,7 @@ function AlertGroup({ title, alerts }: { title: string; alerts: Alert[] }) {
             href={a.href}
             icon={a.icon}
             iconClassName={a.urgent ? "bg-blush-tint text-destructive" : undefined}
-            title={a.title}
+            title={<span className={a.read ? "font-normal text-foreground/75" : undefined}>{a.title}</span>}
             subtitle={a.subtitle}
             trailing={<Badge variant={a.urgent ? "destructive" : "outline"}>{a.badge}</Badge>}
           />

@@ -7,15 +7,40 @@ export interface ItemWithPath {
   path: LocationNode[];
 }
 
-export async function getItemsWithPaths(supabase: SupabaseClient<Database>): Promise<ItemWithPath[]> {
-  const index = await buildLocationIndex(supabase);
+export interface ItemsPage {
+  results: ItemWithPath[];
+  total: number;
+  hasMore: boolean;
+}
 
-  const { data: items } = await supabase.from("items").select("*").order("created_at", { ascending: false });
+const ITEMS_PAGE_SIZE = 30;
+
+/**
+ * Paginated (not "fetch every item the user owns unconditionally") — a
+ * household that's been in use for a while can easily have hundreds of
+ * items, and the All Items page previously shipped every single one of
+ * them, with full paths, on first load. `offset`/`limit` mirror
+ * listExpenses' own pagination shape.
+ */
+export async function getItemsWithPaths(
+  supabase: SupabaseClient<Database>,
+  { offset = 0, limit = ITEMS_PAGE_SIZE }: { offset?: number; limit?: number } = {}
+): Promise<ItemsPage> {
+  const [index, { data: items, count }] = await Promise.all([
+    buildLocationIndex(supabase),
+    supabase
+      .from("items")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1),
+  ]);
 
   const results: ItemWithPath[] = [];
   for (const item of items ?? []) {
     const path = pathForStorageLocation(index, item.storage_location_id);
     if (path) results.push({ item, path });
   }
-  return results;
+
+  const total = count ?? results.length;
+  return { results, total, hasMore: offset + (items?.length ?? 0) < total };
 }

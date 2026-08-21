@@ -2245,3 +2245,37 @@ where not exists (select 1 from storage_locations sl where sl.furniture_id = fu.
 -- furniture, and no nested sub-locations (parent_id was already unused).
 alter table public.storage_locations add constraint storage_locations_one_per_furniture unique (furniture_id);
 alter table public.storage_locations add constraint storage_locations_no_nesting check (parent_id is null);
+
+-- ─────────────────────────────────────────────────────────────
+-- item_expiry_notifications — dedup ledger for the expiry notification
+-- cron (src/lib/notifications/expiry.ts, triggered by
+-- src/app/api/notifications/cron/expiry-scan). One row per (item, kind)
+-- ever generated — the unique constraint is what stops the daily scan
+-- from re-notifying the same 7-day/1-day/expired milestone twice, the
+-- same "state lives in the table, not in memory" approach
+-- vault_recurring_plans already uses for its own cron.
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.item_expiry_notifications (
+  id uuid primary key default gen_random_uuid(),
+  item_id uuid not null references public.items (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  kind text not null check (kind in ('7day', '1day', 'expired')),
+  expiry_date date not null,
+  read_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (item_id, kind)
+);
+create index if not exists item_expiry_notifications_user_id_idx on public.item_expiry_notifications (user_id, created_at desc);
+
+alter table public.item_expiry_notifications enable row level security;
+
+drop policy if exists "item_expiry_notifications_select_own" on public.item_expiry_notifications;
+create policy "item_expiry_notifications_select_own" on public.item_expiry_notifications for select
+  using (auth.uid() = user_id);
+
+-- Marking as read is the only client-side write — every row is created by
+-- the cron's service-role client (bypasses RLS), so there's deliberately
+-- no insert/delete policy for ordinary authenticated users.
+drop policy if exists "item_expiry_notifications_update_own" on public.item_expiry_notifications;
+create policy "item_expiry_notifications_update_own" on public.item_expiry_notifications for update
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/nav/sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Toaster } from "@/components/ui/sonner";
 import { listMyHouseholds } from "@/lib/actions/household";
+import { listNotifications } from "@/lib/actions/notifications";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -28,9 +29,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Independent reads — run together instead of one after another. Every
   // authenticated page renders through this layout, so trimming a
   // sequential chain to a single round trip here matters on every navigation.
-  const [{ data: profile }, memberships] = await Promise.all([
+  const [{ data: profile }, memberships, notifications] = await Promise.all([
     supabase.from("profiles").select("name, phone").eq("id", user.id).maybeSingle(),
     listMyHouseholds(),
+    listNotifications(),
   ]);
 
   const isGuest = Boolean(user.is_anonymous);
@@ -59,7 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-svh bg-background text-foreground">
-      <Sidebar name={name} email={user.email ?? ""} householdName={primaryHousehold?.household.name} isGuest={isGuest} />
+      <Sidebar name={name} email={user.email ?? ""} householdName={primaryHousehold?.household.name} isGuest={isGuest} notifications={notifications} />
       <div className="flex min-w-0 flex-1 flex-col md:pl-64">
         <main className="flex-1 pb-28 md:pb-8">{children}</main>
       </div>

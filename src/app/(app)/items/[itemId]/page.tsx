@@ -68,7 +68,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
           </div>
 
           {item.photo_url && (
-            <Image src={item.photo_url} alt={item.name} width={640} height={360} className="mt-4 h-44 w-full rounded-2xl object-cover" unoptimized />
+            <Image src={item.photo_url} alt={item.name} width={640} height={360} sizes="100vw" className="mt-4 h-44 w-full rounded-2xl object-cover" />
           )}
 
           <div className="mt-4 grid grid-cols-3 gap-2">
@@ -116,7 +116,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
       <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-[1fr_1fr]">
         <Card className="p-6">
           {item.photo_url ? (
-            <Image src={item.photo_url} alt={item.name} width={640} height={360} className="h-56 w-full rounded-2xl object-cover" unoptimized />
+            <Image src={item.photo_url} alt={item.name} width={640} height={360} sizes="(max-width: 1024px) 50vw, 33vw" className="h-56 w-full rounded-2xl object-cover" />
           ) : (
             <div className="flex h-56 w-full items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground">No photo</div>
           )}
