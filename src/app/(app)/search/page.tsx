@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
-import { User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getHomeItemsView } from "@/lib/home-data";
-import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
+import { DesktopBand } from "@/components/layout/page-band";
 import { SearchWorkspace } from "@/components/home/search-workspace";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -29,23 +28,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   return (
     <div>
-      <MobileBand
-        title="Search"
-        backHref="/home"
-        right={
-          <RoundIconButton href="/settings" ariaLabel="Profile">
-            <User className="size-4.5" />
-          </RoundIconButton>
-        }
-      />
       <DesktopBand
         breadcrumb={`Search · ${data?.home.name ?? "Home"}`}
         title="Say it or type it — the answer comes back as a place, not a list"
       />
 
-      <MobileHeroOverlap className="pb-6">
-        <SearchWorkspace homeId={homeId} totalItems={totalItems} />
-      </MobileHeroOverlap>
+      <div className="pb-6 md:hidden">
+        <SearchWorkspace homeId={homeId} totalItems={totalItems} variant="mobile" />
+      </div>
 
       <div className="hidden px-8 pb-8 md:block">
         <div className="max-w-2xl">

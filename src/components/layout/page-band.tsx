@@ -44,7 +44,7 @@ export function MobileBand({
 }) {
   return (
     <div
-      className={cn("rounded-b-[30px] px-5 pt-[calc(env(safe-area-inset-top)+14px)] pb-6 md:hidden", className)}
+      className={cn("rounded-b-[30px] px-5 pt-[calc(env(safe-area-inset-top)+14px)]", stats ? "pb-10" : "pb-6", "md:hidden", className)}
       style={{ backgroundImage: "var(--band-gradient)" }}
     >
       <div className="flex items-center justify-between gap-2">
