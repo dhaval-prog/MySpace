@@ -1,15 +1,17 @@
 import { redirect } from "next/navigation";
+import { Settings2 } from "lucide-react";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { listExpenses, listExpenseCategories, getExpenseStats } from "@/lib/actions/expenses";
 import { listGoals } from "@/lib/actions/household-goals";
 import { EmptyState } from "@/components/shared/empty-state";
-import { HouseholdCardRow } from "@/components/household/household-card-row";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
-import { AddExpenseDialog } from "@/components/household/expenses/add-expense-dialog";
 import { CategoryFilterChips } from "@/components/household/expenses/category-filter-chips";
 import { TransactionsList } from "@/components/household/expenses/transactions-list";
-import { HeaderActionsPortal } from "@/components/nav/header-actions-portal";
+import { SpendingBudgetsBoard } from "@/components/household/expenses/spending-budgets-board";
+import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
+import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
+import { Card } from "@/components/ui/card";
 
 function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -45,6 +47,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     redirect(`/split?id=${householdId}`);
   }
 
+  const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
+  const isOwner = context.myRole === "owner";
+
   const [expenses, categories, stats, goals] = await Promise.all([
     listExpenses(householdId, category ? { categoryId: category } : undefined),
     listExpenseCategories(householdId),
@@ -52,42 +57,77 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     listGoals(householdId, { status: "active" }),
   ]);
   const spendingGoals = goals.filter((g) => g.goal.goal_type === "spending");
+  const totalBudgeted = spendingGoals.reduce((sum, g) => sum + g.goal.target_amount, 0);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-      <HeaderActionsPortal>
-        <AddExpenseDialog householdId={householdId} categories={categories} spendingGoals={spendingGoals} iconOnly />
-      </HeaderActionsPortal>
+    <div>
+      <MobileBand
+        title="Expenses"
+        backHref="/home"
+        right={
+          <RoundIconButton ariaLabel="Settings">
+            <Settings2 className="size-4.5" />
+          </RoundIconButton>
+        }
+      />
+      <DesktopBand
+        breadcrumb="Expenses · Andheri Flat"
+        title="Spending budgets"
+        subtitle="Create and track budgets for different parts of your spending."
+        action={<CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create spending budget" />}
+      />
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="hidden md:block">
-          <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Where your money goes</p>
-          <div className="flex items-end gap-2.5">
-            <h1 className="font-heading text-4xl text-foreground md:text-5xl">Expenses</h1>
-            <AddExpenseDialog householdId={householdId} categories={categories} spendingGoals={spendingGoals} iconOnly />
+      <MobileHeroOverlap className="space-y-4 pb-6">
+        <Card className="p-5">
+          <p className="font-heading text-xl leading-tight text-foreground">Spending budgets</p>
+          <p className="mt-1 text-sm text-muted-foreground">Create and track budgets for different parts of your spending.</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <StatChip label="Budgeted" value={inr(totalBudgeted)} />
+            <StatChip label="Spent" value={inr(stats.totalThisMonth)} />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">Every expense, organized and easy to find</p>
+        </Card>
+
+        <SpendingBudgetsBoard householdId={householdId} spendingGoals={spendingGoals} categories={categories} isOwner={isOwner} currentUserId={myUserId} />
+
+        <div className="space-y-3">
+          <p className="px-1 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">All expenses</p>
+          <CategoryFilterChips householdId={householdId} categories={categories} activeCategoryId={category} />
+          {expenses.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-sm text-muted-foreground">No expenses yet.</p>
+            </Card>
+          ) : (
+            <TransactionsList expenses={expenses} />
+          )}
         </div>
-        <div className="rounded-2xl border bg-card px-5 py-3.5 text-right">
-          <p className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">This Month</p>
-          <p className="mt-0.5 text-2xl font-semibold">{inr(stats.totalThisMonth)}</p>
-        </div>
+      </MobileHeroOverlap>
+
+      <div className="hidden space-y-6 px-8 pb-8 md:block">
+        <SpendingBudgetsBoard householdId={householdId} spendingGoals={spendingGoals} categories={categories} isOwner={isOwner} currentUserId={myUserId} />
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <p className="font-heading text-lg">All expenses</p>
+            <CategoryFilterChips householdId={householdId} categories={categories} activeCategoryId={category} />
+          </div>
+          <div className="mt-4">
+            {expenses.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No expenses yet.</p>
+            ) : (
+              <TransactionsList expenses={expenses} />
+            )}
+          </div>
+        </Card>
       </div>
+    </div>
+  );
+}
 
-      <HouseholdCardRow households={memberships} currentId={householdId} basePath="/expenses" />
-
-      <CategoryFilterChips householdId={householdId} categories={categories} activeCategoryId={category} />
-
-      {expenses.length === 0 ? (
-        <EmptyState
-          icon="Wallet"
-          title="No expenses yet"
-          description="Start tracking where your money goes."
-          action={<AddExpenseDialog householdId={householdId} categories={categories} spendingGoals={spendingGoals} />}
-        />
-      ) : (
-        <TransactionsList expenses={expenses} />
-      )}
+function StatChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-muted px-3 py-2">
+      <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
+      <p className="mt-0.5 text-lg font-semibold">{value}</p>
     </div>
   );
 }

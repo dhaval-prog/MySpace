@@ -4,9 +4,9 @@ import { createAdminClientSafe } from "@/lib/supabase/admin";
 import { isPastGuestAccessWindow } from "@/lib/guest";
 import { Sidebar } from "@/components/nav/sidebar";
 import { BottomNav } from "@/components/nav/bottom-nav";
-import { Header } from "@/components/nav/header";
 import { Toaster } from "@/components/ui/sonner";
-import { listMyHouseholds, listHouseholdMembersLite } from "@/lib/actions/household";
+import { listMyHouseholds } from "@/lib/actions/household";
+import { listNotifications } from "@/lib/actions/notifications";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -29,9 +29,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Independent reads — run together instead of one after another. Every
   // authenticated page renders through this layout, so trimming a
   // sequential chain to a single round trip here matters on every navigation.
-  const [{ data: profile }, memberships] = await Promise.all([
+  const [{ data: profile }, memberships, notifications] = await Promise.all([
     supabase.from("profiles").select("name, phone").eq("id", user.id).maybeSingle(),
     listMyHouseholds(),
+    listNotifications(),
   ]);
 
   const isGuest = Boolean(user.is_anonymous);
@@ -55,15 +56,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const primaryHousehold = memberships[0];
-  const sidebarMembers = primaryHousehold ? await listHouseholdMembersLite(primaryHousehold.household.id) : [];
 
   const name = profile?.name || user.email?.split("@")[0] || "there";
 
   return (
     <div className="flex min-h-svh bg-background text-foreground">
-      <Sidebar members={sidebarMembers} isGuest={isGuest} />
+      <Sidebar name={name} email={user.email ?? ""} householdName={primaryHousehold?.household.name} isGuest={isGuest} notifications={notifications} />
       <div className="flex min-w-0 flex-1 flex-col md:pl-64">
-        <Header name={name} email={user.email ?? ""} isGuest={isGuest} />
         <main className="flex-1 pb-28 md:pb-8">{children}</main>
       </div>
       <BottomNav isGuest={isGuest} />

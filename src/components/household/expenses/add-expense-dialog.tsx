@@ -32,11 +32,15 @@ export function AddExpenseDialog({
   categories,
   spendingGoals,
   iconOnly = false,
+  defaultGoalId,
+  trigger,
 }: {
   householdId: string;
   categories: ExpenseCategoryOption[];
   spendingGoals: HouseholdGoalSummary[];
   iconOnly?: boolean;
+  defaultGoalId?: string;
+  trigger?: React.ReactElement;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -44,7 +48,7 @@ export function AddExpenseDialog({
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(categories[0]?.id ?? null);
-  const [goalId, setGoalId] = useState<string>("none");
+  const [goalId, setGoalId] = useState<string>(defaultGoalId ?? "none");
   const [expenseDate, setExpenseDate] = useState(todayLocalDate());
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
@@ -63,7 +67,7 @@ export function AddExpenseDialog({
     setDescription("");
     setAmount("");
     setCategoryId(localCategories[0]?.id ?? null);
-    setGoalId("none");
+    setGoalId(defaultGoalId ?? "none");
     setExpenseDate(todayLocalDate());
     setReceiptFile(null);
     setReceiptPreview(null);
@@ -83,7 +87,8 @@ export function AddExpenseDialog({
     >
       <DialogTrigger
         render={
-          iconOnly ? (
+          trigger ??
+          (iconOnly ? (
             <Button size="icon-sm" aria-label="Add Expense">
               <Plus className="size-4" />
             </Button>
@@ -92,7 +97,7 @@ export function AddExpenseDialog({
               <Plus className="size-4" />
               Add Expense
             </Button>
-          )
+          ))
         }
       />
       <DialogContent className="max-h-[85vh] overflow-y-auto">

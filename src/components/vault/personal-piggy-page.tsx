@@ -1,15 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import Link from "next/link";
+import { Settings2, Lock, Coins, Wallet, Target, ScrollText } from "lucide-react";
 import { Piggy, type PiggyCoinEvent, type PiggyMood } from "@/components/vault/piggy";
-import { AddMoneyButton, AddMoneyPanel } from "@/components/vault/add-money-dialog";
-import { TakeMoneyButton, TakeMoneyPanel } from "@/components/vault/take-money-dialog";
+import { AddMoneyPanel, AddMoneyButton } from "@/components/vault/add-money-dialog";
+import { TakeMoneyPanel, TakeMoneyButton } from "@/components/vault/take-money-dialog";
 import { SavingsHistory } from "@/components/vault/savings-history";
 import { RecurringSavingsCard } from "@/components/vault/recurring-savings-card";
-import { SwipeCarousel } from "@/components/shared/swipe-carousel";
+import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useCountUp } from "@/lib/hooks/use-count-up";
 import type { VaultRecurringPlan, VaultTransaction } from "@/lib/supabase/types";
+import type { HouseholdGoalSummary } from "@/lib/actions/household-goals";
 
 function inr(amount: number): string {
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
@@ -24,46 +28,33 @@ function fullnessFor(balance: number): number {
   return 1;
 }
 
-function startOfMonthISO(): string {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-}
-
 export function PersonalPiggyPage({
   memberName,
   initialBalance,
   initialTransactions,
   initialPlan,
+  goals = [],
 }: {
   memberName: string;
   initialBalance: number;
   initialTransactions: VaultTransaction[];
   initialPlan: VaultRecurringPlan | null;
+  goals?: HouseholdGoalSummary[];
 }) {
   const [balance, setBalance] = useState(initialBalance);
   const [transactions, setTransactions] = useState(initialTransactions);
   const [mood, setMood] = useState<PiggyMood>(initialBalance <= 0 ? "empty" : "idle");
   const [coinEvent, setCoinEvent] = useState<PiggyCoinEvent>(null);
-  const [balancePop, setBalancePop] = useState(false);
-  // Only one of Add Money / Take Money Out can be expanded at a time —
-  // both inline panels are driven from this single piece of state.
   const [expandedPanel, setExpandedPanel] = useState<"add" | "take" | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   const displayBalance = useCountUp(balance);
-
-  const monthStart = useMemo(() => startOfMonthISO(), []);
-  const savedThisMonth = useMemo(
-    () => transactions.filter((t) => t.type !== "deduct" && t.created_at >= monthStart).reduce((sum, t) => sum + t.amount, 0),
-    [transactions, monthStart]
-  );
-  const lastAdded = useMemo(() => transactions.find((t) => t.type !== "deduct") ?? null, [transactions]);
 
   function react(nextMood: PiggyMood, event: PiggyCoinEvent, settleMood: PiggyMood) {
     setMood(nextMood);
     setCoinEvent(event);
-    setBalancePop(true);
     setTimeout(() => setCoinEvent(null), 900);
-    setTimeout(() => setBalancePop(false), 500);
     setTimeout(() => setMood(settleMood), 900);
   }
 
@@ -73,6 +64,7 @@ export function PersonalPiggyPage({
       { id: `optimistic-${Date.now()}`, user_id: "", type: "add", amount, category: null, comment: null, label: null, source: "manual", voice_command: null, normalized_intent: null, related_item_id: null, created_at: new Date().toISOString() },
       ...prev,
     ]);
+    setUnlocked(true);
     react("happy", "in", newBalance <= 0 ? "empty" : "idle");
   }
 
@@ -82,77 +74,219 @@ export function PersonalPiggyPage({
       { id: `optimistic-${Date.now()}`, user_id: "", type: "deduct", amount, category: "Other", comment: null, label: null, source: "manual", voice_command: null, normalized_intent: null, related_item_id: null, created_at: new Date().toISOString() },
       ...prev,
     ]);
+    setUnlocked(true);
     react("sad", "out", newBalance <= 0 ? "empty" : "idle");
   }
 
-  const isEmpty = balance <= 0;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-8 py-8 md:px-16 md:py-14">
-      <div className="hidden md:block">
-        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Personal Piggy</p>
-        <h1 className="font-heading text-2xl text-foreground sm:text-3xl md:text-5xl">Your personal savings space</h1>
-      </div>
+    <div>
+      <MobileBand
+        title="Piggy"
+        backHref="/home"
+        right={
+          <RoundIconButton href="/settings" ariaLabel="Settings">
+            <Settings2 className="size-4.5" />
+          </RoundIconButton>
+        }
+      />
+      <DesktopBand breadcrumb="Piggy · Personal" title="Your piggy" subtitle={memberName} />
 
-      <SwipeCarousel
-        peek
-        slides={[
-          <Card key="balance" className="p-5 transition-transform duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100">
-            <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-              <div className="order-2 text-center sm:order-1 sm:text-left">
-                <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Piggy Balance</p>
-                <p className={`mt-1 font-heading text-5xl text-foreground ${balancePop ? "piggy-balance-pop" : ""}`}>{inr(displayBalance)}</p>
-                {!isEmpty && (
-                  <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-                    <p>
-                      Saved this month: <span className="font-medium text-foreground">{inr(savedThisMonth)}</span>
-                    </p>
-                    {lastAdded && (
-                      <p>
-                        Last added: <span className="font-medium text-foreground">{inr(lastAdded.amount)}</span>
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-              <Piggy mood={mood} fullness={fullnessFor(balance)} coinEvent={coinEvent} className="order-1 h-40 w-48 sm:order-2 sm:h-48 sm:w-56" />
+      <MobileHeroOverlap>
+        <PiggyHero
+          mood={mood}
+          balance={balance}
+          displayBalance={displayBalance}
+          coinEvent={coinEvent}
+          unlocked={unlocked}
+          onUnlock={() => setUnlocked(true)}
+        />
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <ActionTile icon={<Coins className="size-4.5" />} label="Add money" sublabel="Coin goes in" tone="primary" onClick={() => setExpandedPanel(expandedPanel === "add" ? null : "add")} />
+          <ActionTile icon={<Wallet className="size-4.5" />} label="Take out" sublabel="Quietly" onClick={() => setExpandedPanel(expandedPanel === "take" ? null : "take")} />
+          <ActionTile icon={<Target className="size-4.5" />} label="Set a goal" sublabel={`${goals.length} running`} href="/goals" />
+          <ActionTile icon={<ScrollText className="size-4.5" />} label="Activity" sublabel={`${transactions.length} entries`} tone="dark" onClick={() => setShowActivity((v) => !v)} />
+        </div>
+
+        <AddMoneyPanel onAdded={handleAdded} open={expandedPanel === "add"} onOpenChange={(v) => setExpandedPanel(v ? "add" : null)} />
+        <TakeMoneyPanel balance={balance} onTaken={handleTaken} open={expandedPanel === "take"} onOpenChange={(v) => setExpandedPanel(v ? "take" : null)} />
+
+        {showActivity && (
+          <div className="mt-4 space-y-4">
+            <RecurringSavingsCard plan={initialPlan} />
+            <Card className="p-5">
+              <SavingsHistory transactions={transactions} memberName={memberName} />
+            </Card>
+          </div>
+        )}
+      </MobileHeroOverlap>
+
+      <div className="hidden gap-6 px-4 pb-8 md:grid md:grid-cols-[1fr_380px] md:px-8">
+        <Card className="flex flex-col items-center gap-4 p-8">
+          <Piggy mood={mood} fullness={fullnessFor(balance)} coinEvent={coinEvent} className="h-56 w-64" />
+          <p className="font-mono text-xs tracking-[0.16em] text-muted-foreground uppercase">In the piggy</p>
+          {unlocked ? (
+            <p className="font-heading text-3xl text-foreground">{inr(displayBalance)}</p>
+          ) : (
+            <div className="flex items-center gap-2 font-heading text-2xl text-foreground">
+              <span>₹</span>
+              <span>• • • •</span>
             </div>
+          )}
+          {!unlocked && <p className="text-sm text-muted-foreground">Locked. Four digits to see the balance and move money.</p>}
+          <Button size="lg" className="mt-2 w-full rounded-2xl" onClick={() => setUnlocked(true)}>
+            <Lock className="size-4" />
+            Open piggy
+          </Button>
 
-            {isEmpty && (
-              <div className="mt-6 flex flex-col items-center gap-2 text-center">
-                <p className="font-heading text-xl text-foreground">Your Piggy is Empty</p>
-                <p className="text-sm text-muted-foreground">Let&apos;s put the first coin in.</p>
-              </div>
-            )}
-            <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start">
+          {unlocked && (
+            <div className="mt-2 flex w-full gap-3">
               <AddMoneyButton open={expandedPanel === "add"} onOpenChange={(v) => setExpandedPanel(v ? "add" : null)} />
               <TakeMoneyButton open={expandedPanel === "take"} onOpenChange={(v) => setExpandedPanel(v ? "take" : null)} />
             </div>
-            <AddMoneyPanel
-              onAdded={handleAdded}
-              open={expandedPanel === "add"}
-              onOpenChange={(v) => setExpandedPanel(v ? "add" : null)}
-            />
-            <TakeMoneyPanel
-              balance={balance}
-              onTaken={handleTaken}
-              open={expandedPanel === "take"}
-              onOpenChange={(v) => setExpandedPanel(v ? "take" : null)}
-            />
-          </Card>,
+          )}
+          <div className="w-full">
+            <AddMoneyPanel onAdded={handleAdded} open={expandedPanel === "add"} onOpenChange={(v) => setExpandedPanel(v ? "add" : null)} />
+            <TakeMoneyPanel balance={balance} onTaken={handleTaken} open={expandedPanel === "take"} onOpenChange={(v) => setExpandedPanel(v ? "take" : null)} />
+          </div>
+        </Card>
 
-          <RecurringSavingsCard key="recurring" plan={initialPlan} />,
+        <div className="flex flex-col gap-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <p className="font-heading text-lg">Saving towards</p>
+              <Link href="/goals" className="text-sm font-medium text-primary">
+                Set a goal
+              </Link>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2.5">
+              {goals.length === 0 ? (
+                <p className="col-span-2 text-sm text-muted-foreground">No goals yet.</p>
+              ) : (
+                goals.slice(0, 4).map((g) => (
+                  <Link
+                    key={g.goal.id}
+                    href={`/goals?id=${g.goal.household_id}`}
+                    className="rounded-2xl bg-muted p-3 transition-colors hover:bg-muted/70"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex size-8 items-center justify-center rounded-full bg-white text-sm">{g.goal.icon}</span>
+                      <span className="font-mono text-xs font-medium text-secondary">{g.progressPct}%</span>
+                    </div>
+                    <p className="mt-2 truncate text-sm font-medium">{g.goal.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{inr(g.currentAmount)}…</p>
+                  </Link>
+                ))
+              )}
+            </div>
+          </Card>
 
-          <Card key="history" className="p-5 transition-transform duration-300 ease-out hover:scale-[1.015] motion-reduce:transition-none motion-reduce:hover:scale-100">
-            <CardHeader className="p-0">
-              <CardTitle className="text-base">Savings History</CardTitle>
-            </CardHeader>
-            <CardContent className="mt-4 p-0">
+          <RecurringSavingsCard plan={initialPlan} />
+
+          <Card className="flex-1 overflow-y-auto p-5">
+            <p className="font-heading text-lg">Recent activity</p>
+            <div className="mt-3">
               <SavingsHistory transactions={transactions} memberName={memberName} />
-            </CardContent>
-          </Card>,
-        ]}
-      />
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function PiggyHero({
+  mood,
+  balance,
+  displayBalance,
+  coinEvent,
+  unlocked,
+  onUnlock,
+}: {
+  mood: PiggyMood;
+  balance: number;
+  displayBalance: number;
+  coinEvent: PiggyCoinEvent;
+  unlocked: boolean;
+  onUnlock: () => void;
+}) {
+  const isEmpty = balance <= 0;
+  return (
+    <Card className="p-6">
+      <div className="flex flex-col items-center">
+        <Piggy mood={mood} fullness={fullnessFor(balance)} coinEvent={coinEvent} className="h-40 w-48" />
+
+        {isEmpty && unlocked ? (
+          <p className="mt-2 text-center font-heading text-lg text-foreground">Your Piggy is Empty</p>
+        ) : (
+          <>
+            <p className="mt-4 font-mono text-[10.5px] tracking-[0.16em] text-muted-foreground uppercase">In the piggy</p>
+            {unlocked ? (
+              <p className="mt-1 font-heading text-3xl text-foreground">{inr(displayBalance)}</p>
+            ) : (
+              <div className="mt-1 flex items-center gap-2 font-heading text-3xl text-foreground">
+                <span>₹</span>
+                <span>• • • •</span>
+              </div>
+            )}
+          </>
+        )}
+
+        <Button size="lg" className="mt-5 w-full rounded-2xl bg-secondary text-secondary-foreground hover:bg-secondary/85" onClick={onUnlock}>
+          <Lock className="size-4" />
+          Open piggy
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function ActionTile({
+  icon,
+  label,
+  sublabel,
+  tone = "light",
+  href,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sublabel: string;
+  tone?: "light" | "primary" | "dark";
+  href?: string;
+  onClick?: () => void;
+}) {
+  const toneClass =
+    tone === "primary"
+      ? "bg-primary text-primary-foreground"
+      : tone === "dark"
+        ? "bg-secondary text-secondary-foreground"
+        : "bg-white text-foreground";
+  const iconToneClass = tone === "light" ? "bg-accent text-accent-foreground" : "bg-white/20 text-current";
+
+  const body = (
+    <>
+      <span className={`flex size-9 items-center justify-center rounded-full ${iconToneClass}`}>{icon}</span>
+      <div>
+        <p className="font-medium">{label}</p>
+        <p className={tone === "light" ? "text-xs text-muted-foreground" : "text-xs opacity-80"}>{sublabel}</p>
+      </div>
+    </>
+  );
+
+  const className = `flex flex-col items-start gap-3 rounded-2xl p-4 text-left transition-transform active:scale-[0.98] ${toneClass}`;
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
+    </button>
   );
 }

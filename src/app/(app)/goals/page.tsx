@@ -2,13 +2,15 @@ import { redirect } from "next/navigation";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { listGoals } from "@/lib/actions/household-goals";
 import { EmptyState } from "@/components/shared/empty-state";
-import { HouseholdCardRow } from "@/components/household/household-card-row";
-import { GoalsOptionsMenu } from "@/components/household/goals-options-menu";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
 import { GoalCard } from "@/components/household/goal-card";
-import { HeaderActionsPortal } from "@/components/nav/header-actions-portal";
+import { MobileBand, DesktopBand, MobileHeroOverlap } from "@/components/layout/page-band";
+
+function inr(n: number): string {
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+}
 
 export default async function GoalsPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const { id } = await searchParams;
@@ -40,42 +42,51 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
     redirect(`/split?id=${householdId}`);
   }
 
-  const activeGoals = await listGoals(householdId, { status: "active" });
+  const activeGoals = (await listGoals(householdId, { status: "active" })).filter((g) => g.goal.goal_type === "saving");
+  const totalSaved = activeGoals.reduce((sum, g) => sum + g.currentAmount, 0);
 
   const isOwner = context.myRole === "owner";
-  const canInvite = context.myRole === "owner" || context.myRole === "co_owner";
   const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-      <HeaderActionsPortal>
-        <CreateGoalDialog householdId={householdId} iconOnly />
-      </HeaderActionsPortal>
-
-      <div className="hidden md:block">
-        <p className="font-mono text-xs tracking-[0.14em] text-muted-foreground uppercase">Shared &amp; Personal</p>
-        <div className="flex items-end gap-2.5">
-          <h1 className="font-heading text-4xl text-foreground md:text-5xl">Goals &amp; Expenses</h1>
-          <CreateGoalDialog householdId={householdId} iconOnly />
-        </div>
-        <p className="mt-4 text-sm text-muted-foreground">Track progress toward what matters most</p>
-      </div>
-
-      <HouseholdCardRow
-        households={memberships}
-        currentId={householdId}
-        optionsMenu={<GoalsOptionsMenu currentId={householdId} canInvite={canInvite} />}
+    <div>
+      <MobileBand
+        title="Goals"
+        backHref="/home"
+        right={<CreateGoalDialog householdId={householdId} iconOnly />}
+        stats={[
+          { label: "Saved together", value: inr(totalSaved) },
+          { label: "Goals", value: activeGoals.length },
+        ]}
+      />
+      <DesktopBand
+        breadcrumb={`Goals · ${context.household.name}`}
+        title={`${inr(totalSaved)} saved together`}
+        subtitle={activeGoals.length > 0 ? `${activeGoals.length} goal${activeGoals.length === 1 ? "" : "s"}` : "No goals yet"}
+        action={<CreateGoalDialog householdId={householdId} triggerLabel="New goal" />}
       />
 
-      <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <MobileHeroOverlap className="pb-6">
         {activeGoals.length === 0 ? (
-          <p className="col-span-full text-sm text-muted-foreground">
-            No goals yet — create one to start saving toward something together.
-          </p>
+          <p className="rounded-3xl bg-white p-8 text-center text-sm text-muted-foreground">No goals yet — create one to start saving toward something together.</p>
         ) : (
-          activeGoals.map((g) => (
-            <GoalCard key={g.goal.id} summary={g} canDelete={isOwner || g.goal.created_by === myUserId} currentUserId={myUserId} />
-          ))
+          <div className="grid items-start gap-3 sm:grid-cols-2">
+            {activeGoals.map((g) => (
+              <GoalCard key={g.goal.id} summary={g} canDelete={isOwner || g.goal.created_by === myUserId} currentUserId={myUserId} />
+            ))}
+          </div>
+        )}
+      </MobileHeroOverlap>
+
+      <div className="hidden px-8 pb-8 md:block">
+        {activeGoals.length === 0 ? (
+          <p className="rounded-3xl bg-white p-8 text-center text-sm text-muted-foreground">No goals yet — create one to start saving toward something together.</p>
+        ) : (
+          <div className="grid items-start gap-4 md:grid-cols-3">
+            {activeGoals.map((g) => (
+              <GoalCard key={g.goal.id} summary={g} canDelete={isOwner || g.goal.created_by === myUserId} currentUserId={myUserId} />
+            ))}
+          </div>
         )}
       </div>
     </div>

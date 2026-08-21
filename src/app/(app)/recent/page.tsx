@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 
 export default async function RecentItemsPage() {
   const supabase = await createClient();
-  const results = (await getItemsWithPaths(supabase)).slice(0, 30);
+  const { results } = await getItemsWithPaths(supabase, { limit: 30 });
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-8">

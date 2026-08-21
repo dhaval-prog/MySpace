@@ -4,7 +4,9 @@ import type { Database, Home, Item } from "@/lib/supabase/types";
 export interface RoomFilter {
   id: string;
   name: string;
+  icon: string;
   itemCount: number;
+  placeCount: number;
 }
 
 export interface HomeItemsView {
@@ -75,10 +77,17 @@ export async function getHomeItemsView(
     itemCountByRoom.set(item.roomId, (itemCountByRoom.get(item.roomId) ?? 0) + 1);
   }
 
+  const placeCountByRoom = new Map<string, number>();
+  for (const f of furniture ?? []) {
+    placeCountByRoom.set(f.room_id, (placeCountByRoom.get(f.room_id) ?? 0) + 1);
+  }
+
   const roomFilters: RoomFilter[] = (rooms ?? []).map((r) => ({
     id: r.id,
     name: r.name,
+    icon: r.icon,
     itemCount: itemCountByRoom.get(r.id) ?? 0,
+    placeCount: placeCountByRoom.get(r.id) ?? 0,
   }));
 
   return {
