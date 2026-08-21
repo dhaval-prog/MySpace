@@ -82,6 +82,8 @@ export interface SplitSummary {
   youOwe: number;
   youAreOwed: number;
   net: number;
+  /** Sum of every confirmed settlement ever recorded in this group, in either direction — the wallet card's "Settled" figure. */
+  settledAmount: number;
   memberBalances: SplitMemberBalance[];
   recentExpenses: SplitExpenseSummary[];
 }
@@ -463,11 +465,14 @@ export async function getSplitSummary(householdId: string, groupId?: string): Pr
     };
   });
 
+  const settledAmount = settlementRows.reduce((sum, s) => sum + s.amount, 0);
+
   return {
     groupId,
     youOwe: Math.round(youOwe * 100) / 100,
     youAreOwed: Math.round(youAreOwed * 100) / 100,
     net: Math.round((youAreOwed - youOwe) * 100) / 100,
+    settledAmount: Math.round(settledAmount * 100) / 100,
     memberBalances,
     recentExpenses,
   };
@@ -668,6 +673,28 @@ export async function confirmSettlement(settlementId: string): Promise<{ ok: tru
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("confirm_split_settlement", { p_settlement_id: settlementId });
   if (error || !data?.ok) return { error: error?.message ?? "Failed to confirm settlement" };
+
+  revalidatePath("/split");
+  return { ok: true };
+}
+
+/**
+ * The wallet card's one-click "Mark paid" on a share you're owed — the
+ * caller is always the payee here (unlike requestSettlement, where the
+ * caller is the payer), so it's recorded already-confirmed. See
+ * record_split_settlement_received() for why that's still safe.
+ */
+export async function markShareReceived(groupId: string, fromUserId: string, amount: number): Promise<{ ok: true } | { error: string }> {
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Amount must be greater than zero." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("record_split_settlement_received", {
+    p_group_id: groupId,
+    p_from_user: fromUserId,
+    p_amount: amount,
+    p_comment: null,
+  });
+  if (error || !data?.ok) return { error: error?.message ?? "Failed to mark this share paid" };
 
   revalidatePath("/split");
   return { ok: true };

@@ -16,11 +16,16 @@ export function StatChip({
     <div
       className={cn(
         "rounded-xl px-3 py-2",
-        tone === "destructive" ? "bg-blush-tint text-destructive" : "bg-muted text-foreground",
+        tone === "destructive" ? "bg-blush-tint text-destructive" : tone === "positive" ? "bg-accent text-accent-foreground" : "bg-muted text-foreground",
         className
       )}
     >
-      <p className={cn("font-mono text-[10px] tracking-[0.14em] uppercase", tone === "destructive" ? "text-destructive/80" : "text-muted-foreground")}>
+      <p
+        className={cn(
+          "font-mono text-[10px] tracking-[0.14em] uppercase",
+          tone === "destructive" ? "text-destructive/80" : tone === "positive" ? "text-accent-foreground/80" : "text-muted-foreground"
+        )}
+      >
         {label}
       </p>
       <p className="mt-0.5 text-lg font-semibold">{value}</p>

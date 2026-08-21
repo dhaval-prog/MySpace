@@ -14,6 +14,7 @@ export function ListRow({
   onClick,
   className,
   chevron = false,
+  barPct,
 }: {
   icon?: ReactNode;
   iconClassName?: string;
@@ -24,25 +25,34 @@ export function ListRow({
   onClick?: () => void;
   className?: string;
   chevron?: boolean;
+  /** 0-100 — renders a thin progress bar under the row (e.g. a room's "most used" fill), omit for a plain row. */
+  barPct?: number;
 }) {
   const content = (
     <>
-      {icon && (
-        <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground", iconClassName)}>
-          {icon}
+      <span className="flex items-center gap-3">
+        {icon && (
+          <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground", iconClassName)}>
+            {icon}
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium text-foreground">{title}</span>
+          {subtitle && <span className="mt-0.5 block truncate text-sm text-muted-foreground">{subtitle}</span>}
+        </span>
+        {trailing}
+        {chevron && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+      </span>
+      {typeof barPct === "number" && (
+        <span className="mt-2.5 block h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <span className="block h-full rounded-full bg-secondary" style={{ width: `${Math.max(0, Math.min(100, barPct))}%` }} />
         </span>
       )}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium text-foreground">{title}</span>
-        {subtitle && <span className="mt-0.5 block truncate text-sm text-muted-foreground">{subtitle}</span>}
-      </span>
-      {trailing}
-      {chevron && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
     </>
   );
 
   const rowClassName = cn(
-    "flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-left",
+    "flex flex-col rounded-2xl bg-white px-4 py-3.5 text-left",
     (href || onClick) && "transition-colors hover:bg-muted/60",
     className
   );

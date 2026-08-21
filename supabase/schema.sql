@@ -1894,6 +1894,69 @@ begin
 end;
 $$;
 
+-- The mirror-image path: the person who was PAID records it directly,
+-- pre-confirmed, instead of waiting on the debtor to request first. This is
+-- safe precisely because confirm_split_settlement()'s whole point is "only
+-- the person who was paid can confirm" — here that same person (auth.uid())
+-- is both the recorder and the to_user, so there's no way to use this to
+-- put words in someone else's mouth the way a fake "request" would. Backs
+-- the wallet card's one-click "Mark paid" on a share you're owed.
+create or replace function public.record_split_settlement_received(
+  p_group_id uuid,
+  p_from_user uuid,
+  p_amount numeric,
+  p_comment text
+)
+returns jsonb
+language plpgsql
+security invoker set search_path = public
+as $$
+declare
+  v_household_id uuid;
+  v_settlement_id uuid;
+  v_from_name text;
+  v_to_name text;
+begin
+  if not is_split_group_member(p_group_id) then
+    raise exception 'You are not a member of this split group';
+  end if;
+  if auth.uid() = p_from_user then
+    raise exception 'A settlement needs two different people';
+  end if;
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'Amount must be greater than zero';
+  end if;
+  if not is_split_group_member_check(p_group_id, p_from_user) then
+    raise exception 'The other person must be a member of this split group';
+  end if;
+
+  select household_id into v_household_id from split_groups where id = p_group_id;
+
+  insert into split_settlements (group_id, household_id, from_user, to_user, amount, method, recorded_by, comment, confirmed_at)
+    values (p_group_id, v_household_id, p_from_user, auth.uid(), p_amount, 'other', auth.uid(), p_comment, now())
+    returning id into v_settlement_id;
+
+  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_from_name from profiles where id = p_from_user;
+  select coalesce(nullif(name, ''), split_part(email, '@', 1)) into v_to_name from profiles where id = auth.uid();
+
+  insert into household_activity (household_id, actor_user_id, kind, payload)
+    values (
+      v_household_id, auth.uid(), 'settlement_recorded',
+      jsonb_build_object('settlement_id', v_settlement_id, 'from_user', p_from_user, 'to_user', auth.uid(),
+        'from_name', coalesce(v_from_name, 'Someone'), 'to_name', coalesce(v_to_name, 'Someone'), 'amount', p_amount)
+    );
+
+  insert into split_chat_messages (group_id, household_id, user_id, message, kind)
+    values (
+      p_group_id, v_household_id, auth.uid(),
+      coalesce(v_to_name, 'Someone') || ' marked ₹' || round(p_amount)::text || ' from ' || coalesce(v_from_name, 'Someone') || ' as paid',
+      'system'
+    );
+
+  return jsonb_build_object('ok', true, 'settlement_id', v_settlement_id);
+end;
+$$;
+
 -- ─────────────────────────────────────────────────────────────
 -- Split Chat — a dedicated chat scoped to a Let's Split group, deliberately
 -- separate from Home Chat (household_chat_messages, HOME_CHAT_ACCESS). Its

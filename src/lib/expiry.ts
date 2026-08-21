@@ -38,3 +38,18 @@ export function expiryStatus(expiryDate: string | null): ExpiryStatus {
   const month = new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short" });
   return { level: "normal", label: `Expires ${month} ${d}` };
 }
+
+/** Expired or expiring within 3 days — the cutoff between the pink/urgent and pale-green/mild tints used for expiry badges and icon circles. */
+export function isUrgentExpiry(expiryDate: string | null): boolean {
+  if (!expiryDate) return false;
+  return daysUntil(expiryDate) <= 3;
+}
+
+/** Compact upper-case badge text for tight UI ("2 DAYS", "EXPIRED") — a shorter form of the same status `expiryStatus()` describes in a full sentence. */
+export function expiryBadgeLabel(expiryDate: string | null): string {
+  if (!expiryDate) return "";
+  const diff = daysUntil(expiryDate);
+  if (diff < 0) return "EXPIRED";
+  if (diff === 0) return "TODAY";
+  return `${diff} DAY${diff === 1 ? "" : "S"}`;
+}
