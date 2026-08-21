@@ -9,6 +9,8 @@ export interface SearchResult {
   name: string;
   roomName: string;
   furnitureName: string;
+  container: string | null;
+  category: string;
   quantity: number;
   expiryLabel: string | null;
   expiryLevel: "none" | "normal" | "soon" | "expired";
@@ -78,6 +80,8 @@ export async function searchItems(homeId: string, query: string, limit = 20): Pr
       name: item.name,
       roomName: item.roomName,
       furnitureName: item.furnitureName,
+      container: item.container,
+      category: item.category,
       quantity: item.quantity,
       expiryLabel: status.level === "none" ? null : status.label,
       expiryLevel: status.level,

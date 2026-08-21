@@ -12,7 +12,6 @@ import { listMyHouseholds } from "@/lib/actions/household";
 import { getExpenseStats } from "@/lib/actions/expenses";
 import { getHouseholdSummary } from "@/lib/actions/household-dashboard";
 import { listNotifications } from "@/lib/actions/notifications";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { AddRoomDialog } from "@/components/home/add-room-dialog";
 import { HomeActionsMenu } from "@/components/home/home-actions-menu";
@@ -161,24 +160,34 @@ export default async function HomePage({
       />
 
       {homes.length > 1 && (
-        <div className="mt-3 flex flex-wrap gap-1.5 px-4 md:px-8">
-          {homes.map((h) => (
-            <Link key={h.id} href={`/home?id=${h.id}`}>
-              <Badge variant={h.id === homeId ? "default" : "outline"}>{h.name}</Badge>
-            </Link>
-          ))}
+        <div className="mt-3 px-4 md:px-8">
+          <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
+            {homes.map((h) => (
+              <Link
+                key={h.id}
+                href={`/home?id=${h.id}`}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                  h.id === homeId ? "bg-secondary text-secondary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {h.name}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
-      <MobileHeroOverlap className="space-y-4 pb-6">
+      <div className="mt-4 flex items-center justify-between px-5 md:hidden">
+        <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{home.name}</p>
+        <p className="text-sm text-muted-foreground">
+          {totals.rooms} room{totals.rooms === 1 ? "" : "s"}
+        </p>
+      </div>
+
+      <MobileHeroOverlap className="mt-3 space-y-4 pb-6">
         <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{home.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {totals.rooms} room{totals.rooms === 1 ? "" : "s"}
-            </p>
-          </div>
-          <p className="mt-2 font-heading text-xl leading-tight text-foreground">
+          <p className="font-heading text-xl leading-tight text-foreground">
             {headlineWords ? `${headlineWords} today.` : "Everything looks in order."}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{attentionSentence}.</p>
@@ -262,6 +271,14 @@ export default async function HomePage({
 
       <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-[3fr_7fr]">
         <div className="space-y-4">
+          <Link
+            href="/search"
+            className="flex items-center gap-2.5 rounded-2xl bg-white px-4 py-3 text-sm text-muted-foreground shadow-none transition-colors hover:bg-muted/60"
+          >
+            <Search className="size-4.5 shrink-0" />
+            Search your home…
+          </Link>
+
           <div className="flex items-center justify-between">
             <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Rooms</p>
             <Link href="/items" className="text-sm font-medium text-primary">
