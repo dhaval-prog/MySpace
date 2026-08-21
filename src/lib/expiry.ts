@@ -53,3 +53,14 @@ export function expiryBadgeLabel(expiryDate: string | null): string {
   if (diff === 0) return "TODAY";
   return `${diff} DAY${diff === 1 ? "" : "S"}`;
 }
+
+/** Oldest-expiring-first, with never-expiring items last — a plain string
+ * compare works because expiry_date is always "YYYY-MM-DD". Shared by every
+ * "contents of a place" list (the Room page's Place detail panel, an
+ * item's "Also on this shelf" siblings) so they all read the same way. */
+export function byExpirySoonestFirst(a: { expiry_date: string | null }, b: { expiry_date: string | null }): number {
+  if (!a.expiry_date && !b.expiry_date) return 0;
+  if (!a.expiry_date) return 1;
+  if (!b.expiry_date) return -1;
+  return a.expiry_date.localeCompare(b.expiry_date);
+}

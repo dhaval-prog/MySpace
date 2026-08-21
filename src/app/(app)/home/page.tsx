@@ -151,7 +151,7 @@ export default async function HomePage({
         action={
           <div className="flex items-center gap-2">
             <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
-            <Link href="/items/new" className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/85">
+            <Link href={`/items/new?homeId=${homeId}`} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/85">
               + Add Item
             </Link>
           </div>
@@ -159,7 +159,7 @@ export default async function HomePage({
       />
 
       {homes.length > 1 && (
-        <div className="mt-3 px-4 md:px-8">
+        <div className="mt-3 hidden px-8 md:block">
           <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
             {homes.map((h) => (
               <Link
@@ -178,8 +178,25 @@ export default async function HomePage({
       )}
 
       <div className="mt-4 flex items-center justify-between px-5 md:hidden">
-        <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{home.name}</p>
-        <p className="text-sm text-muted-foreground">
+        {homes.length > 1 ? (
+          <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
+            {homes.map((h) => (
+              <Link
+                key={h.id}
+                href={`/home?id=${h.id}`}
+                className={cn(
+                  "rounded-full px-3.5 py-1 text-sm font-medium transition-colors",
+                  h.id === homeId ? "bg-secondary text-secondary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {h.name}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{home.name}</p>
+        )}
+        <p className="shrink-0 text-sm text-muted-foreground">
           {totals.rooms} room{totals.rooms === 1 ? "" : "s"}
         </p>
       </div>
