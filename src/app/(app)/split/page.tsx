@@ -7,8 +7,11 @@ import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
 import { AddExpenseDialog } from "@/components/household/split/add-expense-dialog";
-import { SplitGroupSwitcher, CreateSplitGroupButton } from "@/components/household/split/split-group-switcher";
+import { CreateSplitGroupButton } from "@/components/household/split/split-group-switcher";
 import { SplitGroupWorkspace } from "@/components/household/split/split-group-workspace";
+import { SplitWalletStack, SplitWalletList, type WalletCardData } from "@/components/household/split/split-wallet-stack";
+import { SplitDetailCard } from "@/components/household/split/split-detail-card";
+import { SplitGroupActionsMenu } from "@/components/household/split/split-group-actions-menu";
 import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
 import { Card } from "@/components/ui/card";
 
@@ -73,11 +76,40 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
 
   // Totals for the band span every group, not just the one currently open —
   // "You are owed"/"You owe" describes the whole household, matching the
-  // group switcher's own per-card totals below it.
-  const allSummaries = [splitSummary, ...otherGroupSummaries].filter((s): s is NonNullable<typeof s> => s !== null);
+  // wallet stack's own per-card totals below it.
+  const summaryByGroupId = new Map(
+    [...(splitSummary ? [splitSummary] : []), ...otherGroupSummaries.filter((s): s is NonNullable<typeof s> => s !== null)].map((s) => [
+      s.groupId,
+      s,
+    ])
+  );
+  const allSummaries = Array.from(summaryByGroupId.values());
   const totalYouAreOwed = allSummaries.reduce((sum, s) => sum + s.youAreOwed, 0);
   const totalYouOwe = allSummaries.reduce((sum, s) => sum + s.youOwe, 0);
   const openGroupCount = allSummaries.filter((s) => s.youOwe > 0 || s.youAreOwed > 0).length;
+
+  // The active group's "pending" is the real, viewer-independent figure
+  // (every pair's outstanding balance, from getSimplifiedBalances). Every
+  // other group only needs a rough one for its peek sliver/list row, so it
+  // reuses that group's own already-fetched summary instead of a second
+  // query per group.
+  const activeGroupPending = simplifiedBalances.reduce((sum, t) => sum + t.amount, 0);
+  const canInviteActive = Boolean(activeGroup && (context.myRole === "owner" || context.myRole === "co_owner" || activeGroup.createdBy === myUserId));
+  const canDeleteActive = Boolean(activeGroup && groups.length > 1 && (context.myRole === "owner" || activeGroup.createdBy === myUserId));
+  const groupActions = activeGroup && groupId ? (
+    <SplitGroupActionsMenu
+      householdId={householdId}
+      groupId={groupId}
+      groupName={activeGroup.name}
+      canInvite={canInviteActive}
+      canDelete={canDeleteActive}
+    />
+  ) : undefined;
+  const walletCards: WalletCardData[] = groups.map((g) => {
+    const s = summaryByGroupId.get(g.id);
+    const pendingAmount = g.id === groupId ? activeGroupPending : s ? s.youOwe + s.youAreOwed : 0;
+    return { group: g, pendingAmount, settledAmount: s?.settledAmount ?? 0 };
+  });
 
   return (
     <div>
@@ -106,38 +138,43 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
             Active splits <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-accent-foreground">{groups.length}</span>
           </p>
-          <JoinWithCodeDialog />
+          <div className="flex items-center gap-3">
+            {walletCards.length > 1 && <p className="text-xs text-muted-foreground">Tap to switch</p>}
+            <JoinWithCodeDialog />
+          </div>
         </div>
 
-        {groups.length > 0 && (
-          <SplitGroupSwitcher householdId={householdId} groups={groups} currentGroupId={groupId ?? ""} currentUserId={myUserId} myRole={context.myRole} />
-        )}
+        {walletCards.length > 0 && groupId && <SplitWalletStack householdId={householdId} cards={walletCards} activeGroupId={groupId} />}
 
-        {canCreateGroup && groups.length > 0 && (
+        {canCreateGroup && (
           <div className="flex justify-center">
             <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} householdMembers={householdMemberOptions} />
           </div>
         )}
 
-        {splitSummary && groupId && (
-          <div className="flex justify-end">
-            <AddExpenseDialog householdId={householdId} groupId={groupId} members={splitMembers} currentUserId={myUserId} />
-          </div>
-        )}
-
         {splitSummary && activeGroup ? (
-          <Card className="p-5">
-            <SplitGroupWorkspace
-              householdId={householdId}
-              group={activeGroup}
-              summary={splitSummary}
-              simplifiedBalances={simplifiedBalances}
-              pendingSettlements={pendingSettlements}
-              members={splitMembers}
-              currentUserId={myUserId}
-              isOwner={isOwner}
-            />
-          </Card>
+          <>
+            <Card className="p-5">
+              <SplitDetailCard group={activeGroup} summary={splitSummary} pendingAmount={activeGroupPending} actions={groupActions} />
+            </Card>
+
+            <div className="flex justify-end">
+              <AddExpenseDialog householdId={householdId} groupId={groupId!} members={splitMembers} currentUserId={myUserId} />
+            </div>
+
+            <Card className="p-5">
+              <SplitGroupWorkspace
+                householdId={householdId}
+                group={activeGroup}
+                summary={splitSummary}
+                simplifiedBalances={simplifiedBalances}
+                pendingSettlements={pendingSettlements}
+                members={splitMembers}
+                currentUserId={myUserId}
+                isOwner={isOwner}
+              />
+            </Card>
+          </>
         ) : (
           <Card className="p-8 text-center">
             <p className="text-sm text-muted-foreground">
@@ -151,30 +188,37 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">The wallet</p>
-            <JoinWithCodeDialog />
+            <div className="flex items-center gap-3">
+              {walletCards.length > 1 && <p className="text-xs text-muted-foreground">Click to switch</p>}
+              <JoinWithCodeDialog />
+            </div>
           </div>
-          {groups.length > 0 && (
-            <SplitGroupSwitcher householdId={householdId} groups={groups} currentGroupId={groupId ?? ""} currentUserId={myUserId} myRole={context.myRole} />
-          )}
+          {walletCards.length > 0 && groupId && <SplitWalletStack householdId={householdId} cards={walletCards} activeGroupId={groupId} />}
+          {walletCards.length > 1 && groupId && <SplitWalletList householdId={householdId} cards={walletCards} activeGroupId={groupId} />}
         </div>
 
         {splitSummary && activeGroup ? (
-          <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Split detail</p>
-              {splitSummary && groupId && <AddExpenseDialog householdId={householdId} groupId={groupId} members={splitMembers} currentUserId={myUserId} />}
-            </div>
-            <SplitGroupWorkspace
-              householdId={householdId}
-              group={activeGroup}
-              summary={splitSummary}
-              simplifiedBalances={simplifiedBalances}
-              pendingSettlements={pendingSettlements}
-              members={splitMembers}
-              currentUserId={myUserId}
-              isOwner={isOwner}
-            />
-          </Card>
+          <div className="space-y-4">
+            <Card className="p-6">
+              <SplitDetailCard group={activeGroup} summary={splitSummary} pendingAmount={activeGroupPending} actions={groupActions} />
+            </Card>
+            <Card className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Expenses &amp; chat</p>
+                <AddExpenseDialog householdId={householdId} groupId={groupId!} members={splitMembers} currentUserId={myUserId} />
+              </div>
+              <SplitGroupWorkspace
+                householdId={householdId}
+                group={activeGroup}
+                summary={splitSummary}
+                simplifiedBalances={simplifiedBalances}
+                pendingSettlements={pendingSettlements}
+                members={splitMembers}
+                currentUserId={myUserId}
+                isOwner={isOwner}
+              />
+            </Card>
+          </div>
         ) : (
           <Card className="p-8 text-center">
             <p className="text-sm text-muted-foreground">

@@ -759,6 +759,15 @@ export type Database = {
         Args: { p_settlement_id: string };
         Returns: { ok: boolean };
       };
+      record_split_settlement_received: {
+        Args: {
+          p_group_id: string;
+          p_from_user: string;
+          p_amount: number;
+          p_comment: string | null;
+        };
+        Returns: { ok: boolean; settlement_id: string };
+      };
       get_vault_balance: {
         Args: Record<PropertyKey, never>;
         Returns: number;
