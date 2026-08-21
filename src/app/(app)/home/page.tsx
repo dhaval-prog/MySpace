@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getHomeItemsView } from "@/lib/home-data";
 import type { HomeItemsView } from "@/lib/home-data";
 import { expiryStatus, isUrgentExpiry, expiryBadgeLabel } from "@/lib/expiry";
-import { getIcon } from "@/lib/icon-map";
+import { getIcon, getCompactIcon } from "@/lib/icon-map";
 import { categoryIcon } from "@/lib/constants";
 import { cn, capitalize, spellSmallNumber } from "@/lib/utils";
 import { listMyHouseholds } from "@/lib/actions/household";
@@ -172,7 +172,13 @@ export default async function HomePage({
 
       <MobileHeroOverlap className="space-y-4 pb-6">
         <Card className="p-5">
-          <p className="font-heading text-xl leading-tight text-foreground">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{home.name}</p>
+            <p className="text-sm text-muted-foreground">
+              {totals.rooms} room{totals.rooms === 1 ? "" : "s"}
+            </p>
+          </div>
+          <p className="mt-2 font-heading text-xl leading-tight text-foreground">
             {headlineWords ? `${headlineWords} today.` : "Everything looks in order."}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{attentionSentence}.</p>
@@ -214,7 +220,7 @@ export default async function HomePage({
             </div>
             <div className="mt-2 space-y-2">
               {rooms.map((r) => {
-                const RoomIcon = getIcon(r.icon);
+                const RoomIcon = getCompactIcon(r.icon);
                 const isMostUsed = r.id === mostUsedRoomId;
                 return (
                   <ListRow
@@ -254,7 +260,7 @@ export default async function HomePage({
         )}
       </MobileHeroOverlap>
 
-      <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-[1fr_1fr]">
+      <div className="hidden gap-6 px-8 pb-8 md:grid md:grid-cols-[3fr_7fr]">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Rooms</p>
@@ -272,7 +278,7 @@ export default async function HomePage({
           ) : (
             <div className="space-y-2">
               {rooms.map((r) => {
-                const RoomIcon = getIcon(r.icon);
+                const RoomIcon = getCompactIcon(r.icon);
                 const isMostUsed = r.id === mostUsedRoomId;
                 return (
                   <ListRow
