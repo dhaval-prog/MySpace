@@ -69,22 +69,32 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
             <Settings2 className="size-4.5" />
           </RoundIconButton>
         }
+        stats={[
+          { label: "Budgeted", value: inr(totalBudgeted) },
+          { label: "Spent", value: inr(stats.totalThisMonth) },
+        ]}
       />
       <DesktopBand
         breadcrumb="Expenses · Andheri Flat"
         title="Spending budgets"
         subtitle="Create and track budgets for different parts of your spending."
-        action={<CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create spending budget" />}
+        action={
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="font-mono text-[10px] tracking-[0.14em] text-foreground/70 uppercase">Budgeted · Spent</p>
+              <p className="mt-0.5 font-heading text-lg text-foreground">
+                {inr(totalBudgeted)} · {inr(stats.totalThisMonth)}
+              </p>
+            </div>
+            <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create spending budget" categories={categories} />
+          </div>
+        }
       />
 
       <MobileHeroOverlap className="space-y-4 pb-6">
         <Card className="p-5">
           <p className="font-heading text-xl leading-tight text-foreground">Spending budgets</p>
           <p className="mt-1 text-sm text-muted-foreground">Create and track budgets for different parts of your spending.</p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <StatChip label="Budgeted" value={inr(totalBudgeted)} />
-            <StatChip label="Spent" value={inr(stats.totalThisMonth)} />
-          </div>
         </Card>
 
         <SpendingBudgetsBoard householdId={householdId} spendingGoals={spendingGoals} categories={categories} isOwner={isOwner} currentUserId={myUserId} />
@@ -119,15 +129,6 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           </div>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function StatChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-muted px-3 py-2">
-      <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold">{value}</p>
     </div>
   );
 }
