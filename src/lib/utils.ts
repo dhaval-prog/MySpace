@@ -17,6 +17,17 @@ export function relativeDay(iso: string): string {
   return date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
+export function capitalize(s: string): string {
+  return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const SMALL_NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+/** Spells out 0-9 in prose ("four rooms") and leaves 10+ as a numeral — the small-number style used in My Home's headline sentences. */
+export function spellSmallNumber(n: number): string {
+  return n >= 0 && n < SMALL_NUMBER_WORDS.length ? SMALL_NUMBER_WORDS[n] : String(n);
+}
+
 export function initials(name: string): string {
   return name
     .trim()

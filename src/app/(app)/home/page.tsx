@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getHomeItemsView } from "@/lib/home-data";
-import { expiryStatus } from "@/lib/expiry";
+import { expiryStatus, isUrgentExpiry, expiryBadgeLabel } from "@/lib/expiry";
 import { getIcon } from "@/lib/icon-map";
+import { categoryIcon } from "@/lib/constants";
+import { cn, capitalize, spellSmallNumber } from "@/lib/utils";
 import { listMyHouseholds } from "@/lib/actions/household";
 import { getExpenseStats } from "@/lib/actions/expenses";
 import { getHouseholdSummary } from "@/lib/actions/household-dashboard";
@@ -77,7 +79,17 @@ export default async function HomePage({
   const needsLookCount = expiredItems.length + soonItems.length;
   const inGoodOrderPct = totals.items > 0 ? Math.round((fineCount / totals.items) * 100) : 100;
   const attention = [...expiredItems, ...soonItems].slice(0, 3);
-  const mostUsedRoomId = rooms.length > 0 ? rooms.reduce((a, b) => (b.itemCount > a.itemCount ? b : a)).id : null;
+  const mostUsedRoom = rooms.length > 0 ? rooms.reduce((a, b) => (b.itemCount > a.itemCount ? b : a)) : null;
+  const mostUsedRoomId = mostUsedRoom?.id ?? null;
+  const mostUsedPct = mostUsedRoom && totals.items > 0 ? Math.round((mostUsedRoom.itemCount / totals.items) * 100) : 0;
+
+  // Prose sentences spell out small counts ("four rooms", "one expired") and
+  // keep larger totals as numerals, matching the My Home reference copy.
+  const attentionSentence = capitalize(
+    `${expiredItems.length > 0 ? `${spellSmallNumber(expiredItems.length)} expired, ` : ""}${spellSmallNumber(soonItems.length)} expiring inside the week`
+  );
+  const headlineWords =
+    needsLookCount > 0 ? `${capitalize(spellSmallNumber(needsLookCount))} thing${needsLookCount === 1 ? "" : "s"} want a look` : null;
 
   return (
     <div>
@@ -91,14 +103,8 @@ export default async function HomePage({
       />
       <DesktopBand
         breadcrumb={`My Home · ${home.name}`}
-        title={`${totals.items} items, ${totals.rooms} room${totals.rooms === 1 ? "" : "s"}`}
-        subtitle={
-          <>
-            {expiredItems.length > 0 ? `${expiredItems.length} expired, ` : ""}
-            {soonItems.length} expiring inside the week
-            {stats ? ` · ${inr(stats.totalThisMonth)} spent this month` : ""}
-          </>
-        }
+        title={`${totals.items} items, ${spellSmallNumber(totals.rooms)} room${totals.rooms === 1 ? "" : "s"}`}
+        subtitle={`${attentionSentence}${stats ? ` · ${inr(stats.totalThisMonth)} spent this month` : ""}`}
         action={
           <div className="flex items-center gap-2">
             <HomeActionsMenu homeId={homeId} homeName={home.name} roomCount={rooms.length} />
@@ -122,12 +128,9 @@ export default async function HomePage({
       <MobileHeroOverlap className="space-y-4 pb-6">
         <Card className="p-5">
           <p className="font-heading text-xl leading-tight text-foreground">
-            {needsLookCount > 0 ? `${needsLookCount} thing${needsLookCount === 1 ? "" : "s"} want a look today.` : "Everything looks in order."}
+            {headlineWords ? `${headlineWords} today.` : "Everything looks in order."}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {expiredItems.length > 0 ? `${expiredItems.length} expired, ` : ""}
-            {soonItems.length} expiring inside the week.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{attentionSentence}.</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <StatChip label="Expired" value={expiredItems.length} tone="destructive" />
             <StatChip label="Soon" value={soonItems.length} />
@@ -167,14 +170,23 @@ export default async function HomePage({
             <div className="mt-2 space-y-2">
               {rooms.map((r) => {
                 const RoomIcon = getIcon(r.icon);
+                const isMostUsed = r.id === mostUsedRoomId;
                 return (
                   <ListRow
                     key={r.id}
                     href={`/home/rooms/${r.id}`}
                     icon={<RoomIcon className="size-4.5" />}
+                    iconClassName="bg-chart-2 text-foreground"
                     title={r.name}
                     subtitle={`${r.itemCount} items · ${r.placeCount} places`}
-                    trailing={r.id === mostUsedRoomId ? <Badge variant="secondary">Most used</Badge> : undefined}
+                    trailing={
+                      isMostUsed ? (
+                        <span className="shrink-0 rounded-full bg-positive/10 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] text-positive uppercase">
+                          Most used
+                        </span>
+                      ) : undefined
+                    }
+                    barPct={isMostUsed ? mostUsedPct : undefined}
                   />
                 );
               })}
@@ -218,14 +230,23 @@ export default async function HomePage({
             <div className="space-y-2">
               {rooms.map((r) => {
                 const RoomIcon = getIcon(r.icon);
+                const isMostUsed = r.id === mostUsedRoomId;
                 return (
                   <ListRow
                     key={r.id}
                     href={`/home/rooms/${r.id}`}
                     icon={<RoomIcon className="size-4.5" />}
+                    iconClassName="bg-chart-2 text-foreground"
                     title={r.name}
                     subtitle={`${r.itemCount} items · ${r.placeCount} places`}
-                    trailing={r.id === mostUsedRoomId ? <Badge variant="secondary">Most used</Badge> : undefined}
+                    trailing={
+                      isMostUsed ? (
+                        <span className="shrink-0 rounded-full bg-positive/10 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] text-positive uppercase">
+                          Most used
+                        </span>
+                      ) : undefined
+                    }
+                    barPct={isMostUsed ? mostUsedPct : undefined}
                   />
                 );
               })}
@@ -249,15 +270,10 @@ export default async function HomePage({
 
         <Card className="p-6">
           <div className="flex items-start justify-between">
-            <p className="font-heading text-2xl leading-tight text-foreground">
-              {needsLookCount > 0 ? `${needsLookCount} thing${needsLookCount === 1 ? "" : "s"} want a look` : "All in order"}
-            </p>
+            <p className="font-heading text-2xl leading-tight text-foreground">{headlineWords ?? "All in order"}</p>
             {stats && <p className="font-heading text-2xl text-foreground">{inr(stats.totalThisMonth)}</p>}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {expiredItems.length > 0 ? `${expiredItems.length} expired, ` : ""}
-            {soonItems.length} expiring inside the week
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{attentionSentence}</p>
 
           <div className="mt-4 grid grid-cols-4 gap-2">
             <StatChip label="Expired" value={expiredItems.length} tone="destructive" />
@@ -272,13 +288,26 @@ export default async function HomePage({
               <div className="mt-2 space-y-2">
                 {attention.map((item) => {
                   const status = expiryStatus(item.expiry_date);
+                  const urgent = status.level === "expired" || isUrgentExpiry(item.expiry_date);
+                  const ItemIcon = getIcon(categoryIcon(item.category));
                   return (
                     <ListRow
                       key={item.id}
                       href={`/items/${item.id}`}
+                      icon={<ItemIcon className="size-4.5" />}
+                      iconClassName={cn("rounded-full", urgent ? "bg-blush-tint text-destructive" : "bg-accent text-accent-foreground")}
                       title={item.name}
                       subtitle={`${item.roomName} → ${item.furnitureName}`}
-                      trailing={<Badge variant={status.level === "expired" ? "destructive" : "outline"}>{status.label}</Badge>}
+                      trailing={
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.08em] uppercase",
+                            urgent ? "bg-blush-tint text-destructive" : "bg-positive/10 text-positive"
+                          )}
+                        >
+                          {expiryBadgeLabel(item.expiry_date)}
+                        </span>
+                      }
                     />
                   );
                 })}
