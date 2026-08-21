@@ -2,22 +2,12 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getIcon } from "@/lib/icon-map";
 import { categoryIcon } from "@/lib/constants";
-import { expiryStatus, isUrgentExpiry, expiryBadgeLabel } from "@/lib/expiry";
+import { expiryStatus, isUrgentExpiry, expiryBadgeLabel, byExpirySoonestFirst } from "@/lib/expiry";
 import { relativeDay, cn } from "@/lib/utils";
 import { ListRow } from "@/components/layout/list-row";
 import { StatChip } from "@/components/layout/stat-chip";
 import { PlaceActionsMenu } from "@/components/home/place-actions-menu";
-import { Button } from "@/components/ui/button";
 import type { FurnitureDetail } from "@/lib/furniture-data";
-
-/** Oldest-expiring-first, with never-expiring items last — a plain string
- * compare works because expiry_date is always "YYYY-MM-DD". */
-function byExpirySoonestFirst(a: { expiry_date: string | null }, b: { expiry_date: string | null }): number {
-  if (!a.expiry_date && !b.expiry_date) return 0;
-  if (!a.expiry_date) return 1;
-  if (!b.expiry_date) return -1;
-  return a.expiry_date.localeCompare(b.expiry_date);
-}
 
 /**
  * A Place's own detail — heading, live stats, and its full Contents list —
@@ -50,14 +40,13 @@ export function PlaceDetailPanel({ detail }: { detail: FurnitureDetail }) {
               {expiringCount} <span className="text-lg">soon</span>
             </p>
           )}
-          <Button
-            size="sm"
-            className="rounded-full"
-            render={<Link href={`/items/new?roomId=${room.id}&furnitureId=${furniture.id}&homeId=${home.id}`} />}
+          <Link
+            href={`/items/new?roomId=${room.id}&furnitureId=${furniture.id}&homeId=${home.id}`}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/85"
           >
             <Plus className="size-4" />
             Add Item
-          </Button>
+          </Link>
           <PlaceActionsMenu roomId={room.id} placeId={furniture.id} placeName={furniture.name} itemCount={items.length} />
         </div>
       </div>

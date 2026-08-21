@@ -32,12 +32,14 @@ export default async function AllItemsPage() {
         }
       />
 
-      {/* Same negative-margin band overlap MobileHeroOverlap uses, applied
-          directly (rather than via that helper) so the item list itself —
-          data, not just markup — renders once and is simply restyled for
-          desktop's wider, non-overlapping container, instead of appearing
-          twice in the page. */}
-      <div className="relative z-10 -mt-9 px-4 pb-8 md:mt-0 md:px-8">
+      {/* A gentler overlap than MobileHeroOverlap's own -mt-9 — this page's
+          first content is the bare item list (no hero Card underneath to
+          absorb the pull-up), so the full -mt-9 let the band's rounded
+          corner cut into the first row. Applied directly (rather than via
+          that helper) so the item list itself — data, not just markup —
+          renders once and is simply restyled for desktop's wider,
+          non-overlapping container, instead of appearing twice in the page. */}
+      <div className="relative z-10 -mt-4 px-4 pb-8 md:mt-0 md:px-8">
         {page.total === 0 ? (
           <EmptyState icon="Package" title="No items yet" description="Nothing stored here yet." />
         ) : (
