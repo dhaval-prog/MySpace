@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Settings2 } from "lucide-react";
+import { Settings2, Plus } from "lucide-react";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import { listExpenseCategories, getExpenseStats } from "@/lib/actions/expenses";
 import { listGoals } from "@/lib/actions/household-goals";
@@ -57,7 +57,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const totalBudgeted = spendingGoals.reduce((sum, g) => sum + g.goal.target_amount, 0);
 
   return (
-    <div>
+    <div className="min-h-dvh bg-[linear-gradient(180deg,#CDECDA_0%,#F8F9F5_100%)] md:min-h-0 md:bg-none">
       <MobileBand
         title="Expenses"
         backHref="/home"
@@ -78,20 +78,32 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         action={
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="font-mono text-[10px] tracking-[0.14em] text-foreground/70 uppercase">Budgeted · Spent</p>
-              <p className="mt-0.5 font-heading text-lg text-foreground">
+              <p className="text-[11px] font-medium tracking-[0.18em] text-foreground/70 uppercase">Budgeted · Spent</p>
+              <p className="mt-0.5 text-2xl font-extrabold text-foreground">
                 {inr(totalBudgeted)} · {inr(stats.totalThisMonth)}
               </p>
             </div>
-            <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create spending budget" />
+            <CreateGoalDialog
+              householdId={householdId}
+              defaultGoalType="spending"
+              trigger={
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/85"
+                >
+                  <Plus className="size-4" />
+                  Create spending budget
+                </button>
+              }
+            />
           </div>
         }
       />
 
       <MobileHeroOverlap className="space-y-4 pb-6">
         <Card className="p-5">
-          <p className="font-heading text-xl leading-tight text-foreground">Spending budgets</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create and track budgets for different parts of your spending.</p>
+          <p className="font-heading text-2xl font-bold leading-tight text-[#1C2A24]">Spending budgets</p>
+          <p className="mt-1 text-sm text-[#3D4F46]">Create and track budgets for different parts of your spending.</p>
         </Card>
 
         <SpendingBudgetsBoard householdId={householdId} spendingGoals={spendingGoals} categories={categories} isOwner={isOwner} currentUserId={myUserId} />

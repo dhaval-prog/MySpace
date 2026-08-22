@@ -6,7 +6,6 @@ import { Pencil, Trash2, ArrowUpRight, Receipt, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { StatChip } from "@/components/layout/stat-chip";
 import { AddExpenseDialog } from "@/components/household/expenses/add-expense-dialog";
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
 import { deleteGoal, type HouseholdGoalSummary } from "@/lib/actions/household-goals";
@@ -42,9 +41,19 @@ function RecentExpenseRow({ expense }: { expense: ExpenseSummary }) {
 const CARD_THEMES = [
   "bg-[linear-gradient(140deg,#1F7A5A_0%,#2C6E68_48%,#14483C_100%)]",
   "bg-[linear-gradient(140deg,#E4736A_0%,#D33243_55%,#96182B_100%)]",
-  "bg-[linear-gradient(140deg,#7A5FC8_0%,#5B3FA8_52%,#33246B_100%)]",
-  "bg-[linear-gradient(140deg,#3B6FD4_0%,#26417F_52%,#141F3E_100%)]",
+  "bg-[linear-gradient(180deg,#7255B2_0%,#5A3D99_100%)]",
+  "bg-[linear-gradient(135deg,#5B82C3_0%,#4B5A8F_100%)]",
 ];
+
+/** The white Budget/Spent/Left row inside a budget's focused card — its own bespoke box rather than the shared StatChip, since this trio needs an exact monospace/weight/color treatment (tabular mono values, #586560 labels) that's specific to this one card, not a app-wide stat convention. */
+function BudgetStatBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-muted px-3 py-2">
+      <p className="font-mono text-[10px] font-semibold tracking-[0.14em] text-[#586560] uppercase">{label}</p>
+      <p className="mt-0.5 font-mono text-lg font-extrabold text-[#161D1A]">{value}</p>
+    </div>
+  );
+}
 
 export function SpendingBudgetsBoard({
   householdId,
@@ -96,14 +105,13 @@ export function SpendingBudgetsBoard({
     <div className="grid gap-6 md:grid-cols-[1fr_380px]">
       <div>
         <div className="flex items-center justify-between px-1">
-          <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
+          <p className="text-[11px] font-bold tracking-[0.15em] text-black uppercase">
             Your cards{" "}
-            <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-accent-foreground">
+            <span className="ml-1 rounded-full bg-[#E1EBC8] px-1.5 py-0.5 text-[#2E4A1E]">
               {spendingGoals.length} budget{spendingGoals.length === 1 ? "" : "s"}
             </span>
           </p>
           <div className="flex items-center gap-3">
-            <p className="hidden text-xs text-muted-foreground md:block">Click a card to focus it</p>
             <CreateGoalDialog
               householdId={householdId}
               defaultGoalType="spending"
@@ -111,7 +119,7 @@ export function SpendingBudgetsBoard({
                 <button
                   type="button"
                   aria-label="Create spending budget"
-                  className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground md:size-8 md:justify-center md:px-0 md:py-0"
+                  className="flex items-center gap-1.5 rounded-full bg-[#23655B] px-4 py-2 text-sm font-medium text-white md:size-8 md:justify-center md:px-0 md:py-0"
                 >
                   <Plus className="size-4" />
                   <span className="md:hidden">Create</span>
@@ -139,18 +147,18 @@ export function SpendingBudgetsBoard({
                 <div className="flex items-center justify-between">
                   <span className="flex size-9 items-center justify-center rounded-2xl bg-white/20 text-base">{g.goal.icon}</span>
                   {g.goal.deadline && (
-                    <span className="font-mono text-[10px] tracking-wide text-white/80 uppercase">
+                    <span className="font-mono text-[10px] font-semibold tracking-wide text-white/80 uppercase">
                       {Math.max(0, Math.round((new Date(g.goal.deadline).getTime() - now) / 86400000))} days
                     </span>
                   )}
                 </div>
-                <p className="font-medium">{g.goal.name}</p>
-                <p className="font-heading text-3xl">{inr(remaining)}</p>
-                <p className="text-xs text-white/75">left of {inr(g.goal.target_amount)}</p>
+                <p className="text-lg font-semibold text-white">{g.goal.name}</p>
+                <p className="font-mono text-2xl font-extrabold text-white">{inr(remaining)}</p>
+                <p className="font-mono text-[10px] text-white/75">left of {inr(g.goal.target_amount)}</p>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                   <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(100, g.progressPct)}%` }} />
                 </div>
-                <p className="text-xs text-white/75">
+                <p className="font-mono text-[10px] text-white/75">
                   {inr(g.currentAmount)} of {inr(g.goal.target_amount)} spent
                 </p>
               </button>
@@ -167,17 +175,17 @@ export function SpendingBudgetsBoard({
               <div className="flex items-center gap-3">
                 <span className="flex size-9 items-center justify-center rounded-2xl bg-accent text-base">{selected.goal.icon}</span>
                 <div>
-                  <p className="font-heading text-lg leading-tight">{selected.goal.name}</p>
-                  <p className="text-xs text-muted-foreground">{resetLabel(selected.goal.deadline)}</p>
+                  <p className="font-heading text-2xl font-bold leading-tight text-[#1C2A24]">{selected.goal.name}</p>
+                  <p className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">{resetLabel(selected.goal.deadline)}</p>
                 </div>
               </div>
-              <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-xs font-medium">{selected.progressPct}% used</span>
+              <span className="rounded-full bg-[#DCE8BA] px-2.5 py-1 font-mono text-xs font-medium text-[#384D14]">{selected.progressPct}% used</span>
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <StatChip label="Budget" value={inr(selected.goal.target_amount)} />
-              <StatChip label="Spent" value={inr(selected.currentAmount)} />
-              <StatChip label="Left" value={inr(Math.max(selected.goal.target_amount - selected.currentAmount, 0))} />
+              <BudgetStatBox label="Budget" value={inr(selected.goal.target_amount)} />
+              <BudgetStatBox label="Spent" value={inr(selected.currentAmount)} />
+              <BudgetStatBox label="Left" value={inr(Math.max(selected.goal.target_amount - selected.currentAmount, 0))} />
             </div>
 
             <div className="mt-4 flex items-center gap-2">
