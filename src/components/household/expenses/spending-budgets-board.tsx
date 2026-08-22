@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, ArrowUpRight, Plus } from "lucide-react";
+import { Pencil, Trash2, ArrowUpRight, Receipt, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { StatChip } from "@/components/layout/stat-chip";
 import { AddExpenseDialog } from "@/components/household/expenses/add-expense-dialog";
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
 import { deleteGoal, type HouseholdGoalSummary } from "@/lib/actions/household-goals";
@@ -175,9 +176,9 @@ export function SpendingBudgetsBoard({
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <StatBox label="Budget" value={inr(selected.goal.target_amount)} />
-              <StatBox label="Spent" value={inr(selected.currentAmount)} />
-              <StatBox label="Left" value={inr(Math.max(selected.goal.target_amount - selected.currentAmount, 0))} />
+              <StatChip label="Budget" value={inr(selected.goal.target_amount)} />
+              <StatChip label="Spent" value={inr(selected.currentAmount)} />
+              <StatChip label="Left" value={inr(Math.max(selected.goal.target_amount - selected.currentAmount, 0))} />
             </div>
 
             <div className="mt-4 flex items-center gap-2">
@@ -188,7 +189,7 @@ export function SpendingBudgetsBoard({
                 defaultGoalId={selected.goal.id}
                 trigger={
                   <Button className="flex-1 rounded-2xl">
-                    <ArrowUpRight className="size-4" />
+                    <Receipt className="size-4" />
                     Add expense
                   </Button>
                 }
@@ -216,15 +217,19 @@ export function SpendingBudgetsBoard({
 
             <div className="mt-5">
               <div className="flex items-center justify-between">
-                <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase md:hidden">Recent in {selected.goal.name}</p>
-                <p className="hidden font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase md:block">
-                  Recent expenses {expenses ? `· ${expenses.length}` : ""}
-                </p>
-                {expenses && expenses.length > 3 && (
-                  <button type="button" onClick={() => setShowAllRecent((v) => !v)} className="text-sm font-medium text-primary md:hidden">
-                    {showAllRecent ? "Show less" : "See all"}
-                  </button>
-                )}
+                <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Recent expenses</p>
+                <div className="flex items-center gap-2">
+                  {expenses && expenses.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {expenses.length} {expenses.length === 1 ? "entry" : "entries"}
+                    </p>
+                  )}
+                  {expenses && expenses.length > 3 && (
+                    <button type="button" onClick={() => setShowAllRecent((v) => !v)} className="text-sm font-medium text-primary md:hidden">
+                      {showAllRecent ? "Show less" : "See all"}
+                    </button>
+                  )}
+                </div>
               </div>
               {expenses === null ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">Loading…</p>
@@ -290,15 +295,6 @@ export function SpendingBudgetsBoard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function StatBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-muted px-3 py-2">
-      <p className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold">{value}</p>
     </div>
   );
 }
