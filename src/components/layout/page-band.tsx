@@ -35,12 +35,19 @@ export function MobileBand({
   right,
   stats,
   className,
+  titleClassName,
+  statsLabelClassName,
+  statsValueClassName,
 }: {
   title: string;
   backHref?: string;
   right?: ReactNode;
   stats?: [{ label: string; value: ReactNode; tone?: "default" | "destructive" }, { label: string; value: ReactNode; tone?: "default" | "destructive" }];
   className?: string;
+  /** Override the title/stats' own type/color when a page needs something other than the shared band style — everywhere else these default to the standard look below. A destructive-toned stat's value still forces text-destructive over any color statsValueClassName sets, so the red/black distinction survives the override. */
+  titleClassName?: string;
+  statsLabelClassName?: string;
+  statsValueClassName?: string;
 }) {
   return (
     <div
@@ -55,19 +62,23 @@ export function MobileBand({
         ) : (
           <span className="size-9" />
         )}
-        <p className="font-mono text-xs font-medium tracking-[0.18em] text-foreground uppercase">{title}</p>
+        <p className={cn("font-mono text-xs font-medium tracking-[0.18em] text-foreground uppercase", titleClassName)}>{title}</p>
         {right ?? <span className="size-9" />}
       </div>
 
       {stats && (
         <div className="mt-6 flex items-start justify-between">
           <div>
-            <p className="font-mono text-[10.5px] tracking-[0.16em] text-foreground/70 uppercase">{stats[0].label}</p>
-            <p className={cn("mt-1 font-heading text-4xl leading-none", stats[0].tone === "destructive" ? "text-destructive" : "text-foreground")}>{stats[0].value}</p>
+            <p className={cn("font-mono text-[10.5px] tracking-[0.16em] text-foreground/70 uppercase", statsLabelClassName)}>{stats[0].label}</p>
+            <p className={cn("mt-1 font-heading text-4xl leading-none text-foreground", statsValueClassName, stats[0].tone === "destructive" && "text-destructive")}>
+              {stats[0].value}
+            </p>
           </div>
           <div className="text-right">
-            <p className="font-mono text-[10.5px] tracking-[0.16em] text-foreground/70 uppercase">{stats[1].label}</p>
-            <p className={cn("mt-1 font-heading text-4xl leading-none", stats[1].tone === "destructive" ? "text-destructive" : "text-foreground")}>{stats[1].value}</p>
+            <p className={cn("font-mono text-[10.5px] tracking-[0.16em] text-foreground/70 uppercase", statsLabelClassName)}>{stats[1].label}</p>
+            <p className={cn("mt-1 font-heading text-4xl leading-none text-foreground", statsValueClassName, stats[1].tone === "destructive" && "text-destructive")}>
+              {stats[1].value}
+            </p>
           </div>
         </div>
       )}
