@@ -42,7 +42,7 @@ export function PlaceDetailPanel({ detail }: { detail: FurnitureDetail }) {
           )}
           <Link
             href={`/items/new?roomId=${room.id}&furnitureId=${furniture.id}&homeId=${home.id}`}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/85"
+            className="hidden h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/85 md:inline-flex"
           >
             <Plus className="size-4" />
             Add Item

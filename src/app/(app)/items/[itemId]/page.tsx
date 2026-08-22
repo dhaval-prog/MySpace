@@ -61,7 +61,7 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
         action={<ItemDetailActions item={editableItem} location={location} variant="menu" />}
       />
 
-      <MobileHeroOverlap className="space-y-4 pb-6">
+      <MobileHeroOverlap className="mt-3 space-y-4 pb-6">
         <div className="flex items-center justify-between px-1">
           <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
             {room.name} → {furniture.name}

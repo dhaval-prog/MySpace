@@ -27,7 +27,7 @@ export default async function FurniturePage({ params }: { params: Promise<{ room
         subtitle={`${items.length} item${items.length === 1 ? "" : "s"}${expiringCount > 0 ? ` · ${expiringCount} expiring this week` : ""}`}
       />
 
-      <MobileHeroOverlap className="pb-6">
+      <MobileHeroOverlap className="mt-3 pb-6">
         <Card className="p-5">
           <PlaceDetailPanel detail={detail} />
         </Card>
