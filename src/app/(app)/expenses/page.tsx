@@ -57,7 +57,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const totalBudgeted = spendingGoals.reduce((sum, g) => sum + g.goal.target_amount, 0);
 
   return (
-    <div className="min-h-dvh bg-[linear-gradient(180deg,#CDECDA_0%,#F8F9F5_100%)] md:min-h-0 md:bg-none">
+    <div className="min-h-dvh bg-[linear-gradient(135deg,#CCEADA_0%,#F8F9F5_100%)] md:min-h-0 md:bg-none">
       <MobileBand
         title="Expenses"
         backHref="/home"
@@ -75,11 +75,14 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         breadcrumb="Expenses · Andheri Flat"
         title="Spending budgets"
         subtitle="Create and track budgets for different parts of your spending."
+        breadcrumbClassName="font-sans text-[11px] font-bold tracking-[0.16em] text-[#22332B]"
+        titleClassName="text-[30px] font-bold text-[#1A2B23]"
+        subtitleClassName="text-sm font-normal text-[#45574D]"
         action={
           <div className="flex items-center gap-6">
             <div className="text-right">
               <p className="text-[11px] font-medium tracking-[0.18em] text-foreground/70 uppercase">Budgeted · Spent</p>
-              <p className="mt-0.5 text-2xl font-extrabold text-foreground">
+              <p className="mt-0.5 font-mono text-2xl font-extrabold text-[#18241F]">
                 {inr(totalBudgeted)} · {inr(stats.totalThisMonth)}
               </p>
             </div>
@@ -89,7 +92,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
               trigger={
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/85"
+                  className="flex items-center gap-1.5 rounded-full bg-[#23655B] px-4 py-2 text-xs font-semibold text-white hover:bg-[#23655B]/85"
                 >
                   <Plus className="size-4" />
                   Create spending budget

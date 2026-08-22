@@ -83,12 +83,19 @@ export function DesktopBand({
   subtitle,
   action,
   className,
+  breadcrumbClassName,
+  titleClassName,
+  subtitleClassName,
 }: {
   breadcrumb: string;
   title: ReactNode;
   subtitle?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** Override the breadcrumb/title/subtitle's own type/color when a page needs something other than the shared band style — everywhere else these default to the standard look below. */
+  breadcrumbClassName?: string;
+  titleClassName?: string;
+  subtitleClassName?: string;
 }) {
   return (
     <div
@@ -97,9 +104,9 @@ export function DesktopBand({
     >
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0">
-          <p className="font-mono text-xs font-medium tracking-[0.18em] text-foreground/70 uppercase">{breadcrumb}</p>
-          <h1 className="mt-1 font-heading text-4xl leading-tight text-foreground">{title}</h1>
-          {subtitle && <p className="mt-2 text-sm text-foreground/75">{subtitle}</p>}
+          <p className={cn("font-mono text-xs font-medium tracking-[0.18em] text-foreground/70 uppercase", breadcrumbClassName)}>{breadcrumb}</p>
+          <h1 className={cn("mt-1 font-heading text-4xl leading-tight text-foreground", titleClassName)}>{title}</h1>
+          {subtitle && <p className={cn("mt-2 text-sm text-foreground/75", subtitleClassName)}>{subtitle}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
