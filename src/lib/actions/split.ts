@@ -153,17 +153,9 @@ export interface SplitGroupSummary {
   createdBy: string;
   createdByName: string;
   createdByAvatarUrl: string | null;
-  createdAt: string;
   memberCount: number;
   memberPreview: { userId: string; name: string; avatarUrl: string | null }[];
   totalSpent: number;
-}
-
-/** Which household a split group belongs to, given only its id — lets a direct link like /split/[groupId] resolve its household without the caller already knowing it. RLS (split_groups_select_member) already scopes this to a group the caller can actually see. */
-export async function getSplitGroupHouseholdId(groupId: string): Promise<string | null> {
-  const supabase = await createClient();
-  const { data } = await supabase.from("split_groups").select("household_id").eq("id", groupId).maybeSingle();
-  return data?.household_id ?? null;
 }
 
 /**
@@ -217,7 +209,6 @@ export async function listSplitGroups(householdId: string): Promise<SplitGroupSu
       createdBy: g.created_by,
       createdByName: displayName(profileById.get(g.created_by)),
       createdByAvatarUrl: profileById.get(g.created_by)?.avatar_url ?? null,
-      createdAt: g.created_at,
       memberCount: memberIds.length,
       memberPreview: memberIds.slice(0, 4).map((id) => ({ userId: id, name: displayName(profileById.get(id)), avatarUrl: profileById.get(id)?.avatar_url ?? null })),
       totalSpent: Math.round((totalByGroup.get(g.id) ?? 0) * 100) / 100,
@@ -484,6 +475,64 @@ export async function getSplitSummary(householdId: string, groupId?: string): Pr
     settledAmount: Math.round(settledAmount * 100) / 100,
     memberBalances,
     recentExpenses,
+  };
+}
+
+/**
+ * The same balance totals as getSplitSummary/getSimplifiedBalances combined
+ * (per-viewer youOwe/youAreOwed, group-wide pendingAmount, settledAmount),
+ * computed with the minimum needed for that — no profile joins (only ids,
+ * for the math, not display names), no guest-expiry check, no
+ * recentExpenses detail. Powers the wallet card's peek/list rows and the
+ * page-level "you are owed / you owe" banner total for every group OTHER
+ * than the active one, where none of that extra detail is ever shown —
+ * those used to each cost a full getSplitSummary() call.
+ */
+export async function getGroupTotals(
+  groupId: string,
+  viewerId: string
+): Promise<{ youOwe: number; youAreOwed: number; pendingAmount: number; settledAmount: number }> {
+  const supabase = await createClient();
+  const [{ data: expenses }, { data: settlements }, { data: members }] = await Promise.all([
+    supabase.from("split_expenses").select("id, paid_by, amount").eq("group_id", groupId),
+    supabase.from("split_settlements").select("from_user, to_user, amount, confirmed_at").eq("group_id", groupId),
+    supabase.from("split_members").select("user_id").eq("group_id", groupId),
+  ]);
+  const expenseRows = expenses ?? [];
+  const { data: participants } = expenseRows.length
+    ? await supabase
+        .from("split_expense_participants")
+        .select("expense_id, user_id, owed_amount")
+        .in(
+          "expense_id",
+          expenseRows.map((e) => e.id)
+        )
+    : { data: [] };
+
+  const participantsByExpense = new Map<string, SplitExpenseParticipant[]>();
+  for (const p of participants ?? []) {
+    const list = participantsByExpense.get(p.expense_id) ?? [];
+    list.push(p as SplitExpenseParticipant);
+    participantsByExpense.set(p.expense_id, list);
+  }
+
+  const confirmedSettlements = (settlements ?? []).filter((s) => s.confirmed_at) as SplitSettlement[];
+  const owes = buildOwesMap(expenseRows as SplitExpense[], participantsByExpense, confirmedSettlements);
+  const memberIds = (members ?? []).map((m) => m.user_id);
+
+  const viewerBalances = memberIds.filter((id) => id !== viewerId).map((id) => netBetween(owes, id, viewerId));
+  const youAreOwed = viewerBalances.reduce((sum, n) => sum + Math.max(0, n), 0);
+  const youOwe = viewerBalances.reduce((sum, n) => sum + Math.max(0, -n), 0);
+
+  const net = overallNetByUser(owes, memberIds);
+  const pendingAmount = simplifyDebts(net).reduce((sum, t) => sum + t.amount, 0);
+  const settledAmount = confirmedSettlements.reduce((sum, s) => sum + s.amount, 0);
+
+  return {
+    youOwe: Math.round(youOwe * 100) / 100,
+    youAreOwed: Math.round(youAreOwed * 100) / 100,
+    pendingAmount: Math.round(pendingAmount * 100) / 100,
+    settledAmount: Math.round(settledAmount * 100) / 100,
   };
 }
 
