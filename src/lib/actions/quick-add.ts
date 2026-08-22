@@ -2,13 +2,15 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { buildLocationIndex, pathForStorageLocation } from "@/lib/location";
-import { listMyHouseholds } from "@/lib/actions/household";
+import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
 import type { RoomType } from "@/lib/constants";
+import type { HouseholdMemberOption } from "@/components/household/split/split-group-switcher";
 
 export type QuickAddContext =
   | { kind: "place"; roomId: string; roomType: RoomType; roomName: string }
   | { kind: "item"; roomId: string; furnitureId: string; homeId: string }
   | { kind: "budget"; householdId: string }
+  | { kind: "split"; householdId: string; currentUserId: string; householdMembers: HouseholdMemberOption[] }
   | { kind: "default" };
 
 /**
@@ -24,6 +26,25 @@ export async function getQuickAddContext(pathname: string): Promise<QuickAddCont
     const memberships = await listMyHouseholds();
     const householdId = memberships[0]?.household.id;
     return householdId ? { kind: "budget", householdId } : { kind: "default" };
+  }
+
+  if (pathname.startsWith("/split")) {
+    const memberships = await listMyHouseholds();
+    const membership = memberships[0];
+    // split_only members can't create a group (same gate the /split page
+    // itself uses) — fall back to the generic add rather than offering a
+    // dialog that would just reject them.
+    if (!membership || membership.role === "split_only") return { kind: "default" };
+    const context = await getHouseholdContext(membership.household.id);
+    if (!context) return { kind: "default" };
+    const currentUserId = context.members.find((m) => m.isMe)?.userId;
+    if (!currentUserId) return { kind: "default" };
+    return {
+      kind: "split",
+      householdId: membership.household.id,
+      currentUserId,
+      householdMembers: context.members.map((m) => ({ userId: m.userId, name: m.name, avatarUrl: m.avatarUrl })),
+    };
   }
 
   const supabase = await createClient();

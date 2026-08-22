@@ -199,18 +199,28 @@ export function CreateSplitGroupButton({
   currentUserId,
   householdMembers = [],
   iconOnly = false,
+  trigger,
 }: {
   householdId: string;
   currentUserId: string;
   householdMembers?: HouseholdMemberOption[];
   iconOnly?: boolean;
+  /** Custom trigger element (e.g. the bottom nav's quick-add "+") — defaults to the outline "New Group" button. */
+  trigger?: React.ReactNode;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      {iconOnly ? (
+      {trigger ? (
+        // A wrapping click handler rather than cloning the element with one
+        // — a JSX prop crossing the server/client boundary (this button is
+        // built in a server component) isn't a plain element React.cloneElement
+        // can safely re-type on the client, and doing so blew up with an
+        // "element type is invalid" crash.
+        <span onClick={() => setOpen(true)}>{trigger}</span>
+      ) : iconOnly ? (
         <Button size="icon-sm" aria-label="New Group" onClick={() => setOpen(true)}>
           <Plus className="size-4" />
         </Button>

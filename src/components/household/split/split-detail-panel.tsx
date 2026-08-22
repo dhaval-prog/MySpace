@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, Utensils } from "lucide-react";
+import { Check, ChevronLeft } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { markShareReceived } from "@/lib/actions/split";
 import type { SplitGroupSummary, SplitSummary } from "@/lib/actions/split";
@@ -21,14 +21,15 @@ function pct(numerator: number, denominator: number): number {
 }
 
 /**
- * The full "SPLIT DETAIL" mockup — pink-to-blush hero card, four-up stat
- * row, a "Paid by you" participant list, and a settlement progress bar.
- * Originally its own full-screen route; now shown in place of the wallet
- * stack once its front card is tapped open (see SplitMobileWorkspace),
- * with the hero card's chevron closing it back to the stack. A still-
- * pending participant's badge doubles as the one-click "mark received"
- * confirm the older inline detail card offered, so that capability
- * survives the redesign.
+ * The full "SPLIT DETAIL" mockup — a hero card (same background theme and
+ * icon as whichever wallet card it replaces, so the swap doesn't read as a
+ * different group), four-up stat row, a "Paid by you" participant list, and
+ * a settlement progress bar. Originally its own full-screen route; now
+ * shown in place of the wallet stack once its front card is tapped open
+ * (see SplitMobileWorkspace), with the hero card's chevron closing it back
+ * to the stack. A still-pending participant's badge doubles as the
+ * one-click "mark received" confirm the older inline detail card offered,
+ * so that capability survives the redesign.
  */
 export function SplitDetailPanel({
   group,
@@ -36,6 +37,8 @@ export function SplitDetailPanel({
   pendingAmount,
   currentUserId,
   onClose,
+  themeClassName,
+  addExpenseAction,
 }: {
   group: SplitGroupSummary;
   summary: SplitSummary;
@@ -43,6 +46,10 @@ export function SplitDetailPanel({
   currentUserId: string;
   /** Closes the panel, returning to the wallet stack — omit to leave it permanently open (the desktop inline card has no such toggle). */
   onClose?: () => void;
+  /** Same CARD_THEMES class the wallet stack picked for this group — keeps the hero the same color as the card it replaces instead of a fixed one. */
+  themeClassName: string;
+  /** The group's "+Add Expense" trigger, rendered beside the total on the hero's bottom row — pre-built by the caller so this component doesn't need to know AddExpenseDialog's own props. */
+  addExpenseAction?: ReactNode;
 }) {
   const router = useRouter();
   const [markingId, setMarkingId] = useState<string | null>(null);
@@ -69,14 +76,9 @@ export function SplitDetailPanel({
 
   return (
     <div className="space-y-5">
-      <div
-        className="flex min-h-[220px] flex-col rounded-[24px] p-5"
-        style={{ backgroundImage: "linear-gradient(180deg, #FFD6DD 0%, #FFF5F7 100%)" }}
-      >
+      <div className={cn("flex min-h-[220px] flex-col rounded-[24px] p-5", themeClassName)}>
         <div className="flex items-start justify-between">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-white/60">
-            <Utensils className="size-5 text-[#1F2421]" />
-          </div>
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-white/60 text-2xl">{group.icon}</div>
           {onClose && (
             <button
               type="button"
@@ -92,7 +94,10 @@ export function SplitDetailPanel({
         <p className="mt-1 text-[11px] font-medium tracking-[0.14em] text-[#767A78] uppercase">
           Created {formatDate(group.createdAt)} · {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
         </p>
-        <p className="mt-auto pt-4 font-mono text-[34px] font-extrabold text-[#191C1A]">{inr(group.totalSpent)}</p>
+        <div className="mt-auto flex items-end justify-between gap-2 pt-4">
+          <p className="font-mono text-[34px] font-extrabold text-[#191C1A]">{inr(group.totalSpent)}</p>
+          {addExpenseAction}
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-2">
