@@ -20,14 +20,7 @@ export default async function FurniturePage({ params }: { params: Promise<{ room
 
   return (
     <div>
-      <MobileBand
-        title={furniture.name}
-        backHref={`/home/rooms/${roomId}`}
-        stats={[
-          { label: "Items", value: items.length },
-          { label: "Expiring", value: expiringCount, tone: expiringCount > 0 ? "destructive" : "default" },
-        ]}
-      />
+      <MobileBand title={furniture.name} backHref={`/home/rooms/${roomId}`} />
       <DesktopBand
         breadcrumb={`My Home → ${room.name} → ${furniture.name}`}
         title={furniture.name}

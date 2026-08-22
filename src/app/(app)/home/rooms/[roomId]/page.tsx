@@ -42,19 +42,12 @@ export default async function RoomPage({
 
   return (
     <div>
-      <MobileBand
-        title={room.name}
-        backHref={`/home?id=${home.id}`}
-        stats={[
-          { label: "Items here", value: totals.items },
-          { label: "Places", value: totals.places },
-        ]}
-      />
+      <MobileBand title={room.name} backHref={`/home?id=${home.id}`} />
       <DesktopBand
         breadcrumb={`My Home → ${room.name}`}
         title={room.name}
         subtitle={`${totals.items} items across ${totals.places} place${totals.places === 1 ? "" : "s"}${totals.expiring > 0 ? ` · ${totals.expiring} expiring this week` : ""}`}
-        action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} trigger={<Button><Plus className="size-4" />Add to {room.name}</Button>} />}
+        action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} roomName={room.name} trigger={<Button><Plus className="size-4" />Add to {room.name}</Button>} />}
       />
 
       <div className="mt-4 flex items-center justify-between px-5 md:hidden">
@@ -86,7 +79,7 @@ export default async function RoomPage({
             isRoomIcon
             title="No places yet"
             description="This room is empty. Add your first place — a fridge, a wardrobe, a shelf — to start organizing your belongings."
-            action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
+            action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} roomName={room.name} />}
           />
         ) : (
           <div>
@@ -120,6 +113,7 @@ export default async function RoomPage({
             <AddFurnitureDialog
               roomId={roomId}
               roomType={room.type as RoomType}
+              roomName={room.name}
               trigger={
                 <button type="button" className="text-sm font-medium text-primary">
                   New place
@@ -134,7 +128,7 @@ export default async function RoomPage({
               isRoomIcon
               title="No places yet"
               description="This room is empty. Add your first place — a fridge, a wardrobe, a shelf — to start organizing your belongings."
-              action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
+              action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} roomName={room.name} />}
             />
           ) : (
             <>
@@ -159,6 +153,7 @@ export default async function RoomPage({
               <AddFurnitureDialog
                 roomId={roomId}
                 roomType={room.type as RoomType}
+                roomName={room.name}
                 trigger={
                   <button
                     type="button"
@@ -190,7 +185,7 @@ export default async function RoomPage({
               isRoomIcon
               title="No place selected"
               description="Add a place to this room to start filing items into it."
-              action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} />}
+              action={<AddFurnitureDialog roomId={roomId} roomType={room.type as RoomType} roomName={room.name} />}
             />
           )}
         </div>

@@ -15,10 +15,13 @@ import { cn } from "@/lib/utils";
 export function AddFurnitureDialog({
   roomId,
   roomType,
+  roomName,
   trigger,
 }: {
   roomId: string;
   roomType: RoomType;
+  /** When given, the dialog title reads "Add to {roomName}" instead of the generic "Add a place". */
+  roomName?: string;
   /** Custom trigger element (a single focusable child) — defaults to the "+ Add Place" button. */
   trigger?: React.ReactElement;
 }) {
@@ -58,7 +61,7 @@ export function AddFurnitureDialog({
       />
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add a place</DialogTitle>
+          <DialogTitle>{roomName ? `Add to ${roomName}` : "Add a place"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

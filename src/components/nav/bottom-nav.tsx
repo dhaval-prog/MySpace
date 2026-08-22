@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Package, Wallet, Receipt, Plus, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignInPromptDialog } from "@/components/nav/sign-in-prompt-dialog";
+import { AddFurnitureDialog } from "@/components/home/add-furniture-dialog";
+import { getQuickAddContext, type QuickAddContext } from "@/lib/actions/quick-add";
 
 const TABS = [
   { href: "/home", label: "Home", icon: Home },
@@ -17,9 +19,19 @@ const TABS_RIGHT = [
   { href: "/split", label: "Split", icon: Receipt },
 ];
 
+const QUICK_ADD_BUTTON_CLASS =
+  "-mt-6 flex size-13 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_20px_rgba(211,50,67,0.35)] transition-transform active:scale-95";
+
 export function BottomNav({ isGuest = false }: { isGuest?: boolean }) {
   const pathname = usePathname();
   const [promptOpen, setPromptOpen] = useState(false);
+  const [quickAdd, setQuickAdd] = useState<QuickAddContext>({ kind: "default" });
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQuickAdd({ kind: "default" });
+    getQuickAddContext(pathname).then(setQuickAdd);
+  }, [pathname]);
 
   return (
     <>
@@ -28,13 +40,7 @@ export function BottomNav({ isGuest = false }: { isGuest?: boolean }) {
           <BottomNavTab key={tab.href} tab={tab} active={pathname.startsWith(tab.href)} locked={isGuest} onLocked={() => setPromptOpen(true)} />
         ))}
 
-        <Link
-          href="/items/new"
-          aria-label="Add item"
-          className="-mt-6 flex size-13 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_20px_rgba(211,50,67,0.35)] transition-transform active:scale-95"
-        >
-          <Plus className="size-6" />
-        </Link>
+        <QuickAddButton context={quickAdd} />
 
         {TABS_RIGHT.map((tab) => (
           <BottomNavTab key={tab.href} tab={tab} active={pathname.startsWith(tab.href)} locked={isGuest && tab.href !== "/split"} onLocked={() => setPromptOpen(true)} />
@@ -43,6 +49,42 @@ export function BottomNav({ isGuest = false }: { isGuest?: boolean }) {
 
       <SignInPromptDialog open={promptOpen} onOpenChange={setPromptOpen} />
     </>
+  );
+}
+
+/** The nav's central "+" — what it adds depends on the page underneath it (see getQuickAddContext): a Place on a Room page, an Item on a Place page, and a Place on the item's own Room when there's nothing further to drill into. Anywhere else, it falls back to the generic Add Item flow. */
+function QuickAddButton({ context }: { context: QuickAddContext }) {
+  if (context.kind === "place") {
+    return (
+      <AddFurnitureDialog
+        roomId={context.roomId}
+        roomType={context.roomType}
+        roomName={context.roomName}
+        trigger={
+          <button type="button" aria-label={`Add to ${context.roomName}`} className={QUICK_ADD_BUTTON_CLASS}>
+            <Plus className="size-6" />
+          </button>
+        }
+      />
+    );
+  }
+
+  if (context.kind === "item") {
+    return (
+      <Link
+        href={`/items/new?roomId=${context.roomId}&furnitureId=${context.furnitureId}&homeId=${context.homeId}`}
+        aria-label="Add item"
+        className={QUICK_ADD_BUTTON_CLASS}
+      >
+        <Plus className="size-6" />
+      </Link>
+    );
+  }
+
+  return (
+    <Link href="/items/new" aria-label="Add item" className={QUICK_ADD_BUTTON_CLASS}>
+      <Plus className="size-6" />
+    </Link>
   );
 }
 
