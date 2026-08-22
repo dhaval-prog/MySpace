@@ -53,10 +53,6 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ ite
             <User className="size-4.5" />
           </RoundIconButton>
         }
-        stats={[
-          { label: "Expires in", value: status.level === "none" ? "—" : status.label, tone: status.level === "expired" ? "destructive" : "default" },
-          { label: "Quantity", value: item.quantity },
-        ]}
       />
       <DesktopBand
         breadcrumb={`${room.name} → ${furniture.name}${item.container ? ` → ${item.container}` : ""}`}
