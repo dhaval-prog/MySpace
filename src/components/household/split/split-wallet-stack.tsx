@@ -13,6 +13,16 @@ function inr(n: number): string {
 }
 
 const PEEK_TINTS = ["bg-[#F3C5C8]", "bg-[#CCD9AA]", "bg-[#D5E7E2]"];
+// Each group keeps the same theme every time it's the front card (picked by
+// its stable position in `cards`, not by drag direction) — mirrors the
+// Expenses budget cards' per-card CARD_THEMES rotation, just in the lighter
+// pastel palette this card's dark-on-light text needs.
+const CARD_THEMES = [
+  "bg-[linear-gradient(135deg,#B7E4DC_0%,#E1EFEA_100%)]",
+  "bg-[linear-gradient(135deg,#F3C5C8_0%,#FBEAE9_100%)]",
+  "bg-[linear-gradient(135deg,#CCD9AA_0%,#EDF3E1_100%)]",
+  "bg-[linear-gradient(135deg,#C9D8EE_0%,#EFF3FA_100%)]",
+];
 const SPRING_EASING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const FLING_DISTANCE = 110;
 const FLING_VELOCITY = 0.5; // px/ms
@@ -142,7 +152,7 @@ export function SplitWalletStack({
       })}
 
       <Card
-        className="relative z-20 touch-none bg-[linear-gradient(135deg,#B7E4DC_0%,#E1EFEA_100%)] p-5 select-none"
+        className={cn("relative z-20 touch-none p-5 select-none", CARD_THEMES[activeIndex % CARD_THEMES.length])}
         style={{
           transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
           transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
