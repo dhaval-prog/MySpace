@@ -12,7 +12,6 @@ function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
-const PEEK_TINTS = ["bg-[#F3C5C8]", "bg-[#CCD9AA]", "bg-[#D5E7E2]"];
 // Each group keeps the same theme every time it's the front card (picked by
 // its stable position in `cards`, not by drag direction) — mirrors the
 // Expenses budget cards' per-card CARD_THEMES rotation, just in the lighter
@@ -95,17 +94,19 @@ const EXIT_MS = 260;
 
 /**
  * The "every active split is a card in a stack" pattern the Let's Split
- * mockup introduced — one fully-detailed front card (the active group,
- * also driving the Split Detail pane beside/below it) with the next couple
- * of groups peeking out from behind as thin colored slivers. Tapping a
- * sliver (or a row in the flat list underneath, for groups too far back to
- * peek) switches the active group via the same ?group= param the rest of
- * the page already reads — and so does dragging/flicking the front card
- * itself, which is the primary gesture: drag past a distance or velocity
- * threshold and it flings off-screen (spring-eased) while the next card
- * scales/fades up to take its place; drag short of that and it snaps back.
- * A press that barely moves at all is a tap rather than an aborted drag —
- * see onToggleDetail.
+ * mockup introduced — one fully-detailed front card (the active group, also
+ * driving the Split Detail panel below it) with the next couple of groups
+ * stacked behind it, each its own full (if mostly-covered) card so the
+ * bottom edge that peeks out actually reads as "there's a real card back
+ * there" rather than a decorative sliver. Tapping a peeked card (or a row
+ * in the flat list underneath, for groups too far back to peek) switches
+ * the active group via the same ?group= param the rest of the page already
+ * reads — and so does dragging/flicking the front card itself, which is
+ * the primary gesture: drag left past a distance or velocity threshold and
+ * it flings off to advance to the next group; drag right and it flings the
+ * other way to go back to the previous one; drag short of that and it
+ * snaps back. A press that barely moves at all is a tap rather than an
+ * aborted drag — see onToggleDetail.
  */
 export function SplitWalletStack({
   householdId,
@@ -174,6 +175,11 @@ export function SplitWalletStack({
   );
 
   const nextGroupId = peeked[0]?.group.id;
+  // Dragging right goes the other way around the stack — the previous
+  // group, not shown as a peeked card (which only stack forward) but still
+  // a valid fling target.
+  const prevGroupId = cards.length > 1 ? cards[(activeIndex - 1 + cards.length) % cards.length].group.id : undefined;
+  const canDrag = Boolean(nextGroupId || prevGroupId);
 
   function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
     if (outgoingCard || opening) return;
@@ -205,7 +211,7 @@ export function SplitWalletStack({
     const velocity = Math.abs(x) / elapsed;
     const pastThreshold = Math.abs(x) > FLING_DISTANCE || velocity > FLING_VELOCITY;
 
-    if (!nextGroupId || !pastThreshold) {
+    if (!pastThreshold) {
       if (Math.hypot(x, y) < TAP_SLOP && onToggleDetail) {
         setOpening(true);
         exitTimeoutRef.current = setTimeout(() => setOpening(false), EXIT_MS);
@@ -216,18 +222,27 @@ export function SplitWalletStack({
       return;
     }
 
+    // Dragging left advances to the next group; dragging right goes back to
+    // the previous one. With only two groups this just alternates between
+    // them either way.
+    const exitDir = x >= 0 ? "right" : "left";
+    const targetGroupId = exitDir === "left" ? nextGroupId : prevGroupId;
+    if (!targetGroupId) {
+      setDrag((d) => (d.dragging ? IDLE_DRAG : d));
+      return;
+    }
+
     // Fling confirmed. The logical front swaps immediately — the live card
-    // underneath already shows the next group's real data — while this
+    // underneath already shows the target group's real data — while this
     // outgoing card keeps animating away on top, still showing what it
     // actually was. It mounts at the in-progress drag position (unchanged
     // this tick) and only gets nudged to its off-screen target a couple of
     // frames later, once that mount has actually painted — updating the
     // target in the same tick it mounts would give the transition nothing
     // to animate from and it'd just snap off-screen instantly.
-    const exitDir = x >= 0 ? "right" : "left";
     setOutgoingCard(front);
-    setLocalFrontId(nextGroupId);
-    router.push(`/split?id=${householdId}&group=${nextGroupId}`);
+    setLocalFrontId(targetGroupId);
+    router.push(`/split?id=${householdId}&group=${targetGroupId}`);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setDrag({ x: exitDir === "right" ? 640 : -640, y, dragging: false, exitDir });
@@ -240,23 +255,24 @@ export function SplitWalletStack({
 
   return (
     <div className="relative" style={{ perspective: "800px" }}>
-      {/* Peek cards — just enough of a sliver (bottom edge + its own progress bar) to say "there's more here". Rendered first so they sit behind the front card in paint order. */}
+      {/* Peek cards — each the group's own real card, sized and themed exactly like the front one, just offset further down and scaled slightly smaller behind it. The front card covers all but the bottom edge, which is exactly what reads as "there's a real card stacked back there" rather than a decorative sliver. Rendered first so they sit behind the front card in paint order. */}
       {peeked.map((card, i) => (
         <Link
           key={card.group.id}
           href={`/split?id=${householdId}&group=${card.group.id}`}
           aria-label={`Switch to ${card.group.name}`}
-          className={cn("absolute inset-x-3 bottom-0 flex h-10 flex-col justify-end rounded-b-[26px] px-5 pb-2.5", PEEK_TINTS[i % PEEK_TINTS.length])}
+          className={cn(
+            "absolute inset-x-2 bottom-0 touch-none overflow-hidden rounded-[26px] p-5 select-none",
+            CARD_THEMES[Math.max(0, cards.findIndex((c) => c.group.id === card.group.id)) % CARD_THEMES.length]
+          )}
           style={{
-            transform: `translateY(${(i + 1) * 14}px) scale(${1 - (i + 1) * 0.04})`,
-            opacity: i === 0 ? 0.8 : undefined,
+            transform: `translateY(${(i + 1) * 56}px) scale(${1 - (i + 1) * 0.05})`,
+            opacity: i === 0 ? 1 : 0.85,
             transition: `transform 260ms ${SPRING_EASING}, opacity 260ms ${SPRING_EASING}`,
             zIndex: 10 - i,
           }}
         >
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/50">
-            <div className="h-full rounded-full bg-foreground/25" style={{ width: `${settledPctOf(card)}%` }} />
-          </div>
+          <WalletCardBody card={card} />
         </Link>
       ))}
 
@@ -275,7 +291,7 @@ export function SplitWalletStack({
               : {
                   transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
                   transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
-                  cursor: nextGroupId ? "grab" : onToggleDetail ? "pointer" : undefined,
+                  cursor: canDrag ? "grab" : onToggleDetail ? "pointer" : undefined,
                 }
         }
         onPointerDown={handlePointerDown}
