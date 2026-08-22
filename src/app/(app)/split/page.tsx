@@ -125,6 +125,9 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           { label: "You are owed", value: inr(totalYouAreOwed) },
           { label: "You owe", value: inr(totalYouOwe), tone: "destructive" },
         ]}
+        titleClassName="font-sans text-[13px] font-bold tracking-[0.12em] text-[#15281E]"
+        statsLabelClassName="font-bold text-[#304237]"
+        statsValueClassName="font-mono text-2xl font-extrabold text-[#111A14]"
       />
       <DesktopBand
         breadcrumb="Let's Split · Shared costs"
@@ -135,11 +138,11 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
 
       <MobileHeroOverlap className="space-y-4 pb-6">
         <div className="flex items-center justify-between px-1">
-          <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-            Active splits <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-accent-foreground">{groups.length}</span>
+          <p className="font-sans text-[11px] font-bold tracking-[0.12em] text-[#111A14] uppercase">
+            Active splits <span className="ml-1 rounded-full bg-[#E3EBC7] px-1.5 py-0.5 text-[#3A4E1B]">{groups.length}</span>
           </p>
           <div className="flex items-center gap-3">
-            {walletCards.length > 1 && <p className="text-xs text-muted-foreground">Tap to switch</p>}
+            {walletCards.length > 1 && <p className="text-[11px] text-[#5C6B61]">Drag to flick through</p>}
             <JoinWithCodeDialog />
           </div>
         </div>
