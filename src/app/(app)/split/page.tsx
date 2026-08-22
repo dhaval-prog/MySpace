@@ -142,12 +142,16 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
             Active splits <span className="ml-1 rounded-full bg-[#E3EBC7] px-1.5 py-0.5 text-[#3A4E1B]">{groups.length}</span>
           </p>
           <div className="flex items-center gap-3">
-            {walletCards.length > 1 && <p className="text-[11px] text-[#5C6B61]">Drag to flick through</p>}
+            {walletCards.length > 0 && (
+              <p className="text-[11px] text-[#5C6B61]">{walletCards.length > 1 ? "Tap to open · drag to flick" : "Tap to open"}</p>
+            )}
             <JoinWithCodeDialog />
           </div>
         </div>
 
-        {walletCards.length > 0 && groupId && <SplitWalletStack householdId={householdId} cards={walletCards} activeGroupId={groupId} />}
+        {walletCards.length > 0 && groupId && (
+          <SplitWalletStack householdId={householdId} cards={walletCards} activeGroupId={groupId} enableTapToOpenDetail />
+        )}
 
         {canCreateGroup && (
           <div className="flex justify-center">

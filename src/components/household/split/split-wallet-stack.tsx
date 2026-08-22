@@ -13,9 +13,21 @@ function inr(n: number): string {
 }
 
 const PEEK_TINTS = ["bg-[#F3C5C8]", "bg-[#CCD9AA]", "bg-[#D5E7E2]"];
+// Each group keeps the same theme every time it's the front card (picked by
+// its stable position in `cards`, not by drag direction) — mirrors the
+// Expenses budget cards' per-card CARD_THEMES rotation, just in the lighter
+// pastel palette this card's dark-on-light text needs.
+const CARD_THEMES = [
+  "bg-[linear-gradient(135deg,#B7E4DC_0%,#E1EFEA_100%)]",
+  "bg-[linear-gradient(135deg,#F3C5C8_0%,#FBEAE9_100%)]",
+  "bg-[linear-gradient(135deg,#CCD9AA_0%,#EDF3E1_100%)]",
+  "bg-[linear-gradient(135deg,#C9D8EE_0%,#EFF3FA_100%)]",
+];
 const SPRING_EASING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const FLING_DISTANCE = 110;
 const FLING_VELOCITY = 0.5; // px/ms
+/** Below this much total pointer movement, a completed press reads as a tap (open Split Detail) rather than an aborted drag. */
+const TAP_SLOP = 8;
 
 /** Rounded, clamped 0-100 — every %-of-total figure on the wallet card goes through this so a group with no spend yet reads as fully settled rather than NaN%. */
 function pct(numerator: number, denominator: number): number {
@@ -49,25 +61,38 @@ const IDLE_DRAG: DragState = { x: 0, y: 0, dragging: false, exitDir: null };
  * itself, which is the primary gesture: drag past a distance or velocity
  * threshold and it flings off-screen (spring-eased) while the next card
  * scales/fades up to take its place; drag short of that and it snaps back.
+ * A press that barely moves at all is a tap rather than an aborted drag —
+ * see enableTapToOpenDetail.
  */
 export function SplitWalletStack({
   householdId,
   cards,
   activeGroupId,
+  enableTapToOpenDetail = false,
 }: {
   householdId: string;
   cards: WalletCardData[];
   activeGroupId: string;
+  /** Tapping (not dragging) the front card opens /split/[groupId] when set — left off on desktop, where the group's full detail already sits inline beside the stack. */
+  enableTapToOpenDetail?: boolean;
 }) {
   const router = useRouter();
   const activeIndex = Math.max(0, cards.findIndex((c) => c.group.id === activeGroupId));
   const front = cards[activeIndex];
-  const peeked = [cards[(activeIndex + 1) % cards.length], cards[(activeIndex + 2) % cards.length]].filter(
-    (c, i, arr) => c && c.group.id !== front.group.id && arr.findIndex((x) => x.group.id === c.group.id) === i
-  );
 
   const [drag, setDrag] = useState<DragState>(IDLE_DRAG);
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  // Mirrors the latest in-flight drag delta outside React state so
+  // handlePointerUp can read it synchronously (tap-vs-drag needs the exact
+  // released position, not whatever setDrag's updater queue settles to).
+  const lastDeltaRef = useRef({ x: 0, y: 0 });
+  // Guards against a fast repeat drag firing a second router.push before the
+  // first fling's navigation has actually landed — cards/activeGroupId (and
+  // so nextGroupId) don't update until that round trip resolves, so a second
+  // drag in the meantime would just queue a redundant push at the same
+  // target; letting the queue grow is what turned "drag repeatedly" into a
+  // crash instead of a loop.
+  const flingPendingRef = useRef(false);
 
   useEffect(() => {
     // A completed fling navigates to the next group, which re-renders this
@@ -75,23 +100,40 @@ export function SplitWalletStack({
     // inherit the old one's leftover fling-out transform.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDrag(IDLE_DRAG);
+    flingPendingRef.current = false;
   }, [activeGroupId]);
 
   if (!front) return null;
+
+  // Computed only once `front` is known safe to read — cards[(activeIndex +
+  // n) % cards.length] can otherwise dereference `front.group.id` on an
+  // undefined `front` before the guard above runs, since array literals
+  // evaluate eagerly.
+  const peeked = [cards[(activeIndex + 1) % cards.length], cards[(activeIndex + 2) % cards.length]].filter(
+    (c, i, arr) => c && c.group.id !== front.group.id && arr.findIndex((x) => x.group.id === c.group.id) === i
+  );
 
   const settledPct = settledPctOf(front);
   const nextGroupId = peeked[0]?.group.id;
 
   function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
-    if (!nextGroupId) return;
+    if (flingPendingRef.current) return;
     startRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+    lastDeltaRef.current = { x: 0, y: 0 };
     setDrag({ x: 0, y: 0, dragging: true, exitDir: null });
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // A stale/already-released pointer id on some mobile browsers — the
+      // drag still works via the move/up handlers below without capture.
+    }
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLElement>) {
     if (!startRef.current) return;
-    setDrag((d) => (d.dragging ? { ...d, x: e.clientX - startRef.current!.x, y: e.clientY - startRef.current!.y } : d));
+    const delta = { x: e.clientX - startRef.current.x, y: e.clientY - startRef.current.y };
+    lastDeltaRef.current = delta;
+    setDrag((d) => (d.dragging ? { ...d, ...delta } : d));
   }
 
   function handlePointerUp() {
@@ -99,19 +141,23 @@ export function SplitWalletStack({
     startRef.current = null;
     if (!start) return;
 
-    setDrag((d) => {
-      if (!d.dragging) return d;
-      const elapsed = Math.max(1, Date.now() - start.t);
-      const velocity = Math.abs(d.x) / elapsed;
-      const pastThreshold = nextGroupId && (Math.abs(d.x) > FLING_DISTANCE || velocity > FLING_VELOCITY);
-      if (!pastThreshold) return IDLE_DRAG;
+    const { x, y } = lastDeltaRef.current;
+    const elapsed = Math.max(1, Date.now() - start.t);
+    const velocity = Math.abs(x) / elapsed;
+    const pastThreshold = nextGroupId && (Math.abs(x) > FLING_DISTANCE || velocity > FLING_VELOCITY);
 
-      const exitDir = d.x >= 0 ? "right" : "left";
-      if (nextGroupId) {
-        setTimeout(() => router.push(`/split?id=${householdId}&group=${nextGroupId}`), 260);
-      }
-      return { x: exitDir === "right" ? 640 : -640, y: d.y, dragging: false, exitDir };
-    });
+    if (!pastThreshold) {
+      if (Math.hypot(x, y) < TAP_SLOP && enableTapToOpenDetail) router.push(`/split/${front.group.id}?id=${householdId}`);
+      setDrag((d) => (d.dragging ? IDLE_DRAG : d));
+      return;
+    }
+
+    const exitDir = x >= 0 ? "right" : "left";
+    if (nextGroupId) {
+      flingPendingRef.current = true;
+      setTimeout(() => router.push(`/split?id=${householdId}&group=${nextGroupId}`), 260);
+    }
+    setDrag((d) => (d.dragging ? { x: exitDir === "right" ? 640 : -640, y, dragging: false, exitDir } : d));
   }
 
   const rotation = Math.max(-5, Math.min(5, drag.x / 20));
@@ -142,12 +188,12 @@ export function SplitWalletStack({
       })}
 
       <Card
-        className="relative z-20 touch-none bg-[linear-gradient(135deg,#B7E4DC_0%,#E1EFEA_100%)] p-5 select-none"
+        className={cn("relative z-20 touch-none p-5 select-none", CARD_THEMES[activeIndex % CARD_THEMES.length])}
         style={{
           transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
           transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
           opacity: drag.exitDir ? 0.4 : 1,
-          cursor: nextGroupId ? "grab" : undefined,
+          cursor: nextGroupId ? "grab" : enableTapToOpenDetail ? "pointer" : undefined,
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
