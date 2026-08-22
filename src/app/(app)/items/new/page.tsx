@@ -65,7 +65,7 @@ export default async function NewItemPage({
       />
       <DesktopBand breadcrumb={`Add item · ${homeName}`} title="What are you putting away?" subtitle="Name and place are required; everything else can wait" />
 
-      <MobileHeroOverlap className="pb-6">
+      <MobileHeroOverlap className={roomContext ? "pb-6" : "mt-3 pb-6"}>
         <Card className="p-5">
           <ItemForm action={createItem} initialLocation={{ roomId, furnitureId, homeId }} initialName={name} submitLabel="Save Item" variant="mobile" />
         </Card>
