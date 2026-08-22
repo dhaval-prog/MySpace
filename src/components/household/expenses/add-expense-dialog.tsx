@@ -13,6 +13,7 @@ import { createExpense, createExpenseCategory, type ExpenseCategoryOption } from
 import type { HouseholdGoalSummary } from "@/lib/actions/household-goals";
 
 const CATEGORY_ICON_PRESETS = ["🧾", "🏠", "🛒", "💡", "🛍️", "🎉", "👤", "🚗", "🍽️", "📱"];
+const EXPENSE_AMOUNT_PRESETS = [300, 700, 1500, 3000];
 
 function todayLocalDate(): string {
   const now = new Date();
@@ -109,16 +110,34 @@ export function AddExpenseDialog({
             <Label htmlFor="expense-name">What was it?</Label>
             <Input id="expense-name" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Milk" autoFocus />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="expense-amount">Amount (₹)</Label>
+          <div className="space-y-2 rounded-2xl bg-muted p-4">
+            <Label htmlFor="expense-amount" className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
+              Expense amount
+            </Label>
             <Input
               id="expense-amount"
-              type="number"
-              min={1}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="62"
+              type="text"
+              inputMode="numeric"
+              value={amount ? `₹${Number(amount).toLocaleString("en-IN")}` : ""}
+              onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+              placeholder="₹0"
+              className="h-auto border-none bg-transparent p-0 font-heading text-4xl text-foreground shadow-none focus-visible:ring-0"
             />
+            <div className="grid grid-cols-4 gap-1.5">
+              {EXPENSE_AMOUNT_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setAmount(String(preset))}
+                  className={cn(
+                    "rounded-full border px-1.5 py-1.5 text-center text-xs font-medium",
+                    amountNumber === preset ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-white"
+                  )}
+                >
+                  ₹{preset.toLocaleString("en-IN")}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-1.5">
