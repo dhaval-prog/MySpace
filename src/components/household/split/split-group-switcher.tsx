@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Plus, Copy, Check, Mail, MessageSquare, Crown, Trash2 } from "lucide-react";
 import { cn, initials, memberAccentClass } from "@/lib/utils";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -435,6 +436,12 @@ function CreateSplitGroupDialog({
                       return;
                     }
                     const groupId = groupResult.groupId;
+                    // The group itself now exists — every step below is a
+                    // nice-to-have on top of it, so its failure is reported
+                    // via toast rather than blocking onDone(groupId). Gating
+                    // navigation behind these used to leave a successfully
+                    // created group invisible (stuck on this form with an
+                    // error) whenever any one of them failed.
 
                     const spent = Number(amount);
                     if (Number.isFinite(spent) && spent > 0) {
@@ -456,17 +463,17 @@ function CreateSplitGroupDialog({
                         groupId
                       );
                       if ("error" in expenseResult) {
-                        setError(expenseResult.error);
-                        return;
+                        toast.error(`"${name.trim()}" was created, but logging the first expense failed: ${expenseResult.error}`);
                       }
                     }
 
                     if (memberIds.length > 0) {
                       const memberResults = await Promise.all(memberIds.map((userId) => addSplitGroupMember(groupId, userId)));
-                      const failed = memberResults.find((r) => "error" in r);
-                      if (failed && "error" in failed) {
-                        setError(failed.error);
-                        return;
+                      const failedCount = memberResults.filter((r) => "error" in r).length;
+                      if (failedCount > 0) {
+                        toast.error(
+                          `"${name.trim()}" was created, but ${failedCount} member${failedCount > 1 ? "s" : ""} couldn't be added.`
+                        );
                       }
                     }
 
@@ -479,6 +486,7 @@ function CreateSplitGroupDialog({
                         setStep("invite-share");
                         return;
                       }
+                      toast.error(`"${name.trim()}" was created, but the invite couldn't be generated: ${inviteResult.error}`);
                     }
 
                     onDone(groupId);

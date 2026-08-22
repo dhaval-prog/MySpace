@@ -72,12 +72,16 @@ export function SplitWalletStack({
   const router = useRouter();
   const activeIndex = Math.max(0, cards.findIndex((c) => c.group.id === activeGroupId));
   const front = cards[activeIndex];
-  const peeked = [cards[(activeIndex + 1) % cards.length], cards[(activeIndex + 2) % cards.length]].filter(
-    (c, i, arr) => c && c.group.id !== front.group.id && arr.findIndex((x) => x.group.id === c.group.id) === i
-  );
 
   const [drag, setDrag] = useState<DragState>(IDLE_DRAG);
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  // Guards against a fast repeat drag firing a second router.push before the
+  // first fling's navigation has actually landed — cards/activeGroupId (and
+  // so nextGroupId) don't update until that round trip resolves, so a second
+  // drag in the meantime would just queue a redundant push at the same
+  // target; letting the queue grow is what turned "drag repeatedly" into a
+  // crash instead of a loop.
+  const flingPendingRef = useRef(false);
 
   useEffect(() => {
     // A completed fling navigates to the next group, which re-renders this
@@ -85,18 +89,32 @@ export function SplitWalletStack({
     // inherit the old one's leftover fling-out transform.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDrag(IDLE_DRAG);
+    flingPendingRef.current = false;
   }, [activeGroupId]);
 
   if (!front) return null;
+
+  // Computed only once `front` is known safe to read — cards[(activeIndex +
+  // n) % cards.length] can otherwise dereference `front.group.id` on an
+  // undefined `front` before the guard above runs, since array literals
+  // evaluate eagerly.
+  const peeked = [cards[(activeIndex + 1) % cards.length], cards[(activeIndex + 2) % cards.length]].filter(
+    (c, i, arr) => c && c.group.id !== front.group.id && arr.findIndex((x) => x.group.id === c.group.id) === i
+  );
 
   const settledPct = settledPctOf(front);
   const nextGroupId = peeked[0]?.group.id;
 
   function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
-    if (!nextGroupId) return;
+    if (!nextGroupId || flingPendingRef.current) return;
     startRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
     setDrag({ x: 0, y: 0, dragging: true, exitDir: null });
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // A stale/already-released pointer id on some mobile browsers — the
+      // drag still works via the move/up handlers below without capture.
+    }
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLElement>) {
@@ -118,6 +136,7 @@ export function SplitWalletStack({
 
       const exitDir = d.x >= 0 ? "right" : "left";
       if (nextGroupId) {
+        flingPendingRef.current = true;
         setTimeout(() => router.push(`/split?id=${householdId}&group=${nextGroupId}`), 260);
       }
       return { x: exitDir === "right" ? 640 : -640, y: d.y, dragging: false, exitDir };
