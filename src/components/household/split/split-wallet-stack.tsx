@@ -47,8 +47,51 @@ function settledPctOf(card: WalletCardData): number {
   return pct(card.settledAmount, card.settledAmount + card.pendingAmount);
 }
 
+/** The front card's full content — shared by the live front card and the outgoing one still animating away mid-fling, so the fly-off keeps showing the group it actually belonged to instead of jumping to the next group's numbers. */
+function WalletCardBody({ card }: { card: WalletCardData }) {
+  const settledPct = settledPctOf(card);
+  return (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#DAEBE2] text-lg">{card.group.icon}</span>
+        <Badge
+          variant={card.pendingAmount > 0.5 ? "outline" : "secondary"}
+          className={card.pendingAmount > 0.5 ? "bg-white font-mono text-[10px] font-bold tracking-wide text-[#111A14] uppercase" : undefined}
+        >
+          {card.pendingAmount > 0.5 ? "Pending" : "Settled"}
+        </Badge>
+      </div>
+      <p className="mt-3 text-lg font-bold leading-tight text-[#13241B]">{card.group.name}</p>
+      <p className="mt-1 font-mono text-2xl font-bold text-[#111A14]">{inr(card.group.totalSpent)}</p>
+      <p className="mt-1 text-[13px] text-[#4E6155]">
+        {card.group.createdByName} paid · {inr(card.pendingAmount)} pending
+      </p>
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div className="flex -space-x-1.5">
+            {card.group.memberPreview.slice(0, 4).map((m) => (
+              <span key={m.userId} className="flex size-6 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#111A14] ring-2 ring-card">
+                {initials(m.name)}
+              </span>
+            ))}
+          </div>
+          <span className="font-mono text-[10px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{card.group.memberCount} people</span>
+        </div>
+        <span className="font-mono text-[10px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{settledPct}% settled</span>
+      </div>
+
+      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-secondary" style={{ width: `${settledPct}%` }} />
+      </div>
+    </>
+  );
+}
+
 type DragState = { x: number; y: number; dragging: boolean; exitDir: "left" | "right" | null };
 const IDLE_DRAG: DragState = { x: 0, y: 0, dragging: false, exitDir: null };
+/** How long the outgoing card's fly-off / the tap-to-open roll-down transition plays before it's removed/navigated — matches the transition durations below. */
+const EXIT_MS = 260;
 
 /**
  * The "every active split is a card in a stack" pattern the Let's Split
@@ -77,31 +120,48 @@ export function SplitWalletStack({
   enableTapToOpenDetail?: boolean;
 }) {
   const router = useRouter();
-  const activeIndex = Math.max(0, cards.findIndex((c) => c.group.id === activeGroupId));
-  const front = cards[activeIndex];
-
+  // Which group is shown as front — advanced the instant a fling is
+  // confirmed, independent of `activeGroupId` (which only updates once that
+  // navigation's round trip actually resolves). Without this split, the
+  // card sat empty for however long the server took to respond; now the
+  // next card's data (already in `cards`) appears immediately and the
+  // navigation just catches the URL/rest-of-page up in the background.
+  const [localFrontId, setLocalFrontId] = useState(activeGroupId);
   const [drag, setDrag] = useState<DragState>(IDLE_DRAG);
+  // The card that was front when a fling was confirmed — kept around, frozen
+  // to its own data, purely to animate away on top while the (already
+  // updated) live front sits underneath at rest.
+  const [outgoingCard, setOutgoingCard] = useState<WalletCardData | null>(null);
+  // True while a tapped card is playing its roll-down-and-open transition,
+  // just before navigating to Split Detail.
+  const [opening, setOpening] = useState(false);
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
   // Mirrors the latest in-flight drag delta outside React state so
   // handlePointerUp can read it synchronously (tap-vs-drag needs the exact
   // released position, not whatever setDrag's updater queue settles to).
   const lastDeltaRef = useRef({ x: 0, y: 0 });
-  // Guards against a fast repeat drag firing a second router.push before the
-  // first fling's navigation has actually landed — cards/activeGroupId (and
-  // so nextGroupId) don't update until that round trip resolves, so a second
-  // drag in the meantime would just queue a redundant push at the same
-  // target; letting the queue grow is what turned "drag repeatedly" into a
-  // crash instead of a loop.
-  const flingPendingRef = useRef(false);
+  const exitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // A completed fling navigates to the next group, which re-renders this
-    // component with fresh props — reset so the new front card doesn't
-    // inherit the old one's leftover fling-out transform.
+    // Only fires for a group change we didn't drive ourselves (a peek/list
+    // click, browser back/forward) — our own fling already advanced
+    // localFrontId instantly, so this just keeps everything in sync rather
+    // than double-applying the change.
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalFrontId(activeGroupId);
     setDrag(IDLE_DRAG);
-    flingPendingRef.current = false;
+    setOutgoingCard(null);
+    setOpening(false);
   }, [activeGroupId]);
+
+  useEffect(() => {
+    return () => {
+      if (exitTimeoutRef.current) clearTimeout(exitTimeoutRef.current);
+    };
+  }, []);
+
+  const activeIndex = Math.max(0, cards.findIndex((c) => c.group.id === localFrontId));
+  const front = cards[activeIndex];
 
   if (!front) return null;
 
@@ -113,11 +173,10 @@ export function SplitWalletStack({
     (c, i, arr) => c && c.group.id !== front.group.id && arr.findIndex((x) => x.group.id === c.group.id) === i
   );
 
-  const settledPct = settledPctOf(front);
   const nextGroupId = peeked[0]?.group.id;
 
   function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
-    if (flingPendingRef.current) return;
+    if (outgoingCard || opening) return;
     startRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
     lastDeltaRef.current = { x: 0, y: 0 };
     setDrag({ x: 0, y: 0, dragging: true, exitDir: null });
@@ -144,98 +203,104 @@ export function SplitWalletStack({
     const { x, y } = lastDeltaRef.current;
     const elapsed = Math.max(1, Date.now() - start.t);
     const velocity = Math.abs(x) / elapsed;
-    const pastThreshold = nextGroupId && (Math.abs(x) > FLING_DISTANCE || velocity > FLING_VELOCITY);
+    const pastThreshold = Math.abs(x) > FLING_DISTANCE || velocity > FLING_VELOCITY;
 
-    if (!pastThreshold) {
-      if (Math.hypot(x, y) < TAP_SLOP && enableTapToOpenDetail) router.push(`/split/${front.group.id}?id=${householdId}`);
-      setDrag((d) => (d.dragging ? IDLE_DRAG : d));
+    if (!nextGroupId || !pastThreshold) {
+      if (Math.hypot(x, y) < TAP_SLOP && enableTapToOpenDetail) {
+        setOpening(true);
+        exitTimeoutRef.current = setTimeout(() => router.push(`/split/${front.group.id}?id=${householdId}`), EXIT_MS);
+      } else {
+        setDrag((d) => (d.dragging ? IDLE_DRAG : d));
+      }
       return;
     }
 
+    // Fling confirmed. The logical front swaps immediately — the live card
+    // underneath already shows the next group's real data — while this
+    // outgoing card keeps animating away on top, still showing what it
+    // actually was. It mounts at the in-progress drag position (unchanged
+    // this tick) and only gets nudged to its off-screen target a couple of
+    // frames later, once that mount has actually painted — updating the
+    // target in the same tick it mounts would give the transition nothing
+    // to animate from and it'd just snap off-screen instantly.
     const exitDir = x >= 0 ? "right" : "left";
-    if (nextGroupId) {
-      flingPendingRef.current = true;
-      setTimeout(() => router.push(`/split?id=${householdId}&group=${nextGroupId}`), 260);
-    }
-    setDrag((d) => (d.dragging ? { x: exitDir === "right" ? 640 : -640, y, dragging: false, exitDir } : d));
+    setOutgoingCard(front);
+    setLocalFrontId(nextGroupId);
+    router.push(`/split?id=${householdId}&group=${nextGroupId}`);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setDrag({ x: exitDir === "right" ? 640 : -640, y, dragging: false, exitDir });
+      });
+    });
+    exitTimeoutRef.current = setTimeout(() => setOutgoingCard(null), EXIT_MS + 60);
   }
 
   const rotation = Math.max(-5, Math.min(5, drag.x / 20));
 
   return (
     <div className="relative">
-      {/* Peek cards — just enough of a sliver (bottom edge + its own progress bar) to say "there's more here". Rendered first so they sit behind the front card in paint order. When the front card is flinging off, the next-up sliver scales/fades up toward the front position to take its place. */}
-      {peeked.map((card, i) => {
-        const becomingFront = drag.exitDir !== null && i === 0;
-        return (
-          <Link
-            key={card.group.id}
-            href={`/split?id=${householdId}&group=${card.group.id}`}
-            aria-label={`Switch to ${card.group.name}`}
-            className={cn("absolute inset-x-3 bottom-0 flex h-10 flex-col justify-end rounded-b-[26px] px-5 pb-2.5", PEEK_TINTS[i % PEEK_TINTS.length])}
-            style={{
-              transform: becomingFront ? "translateY(0px) scale(1)" : `translateY(${(i + 1) * 14}px) scale(${1 - (i + 1) * 0.04})`,
-              opacity: becomingFront ? 1 : i === 0 ? 0.8 : undefined,
-              transition: `transform 260ms ${SPRING_EASING}, opacity 260ms ${SPRING_EASING}`,
-              zIndex: 10 - i,
-            }}
-          >
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/50">
-              <div className="h-full rounded-full bg-foreground/25" style={{ width: `${settledPctOf(card)}%` }} />
-            </div>
-          </Link>
-        );
-      })}
+      {/* Peek cards — just enough of a sliver (bottom edge + its own progress bar) to say "there's more here". Rendered first so they sit behind the front card in paint order. */}
+      {peeked.map((card, i) => (
+        <Link
+          key={card.group.id}
+          href={`/split?id=${householdId}&group=${card.group.id}`}
+          aria-label={`Switch to ${card.group.name}`}
+          className={cn("absolute inset-x-3 bottom-0 flex h-10 flex-col justify-end rounded-b-[26px] px-5 pb-2.5", PEEK_TINTS[i % PEEK_TINTS.length])}
+          style={{
+            transform: `translateY(${(i + 1) * 14}px) scale(${1 - (i + 1) * 0.04})`,
+            opacity: i === 0 ? 0.8 : undefined,
+            transition: `transform 260ms ${SPRING_EASING}, opacity 260ms ${SPRING_EASING}`,
+            zIndex: 10 - i,
+          }}
+        >
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/50">
+            <div className="h-full rounded-full bg-foreground/25" style={{ width: `${settledPctOf(card)}%` }} />
+          </div>
+        </Link>
+      ))}
 
+      {/* The live front card — always fully rendered and at rest with the current group's real data, even while an outgoing card is still animating away on top of it. */}
       <Card
         className={cn("relative z-20 touch-none p-5 select-none", CARD_THEMES[activeIndex % CARD_THEMES.length])}
-        style={{
-          transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
-          transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
-          opacity: drag.exitDir ? 0.4 : 1,
-          cursor: nextGroupId ? "grab" : enableTapToOpenDetail ? "pointer" : undefined,
-        }}
+        style={
+          outgoingCard
+            ? undefined
+            : opening
+              ? {
+                  transform: "translateY(22%) scale(0.9) rotateX(60deg)",
+                  transformOrigin: "bottom center",
+                  opacity: 0,
+                  transition: `transform ${EXIT_MS}ms ease-in, opacity ${EXIT_MS}ms ease-in`,
+                }
+              : {
+                  transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
+                  transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
+                  cursor: nextGroupId ? "grab" : enableTapToOpenDetail ? "pointer" : undefined,
+                }
+        }
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <div className="flex items-start justify-between gap-2">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#DAEBE2] text-lg">{front.group.icon}</span>
-          <Badge
-            variant={front.pendingAmount > 0.5 ? "outline" : "secondary"}
-            className={front.pendingAmount > 0.5 ? "bg-white font-mono text-[10px] font-bold tracking-wide text-[#111A14] uppercase" : undefined}
-          >
-            {front.pendingAmount > 0.5 ? "Pending" : "Settled"}
-          </Badge>
-        </div>
-        <p className="mt-3 text-lg font-bold leading-tight text-[#13241B]">{front.group.name}</p>
-        <p className="mt-1 font-mono text-2xl font-bold text-[#111A14]">{inr(front.group.totalSpent)}</p>
-        <p className="mt-1 text-[13px] text-[#4E6155]">
-          {front.group.createdByName} paid · {inr(front.pendingAmount)} pending
-        </p>
-
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <div className="flex -space-x-1.5">
-              {front.group.memberPreview.slice(0, 4).map((m) => (
-                <span
-                  key={m.userId}
-                  className="flex size-6 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#111A14] ring-2 ring-card"
-                >
-                  {initials(m.name)}
-                </span>
-              ))}
-            </div>
-            <span className="font-mono text-[10px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{front.group.memberCount} people</span>
-          </div>
-          <span className="font-mono text-[10px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{settledPct}% settled</span>
-        </div>
-
-        <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-secondary" style={{ width: `${settledPct}%` }} />
-        </div>
+        <WalletCardBody card={front} />
       </Card>
+
+      {/* An in-flight fling's old front, still visible on top while it flies away — frozen to the group it actually belonged to so its numbers don't jump ahead of the navigation underneath. */}
+      {outgoingCard && (
+        <Card
+          className={cn(
+            "pointer-events-none absolute inset-0 z-30 p-5 select-none",
+            CARD_THEMES[Math.max(0, cards.findIndex((c) => c.group.id === outgoingCard.group.id)) % CARD_THEMES.length]
+          )}
+          style={{
+            transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
+            transition: `transform ${EXIT_MS}ms ${SPRING_EASING}`,
+          }}
+        >
+          <WalletCardBody card={outgoingCard} />
+        </Card>
+      )}
     </div>
   );
 }
