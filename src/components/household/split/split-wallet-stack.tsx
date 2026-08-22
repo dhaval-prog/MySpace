@@ -36,7 +36,7 @@ function pct(numerator: number, denominator: number): number {
 
 export interface WalletCardData {
   group: SplitGroupSummary;
-  /** Money still owed by anyone to anyone in this group — viewer-independent, from getSimplifiedBalances() for the active group and getGroupTotals() for every other one. */
+  /** Money still owed by anyone to anyone in this group — viewer-independent, from getSimplifiedBalances() for every group (all now pre-fetched up front, not just the active one). */
   pendingAmount: number;
   /** Every confirmed settlement ever recorded in this group (SplitSummary.settledAmount) — paired with pendingAmount for a "% settled" that's about the settlement ledger, not just what's left of totalSpent. */
   settledAmount: number;
@@ -48,13 +48,13 @@ function settledPctOf(card: WalletCardData): number {
   return pct(card.settledAmount, card.settledAmount + card.pendingAmount);
 }
 
-/** The front card's full content — shared by the live front card and the outgoing one still animating away mid-fling, so the fly-off keeps showing the group it actually belonged to instead of jumping to the next group's numbers. */
+/** The front card's full content — shared by the live front card and the outgoing one still animating away mid-fling, so the fly-off keeps showing the group it actually belonged to instead of jumping to the next group's numbers. Deliberately compact (title and amount share a row, tighter margins throughout) so the card reads more like a real wallet/ATM card than a full-height panel. */
 function WalletCardBody({ card, showActions }: { card: WalletCardData; showActions: boolean }) {
   const settledPct = settledPctOf(card);
   return (
     <>
       <div className="flex items-start justify-between gap-2">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#DAEBE2] text-lg">{card.group.icon}</span>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-[#DAEBE2] text-base">{card.group.icon}</span>
         <div className="flex items-center gap-1">
           <Badge
             variant={card.pendingAmount > 0.5 ? "outline" : "secondary"}
@@ -72,27 +72,30 @@ function WalletCardBody({ card, showActions }: { card: WalletCardData; showActio
           )}
         </div>
       </div>
-      <p className="mt-3 text-lg font-bold leading-tight text-[#13241B]">{card.group.name}</p>
-      <p className="mt-1 font-mono text-2xl font-bold text-[#111A14]">{inr(card.group.totalSpent)}</p>
-      <p className="mt-1 text-[13px] text-[#4E6155]">
+
+      <div className="mt-2 flex items-baseline justify-between gap-2">
+        <p className="truncate text-base font-bold leading-tight text-[#13241B]">{card.group.name}</p>
+        <p className="shrink-0 font-mono text-lg font-bold text-[#111A14]">{inr(card.group.totalSpent)}</p>
+      </div>
+      <p className="mt-0.5 truncate text-[11px] text-[#4E6155]">
         {card.group.createdByName} paid · {inr(card.pendingAmount)} pending
       </p>
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <div className="flex -space-x-1.5">
             {card.group.memberPreview.slice(0, 4).map((m) => (
-              <span key={m.userId} className="flex size-6 items-center justify-center rounded-full bg-white text-[10px] font-bold text-[#111A14] ring-2 ring-card">
+              <span key={m.userId} className="flex size-5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-[#111A14] ring-2 ring-card">
                 {initials(m.name)}
               </span>
             ))}
           </div>
-          <span className="font-mono text-[10px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{card.group.memberCount} people</span>
+          <span className="font-mono text-[9px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{card.group.memberCount} people</span>
         </div>
-        <span className="font-mono text-[10px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{settledPct}% settled</span>
+        <span className="font-mono text-[9px] font-bold tracking-[0.1em] text-[#45574D] uppercase">{settledPct}% settled</span>
       </div>
 
-      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div className="h-full rounded-full bg-secondary" style={{ width: `${settledPct}%` }} />
       </div>
     </>
@@ -125,6 +128,7 @@ export function SplitWalletStack({
   cards,
   activeGroupId,
   onToggleDetail,
+  onFrontChange,
   showCardActions = false,
 }: {
   householdId: string;
@@ -132,6 +136,8 @@ export function SplitWalletStack({
   activeGroupId: string;
   /** Tapping (not dragging) the front card calls this — left off on desktop, where the group's full detail already sits inline beside the stack. */
   onToggleDetail?: () => void;
+  /** Fires with the new front group's id the instant it changes locally — lets a parent that holds every group's data pre-fetched (so it never needs to wait on the URL navigation below) mirror which one to show. */
+  onFrontChange?: (groupId: string) => void;
   /** Show each card's own Invite/Delete menu (WalletCardData.actions) in its top-right corner — on for the mobile stack, off for desktop, which already carries that menu on the SplitDetailCard beside it. */
   showCardActions?: boolean;
 }) {
@@ -175,6 +181,14 @@ export function SplitWalletStack({
       if (exitTimeoutRef.current) clearTimeout(exitTimeoutRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    onFrontChange?.(localFrontId);
+    // onFrontChange intentionally excluded: it's expected to be a fresh
+    // closure every render (an inline setState call), so including it would
+    // re-fire this on every render instead of only on real front changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localFrontId]);
 
   const activeIndex = Math.max(0, cards.findIndex((c) => c.group.id === localFrontId));
   const front = cards[activeIndex];
@@ -269,69 +283,75 @@ export function SplitWalletStack({
   const rotation = Math.max(-5, Math.min(5, drag.x / 20));
 
   return (
-    <div className="relative" style={{ perspective: "800px" }}>
-      {/* Peek cards — each the group's own real card, the exact same size as the front one (no shrinking-perspective scale), just offset further down behind it. The front card covers all but the bottom edge, which is exactly what reads as "there's a real card stacked back there" rather than a decorative sliver. Rendered first so they sit behind the front card in paint order. */}
-      {peeked.map((card, i) => (
-        <Link
-          key={card.group.id}
-          href={`/split?id=${householdId}&group=${card.group.id}`}
-          aria-label={`Switch to ${card.group.name}`}
-          className={cn(
-            "absolute inset-x-0 bottom-0 touch-none overflow-hidden rounded-[26px] p-5 select-none",
-            CARD_THEMES[Math.max(0, cards.findIndex((c) => c.group.id === card.group.id)) % CARD_THEMES.length]
-          )}
-          style={{
-            transform: `translateY(${(i + 1) * 56}px)`,
-            opacity: i === 0 ? 1 : 0.85,
-            transition: `transform 260ms ${SPRING_EASING}, opacity 260ms ${SPRING_EASING}`,
-            zIndex: 10 - i,
-          }}
-        >
-          <WalletCardBody card={card} showActions={showCardActions} />
-        </Link>
-      ))}
+    // The peek cards below are absolutely positioned and translateY'd past
+    // this wrapper's own layout height (set by the in-flow front card
+    // alone), so without this bottom padding they'd visually overlap
+    // whatever renders right after the stack in the page — this reserves
+    // room for the deepest peek's overhang plus a little breathing space.
+    <div style={{ paddingBottom: peeked.length > 0 ? peeked.length * 56 + 16 : 0 }}>
+      <div className="relative" style={{ perspective: "800px" }}>
+        {peeked.map((card, i) => (
+          <Link
+            key={card.group.id}
+            href={`/split?id=${householdId}&group=${card.group.id}`}
+            aria-label={`Switch to ${card.group.name}`}
+            className={cn(
+              "absolute inset-x-0 bottom-0 touch-none overflow-hidden rounded-[26px] p-4 select-none",
+              CARD_THEMES[Math.max(0, cards.findIndex((c) => c.group.id === card.group.id)) % CARD_THEMES.length]
+            )}
+            style={{
+              transform: `translateY(${(i + 1) * 56}px)`,
+              opacity: i === 0 ? 1 : 0.85,
+              transition: `transform 260ms ${SPRING_EASING}, opacity 260ms ${SPRING_EASING}`,
+              zIndex: 10 - i,
+            }}
+          >
+            <WalletCardBody card={card} showActions={showCardActions} />
+          </Link>
+        ))}
 
-      {/* The live front card — always fully rendered and at rest with the current group's real data, even while an outgoing card is still animating away on top of it. */}
-      <Card
-        className={cn("relative z-20 touch-none p-5 select-none", CARD_THEMES[activeIndex % CARD_THEMES.length])}
-        style={
-          outgoingCard
-            ? undefined
-            : opening
-              ? {
-                  transform: "scale(0.97) rotateX(8deg)",
-                  transformOrigin: "top center",
-                  transition: `transform ${EXIT_MS}ms ${SPRING_EASING}`,
-                }
-              : {
-                  transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
-                  transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
-                  cursor: canDrag ? "grab" : onToggleDetail ? "pointer" : undefined,
-                }
-        }
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
-        <WalletCardBody card={front} showActions={showCardActions} />
-      </Card>
-
-      {/* An in-flight fling's old front, still visible on top while it flies away — frozen to the group it actually belonged to so its numbers don't jump ahead of the navigation underneath. */}
-      {outgoingCard && (
+        {/* The live front card — always fully rendered and at rest with the current group's real data, even while an outgoing card is still animating away on top of it. */}
         <Card
-          className={cn(
-            "pointer-events-none absolute inset-0 z-30 p-5 select-none",
-            CARD_THEMES[Math.max(0, cards.findIndex((c) => c.group.id === outgoingCard.group.id)) % CARD_THEMES.length]
-          )}
-          style={{
-            transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
-            transition: `transform ${EXIT_MS}ms ${SPRING_EASING}`,
-          }}
+          className={cn("relative z-20 touch-none p-4 select-none", CARD_THEMES[activeIndex % CARD_THEMES.length])}
+          style={
+            outgoingCard
+              ? undefined
+              : opening
+                ? {
+                    transform: "scale(0.97) rotateX(8deg)",
+                    transformOrigin: "top center",
+                    transition: `transform ${EXIT_MS}ms ${SPRING_EASING}`,
+                  }
+                : {
+                    transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
+                    transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
+                    cursor: canDrag ? "grab" : onToggleDetail ? "pointer" : undefined,
+                  }
+          }
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         >
-          <WalletCardBody card={outgoingCard} showActions={showCardActions} />
+          <WalletCardBody card={front} showActions={showCardActions} />
         </Card>
-      )}
+
+        {/* An in-flight fling's old front, still visible on top while it flies away — frozen to the group it actually belonged to so its numbers don't jump ahead of the navigation underneath. */}
+        {outgoingCard && (
+          <Card
+            className={cn(
+              "pointer-events-none absolute inset-0 z-30 p-4 select-none",
+              CARD_THEMES[Math.max(0, cards.findIndex((c) => c.group.id === outgoingCard.group.id)) % CARD_THEMES.length]
+            )}
+            style={{
+              transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
+              transition: `transform ${EXIT_MS}ms ${SPRING_EASING}`,
+            }}
+          >
+            <WalletCardBody card={outgoingCard} showActions={showCardActions} />
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

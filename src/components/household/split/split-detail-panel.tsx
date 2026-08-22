@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Utensils } from "lucide-react";
+import { Check, ChevronLeft, Utensils } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { markShareReceived } from "@/lib/actions/split";
 import type { SplitGroupSummary, SplitSummary } from "@/lib/actions/split";
@@ -23,22 +23,26 @@ function pct(numerator: number, denominator: number): number {
 /**
  * The full "SPLIT DETAIL" mockup — pink-to-blush hero card, four-up stat
  * row, a "Paid by you" participant list, and a settlement progress bar.
- * Originally its own full-screen route; now shown inline right under the
- * wallet stack once its front card is tapped open (see
- * SplitWalletWithDetail). A still-pending participant's badge doubles as
- * the one-click "mark received" confirm the older inline detail card
- * offered, so that capability survives the redesign.
+ * Originally its own full-screen route; now shown in place of the wallet
+ * stack once its front card is tapped open (see SplitMobileWorkspace),
+ * with the hero card's chevron closing it back to the stack. A still-
+ * pending participant's badge doubles as the one-click "mark received"
+ * confirm the older inline detail card offered, so that capability
+ * survives the redesign.
  */
 export function SplitDetailPanel({
   group,
   summary,
   pendingAmount,
   currentUserId,
+  onClose,
 }: {
   group: SplitGroupSummary;
   summary: SplitSummary;
   pendingAmount: number;
   currentUserId: string;
+  /** Closes the panel, returning to the wallet stack — omit to leave it permanently open (the desktop inline card has no such toggle). */
+  onClose?: () => void;
 }) {
   const router = useRouter();
   const [markingId, setMarkingId] = useState<string | null>(null);
@@ -69,8 +73,20 @@ export function SplitDetailPanel({
         className="flex min-h-[220px] flex-col rounded-[24px] p-5"
         style={{ backgroundImage: "linear-gradient(180deg, #FFD6DD 0%, #FFF5F7 100%)" }}
       >
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-white/60">
-          <Utensils className="size-5 text-[#1F2421]" />
+        <div className="flex items-start justify-between">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-white/60">
+            <Utensils className="size-5 text-[#1F2421]" />
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Back to cards"
+              className="flex size-9 items-center justify-center rounded-full bg-white/60 text-[#1F2421] transition-colors hover:bg-white/85"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+          )}
         </div>
         <p className="mt-4 font-heading text-lg font-bold text-[#1F2421]">{group.name}</p>
         <p className="mt-1 text-[11px] font-medium tracking-[0.14em] text-[#767A78] uppercase">

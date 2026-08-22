@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Users } from "lucide-react";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
-import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, getPendingSettlements, getGroupTotals, listSplitGroups } from "@/lib/actions/split";
+import { getSplitSummary, getSplitGroupMembers, getSimplifiedBalances, getPendingSettlements, listSplitGroups } from "@/lib/actions/split";
 import { EmptyState } from "@/components/shared/empty-state";
 import { JoinWithCodeDialog } from "@/components/household/join-with-code-dialog";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
@@ -10,9 +10,8 @@ import { AddExpenseDialog } from "@/components/household/split/add-expense-dialo
 import { CreateSplitGroupButton } from "@/components/household/split/split-group-switcher";
 import { SplitGroupWorkspace } from "@/components/household/split/split-group-workspace";
 import { SplitWalletStack, SplitWalletList, type WalletCardData } from "@/components/household/split/split-wallet-stack";
-import { SplitWalletWithDetail } from "@/components/household/split/split-wallet-with-detail";
+import { SplitMobileWorkspace, type GroupDetailData } from "@/components/household/split/split-mobile-workspace";
 import { SplitDetailCard } from "@/components/household/split/split-detail-card";
-import { SplitDetailPanel } from "@/components/household/split/split-detail-panel";
 import { SplitGroupActionsMenu } from "@/components/household/split/split-group-actions-menu";
 import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
 import { Card } from "@/components/ui/card";
@@ -63,36 +62,46 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   const groupId = group && groups.some((g) => g.id === group) ? group : (groups.find((g) => g.isDefault)?.id ?? groups[0]?.id);
 
   const activeGroup = groups.find((g) => g.id === groupId);
-  const otherGroups = groups.filter((g) => g.id !== groupId);
 
-  const [[splitSummary, splitMembers, simplifiedBalances, pendingSettlements], otherTotals] = await Promise.all([
-    groupId
-      ? Promise.all([
-          getSplitSummary(householdId, groupId),
-          getSplitGroupMembers(groupId),
-          getSimplifiedBalances(householdId, groupId),
-          getPendingSettlements(groupId),
-        ])
-      : Promise.resolve([null, [], [], []] as const),
-    // Every other group's wallet-card numbers, without paying for a full
-    // getSplitSummary() (profile joins, guest-expiry check, recentExpenses)
-    // per group — none of that extra detail is ever shown for them.
-    Promise.all(otherGroups.map((g) => getGroupTotals(g.id, myUserId))),
-  ]);
+  // Every group's full detail, fetched once up front rather than just the
+  // active one — the wallet stack already swaps its own card instantly on
+  // a flick (see SplitWalletStack), but the Split Detail panel and the
+  // Expenses/Balances/Chat workspace underneath it used to still wait on
+  // the URL navigation to catch up, which is exactly the delay this avoids:
+  // SplitMobileWorkspace switches all three from this same pre-fetched map.
+  const groupDetails: GroupDetailData[] = await Promise.all(
+    groups.map(async (g) => {
+      const [summary, members, balances, settlements] = await Promise.all([
+        getSplitSummary(householdId, g.id),
+        getSplitGroupMembers(g.id),
+        getSimplifiedBalances(householdId, g.id),
+        getPendingSettlements(g.id),
+      ]);
+      return { group: g, summary, members, balances, settlements };
+    })
+  );
+  const detailByGroupId = new Map(groupDetails.map((d) => [d.group.id, d]));
+  const activeDetail = groupId ? detailByGroupId.get(groupId) : undefined;
+  const splitSummary = activeDetail?.summary ?? null;
+  const splitMembers = activeDetail?.members ?? [];
+  const simplifiedBalances = activeDetail?.balances ?? [];
+  const pendingSettlements = activeDetail?.settlements ?? [];
 
   // Totals for the band span every group, not just the one currently open —
   // "You are owed"/"You owe" describes the whole household, matching the
   // wallet stack's own per-card totals below it.
   const activeGroupPending = simplifiedBalances.reduce((sum, t) => sum + t.amount, 0);
-  const totalsByGroupId = new Map(otherGroups.map((g, i) => [g.id, otherTotals[i]]));
-  if (splitSummary && groupId) {
-    totalsByGroupId.set(groupId, {
-      youOwe: splitSummary.youOwe,
-      youAreOwed: splitSummary.youAreOwed,
-      pendingAmount: activeGroupPending,
-      settledAmount: splitSummary.settledAmount,
-    });
-  }
+  const totalsByGroupId = new Map(
+    groupDetails.map((d) => [
+      d.group.id,
+      {
+        youOwe: d.summary?.youOwe ?? 0,
+        youAreOwed: d.summary?.youAreOwed ?? 0,
+        pendingAmount: d.balances.reduce((sum, t) => sum + t.amount, 0),
+        settledAmount: d.summary?.settledAmount ?? 0,
+      },
+    ])
+  );
   const allTotals = Array.from(totalsByGroupId.values());
   const totalYouAreOwed = allTotals.reduce((sum, t) => sum + t.youAreOwed, 0);
   const totalYouOwe = allTotals.reduce((sum, t) => sum + t.youOwe, 0);
@@ -167,50 +176,23 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
           <p className="text-center text-[11px] text-[#5C6B61]">{walletCards.length > 1 ? "Tap to open · drag to flick" : "Tap to open"}</p>
         )}
 
-        {walletCards.length > 0 && groupId && (
-          <SplitWalletWithDetail
+        {walletCards.length > 0 && groupId ? (
+          <SplitMobileWorkspace
             householdId={householdId}
             cards={walletCards}
             activeGroupId={groupId}
-            detail={
-              splitSummary && activeGroup ? (
-                <SplitDetailPanel group={activeGroup} summary={splitSummary} pendingAmount={activeGroupPending} currentUserId={myUserId} />
-              ) : null
-            }
+            detailsByGroupId={detailByGroupId}
+            currentUserId={myUserId}
+            isOwner={isOwner}
+            canCreateGroup={canCreateGroup}
+            householdMembers={householdMemberOptions}
           />
-        )}
-
-        {canCreateGroup && (
-          <div className="flex justify-center pt-6">
-            <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} householdMembers={householdMemberOptions} />
-          </div>
-        )}
-
-        {splitSummary && activeGroup ? (
-          <>
-            <div className="flex justify-end">
-              <AddExpenseDialog householdId={householdId} groupId={groupId!} members={splitMembers} currentUserId={myUserId} />
-            </div>
-
-            <Card className="p-5">
-              <SplitGroupWorkspace
-                householdId={householdId}
-                group={activeGroup}
-                summary={splitSummary}
-                simplifiedBalances={simplifiedBalances}
-                pendingSettlements={pendingSettlements}
-                members={splitMembers}
-                currentUserId={myUserId}
-                isOwner={isOwner}
-              />
-            </Card>
-          </>
         ) : (
-          <Card className="p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              You haven&apos;t been added to this split group yet — ask its owner or creator to invite you.
-            </p>
-          </Card>
+          canCreateGroup && (
+            <div className="flex justify-center pt-6">
+              <CreateSplitGroupButton householdId={householdId} currentUserId={myUserId} householdMembers={householdMemberOptions} />
+            </div>
+          )
         )}
       </MobileHeroOverlap>
 
