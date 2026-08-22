@@ -153,9 +153,17 @@ export interface SplitGroupSummary {
   createdBy: string;
   createdByName: string;
   createdByAvatarUrl: string | null;
+  createdAt: string;
   memberCount: number;
   memberPreview: { userId: string; name: string; avatarUrl: string | null }[];
   totalSpent: number;
+}
+
+/** Which household a split group belongs to, given only its id — lets a direct link like /split/[groupId] resolve its household without the caller already knowing it. RLS (split_groups_select_member) already scopes this to a group the caller can actually see. */
+export async function getSplitGroupHouseholdId(groupId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("split_groups").select("household_id").eq("id", groupId).maybeSingle();
+  return data?.household_id ?? null;
 }
 
 /**
@@ -209,6 +217,7 @@ export async function listSplitGroups(householdId: string): Promise<SplitGroupSu
       createdBy: g.created_by,
       createdByName: displayName(profileById.get(g.created_by)),
       createdByAvatarUrl: profileById.get(g.created_by)?.avatar_url ?? null,
+      createdAt: g.created_at,
       memberCount: memberIds.length,
       memberPreview: memberIds.slice(0, 4).map((id) => ({ userId: id, name: displayName(profileById.get(id)), avatarUrl: profileById.get(id)?.avatar_url ?? null })),
       totalSpent: Math.round((totalByGroup.get(g.id) ?? 0) * 100) / 100,
