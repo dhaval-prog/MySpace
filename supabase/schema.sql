@@ -2342,3 +2342,16 @@ create policy "item_expiry_notifications_select_own" on public.item_expiry_notif
 drop policy if exists "item_expiry_notifications_update_own" on public.item_expiry_notifications;
 create policy "item_expiry_notifications_update_own" on public.item_expiry_notifications for update
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- The creator must be able to see (RETURNING-select) a goal they just
+-- created, even before household_goal_members has a row for it —
+-- create_household_goal() inserts household_goals RETURNING its id
+-- before the matching household_goal_members row exists. Without a
+-- created_by = auth.uid() clause, that insert failed with a generic RLS
+-- violation for any non-owner creator (household_goals_select_member
+-- above predates this), despite passing household_goals_insert_contributor.
+-- Mirrors the household_vaults_select_goal fix for the identical vault-row
+-- case, just applied later for the goals row itself.
+drop policy if exists "household_goals_select_member" on public.household_goals;
+create policy "household_goals_select_member" on public.household_goals for select
+  using (created_by = auth.uid() or is_goal_member(id) or is_household_owner(household_id));

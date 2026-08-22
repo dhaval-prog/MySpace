@@ -194,24 +194,22 @@ export function SpendingBudgetsBoard({
                 }
               />
               {(isOwner || selected.goal.created_by === currentUserId) && (
-                <>
-                  <Button size="icon" variant="ghost" className="rounded-2xl bg-accent text-accent-foreground" title="Edit budget">
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="rounded-2xl bg-blush-tint text-destructive"
-                    title="Delete budget"
-                    onClick={() => {
-                      setDeleteError(null);
-                      setDeleteTarget(selected);
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </>
+                <Button size="icon" variant="ghost" className="rounded-2xl bg-accent text-accent-foreground" title="Edit budget">
+                  <Pencil className="size-4" />
+                </Button>
               )}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="rounded-2xl bg-blush-tint text-destructive"
+                title="Delete budget"
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteTarget(selected);
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
             </div>
 
             <div className="mt-5">

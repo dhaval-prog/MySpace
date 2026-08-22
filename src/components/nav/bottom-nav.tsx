@@ -7,6 +7,7 @@ import { Home, Package, Wallet, Receipt, Plus, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignInPromptDialog } from "@/components/nav/sign-in-prompt-dialog";
 import { AddFurnitureDialog } from "@/components/home/add-furniture-dialog";
+import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
 import { getQuickAddContext, type QuickAddContext } from "@/lib/actions/quick-add";
 
 const TABS = [
@@ -52,7 +53,7 @@ export function BottomNav({ isGuest = false }: { isGuest?: boolean }) {
   );
 }
 
-/** The nav's central "+" — what it adds depends on the page underneath it (see getQuickAddContext): a Place on a Room page, an Item on a Place page, and a Place on the item's own Room when there's nothing further to drill into. Anywhere else, it falls back to the generic Add Item flow. */
+/** The nav's central "+" — what it adds depends on the page underneath it (see getQuickAddContext): a Place on a Room page, an Item on a Place page, a Place on the item's own Room when there's nothing further to drill into, and a spending budget on the Expenses page. Anywhere else, it falls back to the generic Add Item flow. */
 function QuickAddButton({ context }: { context: QuickAddContext }) {
   if (context.kind === "place") {
     return (
@@ -78,6 +79,20 @@ function QuickAddButton({ context }: { context: QuickAddContext }) {
       >
         <Plus className="size-6" />
       </Link>
+    );
+  }
+
+  if (context.kind === "budget") {
+    return (
+      <CreateGoalDialog
+        householdId={context.householdId}
+        defaultGoalType="spending"
+        trigger={
+          <button type="button" aria-label="Create spending budget" className={QUICK_ADD_BUTTON_CLASS}>
+            <Plus className="size-6" />
+          </button>
+        }
+      />
     );
   }
 

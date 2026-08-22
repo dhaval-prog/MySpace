@@ -2,11 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { buildLocationIndex, pathForStorageLocation } from "@/lib/location";
+import { listMyHouseholds } from "@/lib/actions/household";
 import type { RoomType } from "@/lib/constants";
 
 export type QuickAddContext =
   | { kind: "place"; roomId: string; roomType: RoomType; roomName: string }
   | { kind: "item"; roomId: string; furnitureId: string; homeId: string }
+  | { kind: "budget"; householdId: string }
   | { kind: "default" };
 
 /**
@@ -18,6 +20,12 @@ export type QuickAddContext =
  * item's own Room, same as if you'd navigated up to it.
  */
 export async function getQuickAddContext(pathname: string): Promise<QuickAddContext> {
+  if (pathname.startsWith("/expenses")) {
+    const memberships = await listMyHouseholds();
+    const householdId = memberships[0]?.household.id;
+    return householdId ? { kind: "budget", householdId } : { kind: "default" };
+  }
+
   const supabase = await createClient();
 
   const placeMatch = pathname.match(/^\/home\/rooms\/([^/]+)\/furniture\/([^/]+)/);
