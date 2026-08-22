@@ -10,6 +10,7 @@ import { AddExpenseDialog } from "@/components/household/expenses/add-expense-di
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
 import { deleteGoal, type HouseholdGoalSummary } from "@/lib/actions/household-goals";
 import { listExpenses, type ExpenseSummary, type ExpenseCategoryOption } from "@/lib/actions/expenses";
+import { budgetIconFor } from "@/lib/budget-icons";
 
 function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
@@ -24,25 +25,25 @@ function resetLabel(deadline: string | null): string {
 function RecentExpenseRow({ expense }: { expense: ExpenseSummary }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-muted px-3 py-2.5">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#DBEBC8] text-[#2B4212]">
         <ArrowUpRight className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{expense.description}</span>
-        <span className="block text-xs text-muted-foreground">
+        <span className="block truncate text-sm font-semibold text-[#18241F]">{expense.description}</span>
+        <span className="block font-mono text-[10px] text-[#6B7A72] uppercase">
           {new Date(expense.expenseDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
         </span>
       </span>
-      <span className="shrink-0 text-sm font-medium text-destructive">-{inr(expense.amount)}</span>
+      <span className="shrink-0 font-mono text-sm font-bold text-[#18241F]">-{inr(expense.amount)}</span>
     </div>
   );
 }
 
 const CARD_THEMES = [
-  "bg-[linear-gradient(140deg,#1F7A5A_0%,#2C6E68_48%,#14483C_100%)]",
-  "bg-[linear-gradient(140deg,#E4736A_0%,#D33243_55%,#96182B_100%)]",
-  "bg-[linear-gradient(180deg,#7255B2_0%,#5A3D99_100%)]",
-  "bg-[linear-gradient(135deg,#5B82C3_0%,#4B5A8F_100%)]",
+  "bg-[linear-gradient(135deg,#4A7C72_0%,#345952_100%)]",
+  "bg-[linear-gradient(135deg,#E25B65_0%,#B82638_100%)]",
+  "bg-[linear-gradient(135deg,#826BBF_0%,#5B4294_100%)]",
+  "bg-[linear-gradient(135deg,#5B80B2_0%,#3C4E78_100%)]",
 ];
 
 /** The white Budget/Spent/Left row inside a budget's focused card — its own bespoke box rather than the shared StatChip, since this trio needs an exact monospace/weight/color treatment (tabular mono values, #586560 labels) that's specific to this one card, not a app-wide stat convention. */
@@ -50,7 +51,7 @@ function BudgetStatBox({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-muted px-3 py-2">
       <p className="font-mono text-[10px] font-semibold tracking-[0.14em] text-[#586560] uppercase">{label}</p>
-      <p className="mt-0.5 font-mono text-lg font-extrabold text-[#161D1A]">{value}</p>
+      <p className="mt-0.5 font-mono text-lg font-extrabold text-[#18241F]">{value}</p>
     </div>
   );
 }
@@ -105,9 +106,9 @@ export function SpendingBudgetsBoard({
     <div className="grid gap-6 md:grid-cols-[1fr_380px]">
       <div>
         <div className="flex items-center justify-between px-1">
-          <p className="text-[11px] font-bold tracking-[0.15em] text-black uppercase">
+          <p className="text-[11px] font-bold tracking-[0.15em] text-[#22332B] uppercase">
             Your cards{" "}
-            <span className="ml-1 rounded-full bg-[#E1EBC8] px-1.5 py-0.5 text-[#2E4A1E]">
+            <span className="ml-1 rounded-full bg-[#E2EBC7] px-1.5 py-0.5 text-[#3A4E1B]">
               {spendingGoals.length} budget{spendingGoals.length === 1 ? "" : "s"}
             </span>
           </p>
@@ -133,6 +134,7 @@ export function SpendingBudgetsBoard({
           {spendingGoals.map((g, i) => {
             const remaining = Math.max(g.goal.target_amount - g.currentAmount, 0);
             const isActive = g.goal.id === selectedId;
+            const CardIcon = budgetIconFor(g.goal.icon);
             return (
               <button
                 key={g.goal.id}
@@ -145,7 +147,9 @@ export function SpendingBudgetsBoard({
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex size-9 items-center justify-center rounded-2xl bg-white/20 text-base">{g.goal.icon}</span>
+                  <span className="flex size-9 items-center justify-center rounded-2xl bg-white/20 text-white">
+                    <CardIcon className="size-4.5" />
+                  </span>
                   {g.goal.deadline && (
                     <span className="font-mono text-[10px] font-semibold tracking-wide text-white/80 uppercase">
                       {Math.max(0, Math.round((new Date(g.goal.deadline).getTime() - now) / 86400000))} days
@@ -165,7 +169,7 @@ export function SpendingBudgetsBoard({
             );
           })}
         </div>
-        <p className="mt-3 px-1 text-xs text-muted-foreground">Budgets reset on their own dates — the spend clears, the card stays.</p>
+        <p className="mt-3 px-1 text-xs text-[#76857C]">Budgets reset on their own dates — the spend clears, the card stays.</p>
       </div>
 
       <div className="rounded-3xl bg-white p-5">
@@ -173,10 +177,17 @@ export function SpendingBudgetsBoard({
           <>
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-2xl bg-accent text-base">{selected.goal.icon}</span>
+                {(() => {
+                  const SelectedIcon = budgetIconFor(selected.goal.icon);
+                  return (
+                    <span className="flex size-9 items-center justify-center rounded-2xl bg-[#FCDAD8] text-[#B8323D]">
+                      <SelectedIcon className="size-4.5" />
+                    </span>
+                  );
+                })()}
                 <div>
-                  <p className="font-heading text-2xl font-bold leading-tight text-[#1C2A24]">{selected.goal.name}</p>
-                  <p className="font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase">{resetLabel(selected.goal.deadline)}</p>
+                  <p className="font-heading text-2xl font-bold leading-tight text-[#1A2B23]">{selected.goal.name}</p>
+                  <p className="font-mono text-[10px] tracking-[0.1em] text-[#6B7A72] uppercase">{resetLabel(selected.goal.deadline)}</p>
                 </div>
               </div>
               <span className="rounded-full bg-[#DCE8BA] px-2.5 py-1 font-mono text-xs font-medium text-[#384D14]">{selected.progressPct}% used</span>
@@ -195,21 +206,21 @@ export function SpendingBudgetsBoard({
                 spendingGoals={spendingGoals}
                 defaultGoalId={selected.goal.id}
                 trigger={
-                  <Button className="flex-1 rounded-2xl">
+                  <Button className="flex-1 rounded-2xl bg-[#D83244] text-sm font-semibold hover:bg-[#D83244]/85">
                     <Receipt className="size-4" />
                     Add expense
                   </Button>
                 }
               />
               {(isOwner || selected.goal.created_by === currentUserId) && (
-                <Button size="icon" variant="ghost" className="rounded-2xl bg-accent text-accent-foreground" title="Edit budget">
+                <Button size="icon" variant="ghost" className="rounded-2xl bg-[#DCE8BA] text-[#384D14]" title="Edit budget">
                   <Pencil className="size-4" />
                 </Button>
               )}
               <Button
                 size="icon"
                 variant="ghost"
-                className="rounded-2xl bg-blush-tint text-destructive"
+                className="rounded-2xl bg-[#FCDAD8] text-[#D83244]"
                 title="Delete budget"
                 onClick={() => {
                   setDeleteError(null);
@@ -222,10 +233,10 @@ export function SpendingBudgetsBoard({
 
             <div className="mt-5">
               <div className="flex items-center justify-between">
-                <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Recent expenses</p>
+                <p className="text-[11px] font-bold tracking-[0.14em] text-[#506157] uppercase">Recent expenses</p>
                 <div className="flex items-center gap-2">
                   {expenses && expenses.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-mono text-[10px] text-[#6B7A72] uppercase">
                       {expenses.length} {expenses.length === 1 ? "entry" : "entries"}
                     </p>
                   )}

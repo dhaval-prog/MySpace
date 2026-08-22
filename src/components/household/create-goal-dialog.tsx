@@ -2,29 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Fuel, Heart, Gift, Home, ShoppingCart, UtensilsCrossed, ShoppingBag, Plane } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createGoal } from "@/lib/actions/household-goals";
+import { BUDGET_NAME_PRESETS } from "@/lib/budget-icons";
 import type { HouseholdGoalType } from "@/lib/supabase/types";
 
 const GOAL_ICON_PRESETS = ["🎯", "✈️", "🏠", "📺", "🧊", "🎓", "🚗", "💍"];
-// `icon` is the emoji actually stored on the goal (and rendered everywhere
-// else it shows up — the budget cards, the detail header); `Icon` is only
-// for this picker's own buttons, which use outline icons instead of emoji.
-const BUDGET_NAME_PRESETS = [
-  { name: "Fuel", icon: "⛽", Icon: Fuel },
-  { name: "Health", icon: "❤️", Icon: Heart },
-  { name: "Gift", icon: "🎁", Icon: Gift },
-  { name: "Home", icon: "🏠", Icon: Home },
-  { name: "Groceries", icon: "🛒", Icon: ShoppingCart },
-  { name: "Eating Out", icon: "🍽️", Icon: UtensilsCrossed },
-  { name: "Shopping", icon: "🛍️", Icon: ShoppingBag },
-  { name: "Travel", icon: "✈️", Icon: Plane },
-];
 const RESET_DAY_PRESETS = [1, 5, 15, 25];
 const AMOUNT_PRESETS = [5000, 10000, 15000, 25000];
 
