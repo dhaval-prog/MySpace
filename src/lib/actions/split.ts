@@ -153,6 +153,7 @@ export interface SplitGroupSummary {
   createdBy: string;
   createdByName: string;
   createdByAvatarUrl: string | null;
+  createdAt: string;
   memberCount: number;
   memberPreview: { userId: string; name: string; avatarUrl: string | null }[];
   totalSpent: number;
@@ -209,6 +210,7 @@ export async function listSplitGroups(householdId: string): Promise<SplitGroupSu
       createdBy: g.created_by,
       createdByName: displayName(profileById.get(g.created_by)),
       createdByAvatarUrl: profileById.get(g.created_by)?.avatar_url ?? null,
+      createdAt: g.created_at,
       memberCount: memberIds.length,
       memberPreview: memberIds.slice(0, 4).map((id) => ({ userId: id, name: displayName(profileById.get(id)), avatarUrl: profileById.get(id)?.avatar_url ?? null })),
       totalSpent: Math.round((totalByGroup.get(g.id) ?? 0) * 100) / 100,

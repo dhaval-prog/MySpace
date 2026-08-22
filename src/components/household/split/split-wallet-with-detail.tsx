@@ -6,10 +6,9 @@ import { SplitWalletStack, type WalletCardData } from "@/components/household/sp
 /**
  * Pairs the wallet stack with its Split Detail panel so tapping the front
  * card expands/collapses the panel right there — no navigation to a
- * separate screen. `detail` is server-rendered content (the existing
- * SplitDetailCard, already wired to the active group); this client wrapper
- * only toggles whether it's shown, via the app's usual 0fr/1fr grid-rows
- * expand.
+ * separate screen. `detail` is server-rendered content (SplitDetailPanel,
+ * already wired to the active group); this client wrapper only toggles
+ * whether it's shown, via the app's usual 0fr/1fr grid-rows expand.
  */
 export function SplitWalletWithDetail({
   householdId,
@@ -33,7 +32,13 @@ export function SplitWalletWithDetail({
 
   return (
     <>
-      <SplitWalletStack householdId={householdId} cards={cards} activeGroupId={activeGroupId} onToggleDetail={() => setOpen((v) => !v)} />
+      <SplitWalletStack
+        householdId={householdId}
+        cards={cards}
+        activeGroupId={activeGroupId}
+        onToggleDetail={() => setOpen((v) => !v)}
+        showCardActions
+      />
       <div
         className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
         style={{ gridTemplateRows: open ? "1fr" : "0fr" }}

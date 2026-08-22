@@ -12,6 +12,7 @@ import { SplitGroupWorkspace } from "@/components/household/split/split-group-wo
 import { SplitWalletStack, SplitWalletList, type WalletCardData } from "@/components/household/split/split-wallet-stack";
 import { SplitWalletWithDetail } from "@/components/household/split/split-wallet-with-detail";
 import { SplitDetailCard } from "@/components/household/split/split-detail-card";
+import { SplitDetailPanel } from "@/components/household/split/split-detail-panel";
 import { SplitGroupActionsMenu } from "@/components/household/split/split-group-actions-menu";
 import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
 import { Card } from "@/components/ui/card";
@@ -110,7 +111,23 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
   ) : undefined;
   const walletCards: WalletCardData[] = groups.map((g) => {
     const t = totalsByGroupId.get(g.id);
-    return { group: g, pendingAmount: t?.pendingAmount ?? 0, settledAmount: t?.settledAmount ?? 0 };
+    const canInviteThis = context.myRole === "owner" || context.myRole === "co_owner" || g.createdBy === myUserId;
+    const canDeleteThis = groups.length > 1 && (context.myRole === "owner" || g.createdBy === myUserId);
+    return {
+      group: g,
+      pendingAmount: t?.pendingAmount ?? 0,
+      settledAmount: t?.settledAmount ?? 0,
+      actions: (
+        <SplitGroupActionsMenu
+          householdId={householdId}
+          groupId={g.id}
+          groupName={g.name}
+          canInvite={canInviteThis}
+          canDelete={canDeleteThis}
+          triggerClassName="bg-white/60 text-[#111A14] hover:bg-white/85"
+        />
+      ),
+    };
   });
 
   return (
@@ -157,9 +174,7 @@ export default async function SplitPage({ searchParams }: { searchParams: Promis
             activeGroupId={groupId}
             detail={
               splitSummary && activeGroup ? (
-                <Card className="p-5">
-                  <SplitDetailCard group={activeGroup} summary={splitSummary} pendingAmount={activeGroupPending} actions={groupActions} />
-                </Card>
+                <SplitDetailPanel group={activeGroup} summary={splitSummary} pendingAmount={activeGroupPending} currentUserId={myUserId} />
               ) : null
             }
           />

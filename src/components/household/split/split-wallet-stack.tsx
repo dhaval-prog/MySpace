@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn, initials } from "@/lib/utils";
@@ -40,6 +40,8 @@ export interface WalletCardData {
   pendingAmount: number;
   /** Every confirmed settlement ever recorded in this group (SplitSummary.settledAmount) — paired with pendingAmount for a "% settled" that's about the settlement ledger, not just what's left of totalSpent. */
   settledAmount: number;
+  /** This group's Invite/Delete menu (SplitGroupActionsMenu), pre-rendered server-side since it needs per-group role/ownership checks — null when the viewer has neither permission for this group. */
+  actions?: ReactNode;
 }
 
 function settledPctOf(card: WalletCardData): number {
@@ -47,18 +49,28 @@ function settledPctOf(card: WalletCardData): number {
 }
 
 /** The front card's full content — shared by the live front card and the outgoing one still animating away mid-fling, so the fly-off keeps showing the group it actually belonged to instead of jumping to the next group's numbers. */
-function WalletCardBody({ card }: { card: WalletCardData }) {
+function WalletCardBody({ card, showActions }: { card: WalletCardData; showActions: boolean }) {
   const settledPct = settledPctOf(card);
   return (
     <>
       <div className="flex items-start justify-between gap-2">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#DAEBE2] text-lg">{card.group.icon}</span>
-        <Badge
-          variant={card.pendingAmount > 0.5 ? "outline" : "secondary"}
-          className={card.pendingAmount > 0.5 ? "bg-white font-mono text-[10px] font-bold tracking-wide text-[#111A14] uppercase" : undefined}
-        >
-          {card.pendingAmount > 0.5 ? "Pending" : "Settled"}
-        </Badge>
+        <div className="flex items-center gap-1">
+          <Badge
+            variant={card.pendingAmount > 0.5 ? "outline" : "secondary"}
+            className={card.pendingAmount > 0.5 ? "bg-white font-mono text-[10px] font-bold tracking-wide text-[#111A14] uppercase" : undefined}
+          >
+            {card.pendingAmount > 0.5 ? "Pending" : "Settled"}
+          </Badge>
+          {showActions && card.actions && (
+            // Stops the pointerdown here from also bubbling into the card's
+            // own drag/tap handling — without this, opening the menu (or
+            // tapping an item in it) also started a drag or toggled the
+            // Split Detail panel open, since the card's handlers listen for
+            // pointerdown anywhere within it.
+            <div onPointerDown={(e) => e.stopPropagation()}>{card.actions}</div>
+          )}
+        </div>
       </div>
       <p className="mt-3 text-lg font-bold leading-tight text-[#13241B]">{card.group.name}</p>
       <p className="mt-1 font-mono text-2xl font-bold text-[#111A14]">{inr(card.group.totalSpent)}</p>
@@ -113,12 +125,15 @@ export function SplitWalletStack({
   cards,
   activeGroupId,
   onToggleDetail,
+  showCardActions = false,
 }: {
   householdId: string;
   cards: WalletCardData[];
   activeGroupId: string;
   /** Tapping (not dragging) the front card calls this — left off on desktop, where the group's full detail already sits inline beside the stack. */
   onToggleDetail?: () => void;
+  /** Show each card's own Invite/Delete menu (WalletCardData.actions) in its top-right corner — on for the mobile stack, off for desktop, which already carries that menu on the SplitDetailCard beside it. */
+  showCardActions?: boolean;
 }) {
   const router = useRouter();
   // Which group is shown as front — advanced the instant a fling is
@@ -272,7 +287,7 @@ export function SplitWalletStack({
             zIndex: 10 - i,
           }}
         >
-          <WalletCardBody card={card} />
+          <WalletCardBody card={card} showActions={showCardActions} />
         </Link>
       ))}
 
@@ -299,7 +314,7 @@ export function SplitWalletStack({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        <WalletCardBody card={front} />
+        <WalletCardBody card={front} showActions={showCardActions} />
       </Card>
 
       {/* An in-flight fling's old front, still visible on top while it flies away — frozen to the group it actually belonged to so its numbers don't jump ahead of the navigation underneath. */}
@@ -314,7 +329,7 @@ export function SplitWalletStack({
             transition: `transform ${EXIT_MS}ms ${SPRING_EASING}`,
           }}
         >
-          <WalletCardBody card={outgoingCard} />
+          <WalletCardBody card={outgoingCard} showActions={showCardActions} />
         </Card>
       )}
     </div>

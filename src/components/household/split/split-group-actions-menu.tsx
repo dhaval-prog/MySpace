@@ -16,12 +16,15 @@ export function SplitGroupActionsMenu({
   groupName,
   canInvite,
   canDelete,
+  triggerClassName,
 }: {
   householdId: string;
   groupId: string;
   groupName: string;
   canInvite: boolean;
   canDelete: boolean;
+  /** Override the trigger button's own look — everywhere else it defaults to a plain ghost icon button. Needed on the wallet card, which sits on a colored gradient rather than the white Split Detail card this was designed for. */
+  triggerClassName?: string;
 }) {
   const router = useRouter();
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -36,7 +39,7 @@ export function SplitGroupActionsMenu({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button size="icon-sm" variant="ghost" aria-label="Group actions">
+            <Button size="icon-sm" variant="ghost" aria-label="Group actions" className={triggerClassName}>
               <MoreHorizontal className="size-4" />
             </Button>
           }
