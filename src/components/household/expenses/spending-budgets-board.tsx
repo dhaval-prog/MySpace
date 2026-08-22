@@ -46,12 +46,12 @@ const CARD_THEMES = [
   "bg-[linear-gradient(135deg,#5B80B2_0%,#3C4E78_100%)]",
 ];
 
-/** The white Budget/Spent/Left row inside a budget's focused card — its own bespoke box rather than the shared StatChip, since this trio needs an exact monospace/weight/color treatment (tabular mono values, #586560 labels) that's specific to this one card, not a app-wide stat convention. */
-function BudgetStatBox({ label, value }: { label: string; value: string }) {
+/** The white Budget/Spent/Left row inside a budget's focused card — its own bespoke box rather than the shared StatChip, since this trio needs an exact monospace/weight/color treatment (tabular mono values, distinct "left" color) that's specific to this one card, not an app-wide stat convention. */
+function BudgetStatBox({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "left" }) {
   return (
-    <div className="rounded-xl bg-muted px-3 py-2">
-      <p className="font-mono text-[10px] font-semibold tracking-[0.14em] text-[#586560] uppercase">{label}</p>
-      <p className="mt-0.5 font-mono text-lg font-extrabold text-[#18241F]">{value}</p>
+    <div className="rounded-xl bg-[#EEF4E5] px-3 py-2">
+      <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-[#5C6B61] uppercase">{label}</p>
+      <p className={cn("mt-0.5 font-mono text-lg font-extrabold", tone === "left" ? "text-[#384D14]" : "text-[#1A251E]")}>{value}</p>
     </div>
   );
 }
@@ -104,7 +104,7 @@ export function SpendingBudgetsBoard({
 
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_380px]">
-      <div>
+      <div className="min-w-0">
         <div className="flex items-center justify-between px-1">
           <p className="text-[11px] font-bold tracking-[0.15em] text-[#22332B] uppercase">
             Your cards{" "}
@@ -180,23 +180,23 @@ export function SpendingBudgetsBoard({
                 {(() => {
                   const SelectedIcon = budgetIconFor(selected.goal.icon);
                   return (
-                    <span className="flex size-9 items-center justify-center rounded-2xl bg-[#FCDAD8] text-[#B8323D]">
+                    <span className="flex size-9 items-center justify-center rounded-2xl bg-[#FCE8E8] text-[#D32F42]">
                       <SelectedIcon className="size-4.5" />
                     </span>
                   );
                 })()}
                 <div>
-                  <p className="font-heading text-2xl font-bold leading-tight text-[#1A2B23]">{selected.goal.name}</p>
-                  <p className="font-mono text-[10px] tracking-[0.1em] text-[#6B7A72] uppercase">{resetLabel(selected.goal.deadline)}</p>
+                  <p className="font-heading text-2xl font-bold leading-tight text-[#1D2A23]">{selected.goal.name}</p>
+                  <p className="font-mono text-[10px] font-medium tracking-[0.1em] text-[#68766E] uppercase">{resetLabel(selected.goal.deadline)}</p>
                 </div>
               </div>
-              <span className="rounded-full bg-[#DCE8BA] px-2.5 py-1 font-mono text-xs font-medium text-[#384D14]">{selected.progressPct}% used</span>
+              <span className="rounded-full bg-[#E2ECC8] px-2.5 py-1 font-mono text-xs font-bold text-[#3C5118] uppercase">{selected.progressPct}% used</span>
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               <BudgetStatBox label="Budget" value={inr(selected.goal.target_amount)} />
               <BudgetStatBox label="Spent" value={inr(selected.currentAmount)} />
-              <BudgetStatBox label="Left" value={inr(Math.max(selected.goal.target_amount - selected.currentAmount, 0))} />
+              <BudgetStatBox label="Left" value={inr(Math.max(selected.goal.target_amount - selected.currentAmount, 0))} tone="left" />
             </div>
 
             <div className="mt-4 flex items-center gap-2">
@@ -206,21 +206,28 @@ export function SpendingBudgetsBoard({
                 spendingGoals={spendingGoals}
                 defaultGoalId={selected.goal.id}
                 trigger={
-                  <Button className="flex-1 rounded-2xl bg-[#D83244] text-sm font-semibold hover:bg-[#D83244]/85">
+                  <Button
+                    className="flex-1 rounded-2xl bg-[#D83244] text-sm font-semibold shadow-[0_4px_12px_rgba(216,50,68,0.25)] transition-transform duration-150 ease-out hover:bg-[#D83244]/85 active:scale-[0.96] active:shadow-[0_2px_6px_rgba(216,50,68,0.25)]"
+                  >
                     <Receipt className="size-4" />
                     Add expense
                   </Button>
                 }
               />
               {(isOwner || selected.goal.created_by === currentUserId) && (
-                <Button size="icon" variant="ghost" className="rounded-2xl bg-[#DCE8BA] text-[#384D14]" title="Edit budget">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-2xl bg-[#E2ECC8] text-[#3C5118] transition-transform [transition-timing-function:cubic-bezier(0.175,0.885,0.32,1.275)] duration-200 hover:bg-[#E2ECC8]/85 active:scale-105"
+                  title="Edit budget"
+                >
                   <Pencil className="size-4" />
                 </Button>
               )}
               <Button
                 size="icon"
                 variant="ghost"
-                className="rounded-2xl bg-[#FCDAD8] text-[#D83244]"
+                className="rounded-2xl bg-[#FCE8E8] text-[#D32F42] transition-transform [transition-timing-function:cubic-bezier(0.175,0.885,0.32,1.275)] duration-200 hover:bg-[#FCE8E8]/85 active:scale-105"
                 title="Delete budget"
                 onClick={() => {
                   setDeleteError(null);
