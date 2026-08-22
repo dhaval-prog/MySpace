@@ -1,13 +1,11 @@
 import { redirect } from "next/navigation";
 import { Settings2 } from "lucide-react";
 import { listMyHouseholds, getHouseholdContext } from "@/lib/actions/household";
-import { listExpenses, listExpenseCategories, getExpenseStats } from "@/lib/actions/expenses";
+import { listExpenseCategories, getExpenseStats } from "@/lib/actions/expenses";
 import { listGoals } from "@/lib/actions/household-goals";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CreateHouseholdCta } from "@/components/household/create-household-cta";
 import { JoinHouseholdCta } from "@/components/household/join-household-cta";
-import { CategoryFilterChips } from "@/components/household/expenses/category-filter-chips";
-import { TransactionsList } from "@/components/household/expenses/transactions-list";
 import { SpendingBudgetsBoard } from "@/components/household/expenses/spending-budgets-board";
 import { CreateGoalDialog } from "@/components/household/create-goal-dialog";
 import { MobileBand, DesktopBand, MobileHeroOverlap, RoundIconButton } from "@/components/layout/page-band";
@@ -17,8 +15,8 @@ function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
-export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ id?: string; category?: string }> }) {
-  const { id, category } = await searchParams;
+export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+  const { id } = await searchParams;
   const memberships = await listMyHouseholds();
 
   if (memberships.length === 0) {
@@ -50,8 +48,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const myUserId = context.members.find((m) => m.isMe)?.userId ?? "";
   const isOwner = context.myRole === "owner";
 
-  const [expenses, categories, stats, goals] = await Promise.all([
-    listExpenses(householdId, category ? { categoryId: category } : undefined),
+  const [categories, stats, goals] = await Promise.all([
     listExpenseCategories(householdId),
     getExpenseStats(householdId),
     listGoals(householdId, { status: "active" }),
@@ -98,36 +95,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         </Card>
 
         <SpendingBudgetsBoard householdId={householdId} spendingGoals={spendingGoals} categories={categories} isOwner={isOwner} currentUserId={myUserId} />
-
-        <div className="space-y-3">
-          <p className="px-1 font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">All expenses</p>
-          <CategoryFilterChips householdId={householdId} categories={categories} activeCategoryId={category} />
-          {expenses.length === 0 ? (
-            <Card className="p-8 text-center">
-              <p className="text-sm text-muted-foreground">No expenses yet.</p>
-            </Card>
-          ) : (
-            <TransactionsList expenses={expenses} />
-          )}
-        </div>
       </MobileHeroOverlap>
 
       <div className="hidden space-y-6 px-8 pb-8 md:block">
         <SpendingBudgetsBoard householdId={householdId} spendingGoals={spendingGoals} categories={categories} isOwner={isOwner} currentUserId={myUserId} />
-
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <p className="font-heading text-lg">All expenses</p>
-            <CategoryFilterChips householdId={householdId} categories={categories} activeCategoryId={category} />
-          </div>
-          <div className="mt-4">
-            {expenses.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No expenses yet.</p>
-            ) : (
-              <TransactionsList expenses={expenses} />
-            )}
-          </div>
-        </Card>
       </div>
     </div>
   );

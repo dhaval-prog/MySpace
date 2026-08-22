@@ -66,7 +66,7 @@ export interface ExpenseSummary {
   createdByName: string;
 }
 
-/** Reverse-chronological, optionally narrowed to one category — the Transactions list's data source (grouped by date client-side, same shape Let's Split's expense list uses). */
+/** Reverse-chronological, optionally narrowed to one category or budget — the Spending Budgets board's "recent expenses" data source. */
 export async function listExpenses(householdId: string, opts?: { categoryId?: string; goalId?: string }): Promise<ExpenseSummary[]> {
   const supabase = await createClient();
   let query = supabase
@@ -108,46 +108,6 @@ export async function listExpenses(householdId: string, opts?: { categoryId?: st
     createdBy: e.created_by,
     createdByName: displayName(profileById.get(e.created_by)),
   }));
-}
-
-export interface ExpenseDetail extends ExpenseSummary {
-  canDelete: boolean;
-}
-
-export async function getExpenseDetail(expenseId: string): Promise<ExpenseDetail | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: expense } = await supabase.from("expenses").select("*").eq("id", expenseId).maybeSingle();
-  if (!expense) return null;
-
-  const [{ data: category }, { data: goal }, { data: creatorProfile }, { data: membership }] = await Promise.all([
-    supabase.from("expense_categories").select("name, icon").eq("id", expense.category_id).maybeSingle(),
-    expense.goal_id ? supabase.from("household_goals").select("name").eq("id", expense.goal_id).maybeSingle() : Promise.resolve({ data: null }),
-    supabase.from("profiles").select("*").eq("id", expense.created_by).maybeSingle(),
-    supabase.from("household_members").select("role").eq("household_id", expense.household_id).eq("user_id", user.id).maybeSingle(),
-  ]);
-
-  const isOwner = membership?.role === "owner";
-
-  return {
-    id: expense.id,
-    description: expense.description,
-    amount: expense.amount,
-    expenseDate: expense.expense_date,
-    categoryId: expense.category_id,
-    categoryName: category?.name ?? "Other",
-    categoryIcon: category?.icon ?? "🧾",
-    goalId: expense.goal_id,
-    goalName: goal?.name ?? null,
-    receiptUrl: expense.receipt_url,
-    createdBy: expense.created_by,
-    createdByName: displayName(creatorProfile),
-    canDelete: isOwner || expense.created_by === user.id,
-  };
 }
 
 async function uploadReceiptIfPresent(
@@ -218,18 +178,6 @@ export async function createExpense(
   revalidatePath("/goals");
   revalidatePath("/home");
   return { expenseId: data.id };
-}
-
-/** Same gate as the delete_expenses RLS policy (household owner or whoever created it) — this is a shortcut into that, not a looser rule of its own. */
-export async function deleteExpense(expenseId: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient();
-  const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
-  if (error) return { error: "Something went wrong. Only the household owner or whoever added this expense can delete it." };
-
-  revalidatePath("/expenses");
-  revalidatePath("/goals");
-  revalidatePath("/home");
-  return { ok: true };
 }
 
 export interface ExpenseStats {

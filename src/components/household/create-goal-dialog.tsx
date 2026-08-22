@@ -96,35 +96,37 @@ export function CreateGoalDialog({
           <DialogTitle>{isSpending ? "Create a spending budget" : "Create a savings goal"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setGoalType("saving");
-                setIcon(GOAL_ICON_PRESETS[0]);
-              }}
-              className={cn("flex-1 rounded-lg border px-3 py-2 text-xs font-medium", !isSpending ? "border-primary bg-primary/10" : "")}
-            >
-              Saving Goal
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setGoalType("spending");
-                setIcon(BUDGET_ICON_PRESETS[0]);
-              }}
-              className={cn("flex-1 rounded-lg border px-3 py-2 text-xs font-medium", isSpending ? "border-primary bg-primary/10" : "")}
-            >
-              Spending Budget
-            </button>
-          </div>
+          {defaultGoalType !== "spending" && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setGoalType("saving");
+                  setIcon(GOAL_ICON_PRESETS[0]);
+                }}
+                className={cn("flex-1 rounded-lg border px-3 py-2 text-xs font-medium", !isSpending ? "border-primary bg-primary/10" : "")}
+              >
+                Saving Goal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setGoalType("spending");
+                  setIcon(BUDGET_ICON_PRESETS[0]);
+                }}
+                className={cn("flex-1 rounded-lg border px-3 py-2 text-xs font-medium", isSpending ? "border-primary bg-primary/10" : "")}
+              >
+                Spending Budget
+              </button>
+            </div>
+          )}
 
           {isSpending ? (
             <>
               <p className="-mt-1 text-xs text-muted-foreground">Name it, set the amount, pick the day it resets.</p>
 
               <div className="space-y-2">
-                <Label>Name</Label>
+                <Label className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Name</Label>
                 {categories && categories.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {categories.map((c) => (
@@ -169,7 +171,7 @@ export function CreateGoalDialog({
               </div>
 
               <div className="space-y-2">
-                <Label>Resets on</Label>
+                <Label className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Resets on</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {RESET_DAY_PRESETS.map((day) => {
                     const candidate = nextResetDate(day);
@@ -208,16 +210,18 @@ export function CreateGoalDialog({
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="goal-target">Budget amount</Label>
+              <div className="space-y-2 rounded-2xl bg-muted p-4">
+                <Label htmlFor="goal-target" className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
+                  Budget amount
+                </Label>
                 <Input
                   id="goal-target"
-                  type="number"
-                  min={1}
-                  value={targetAmount}
-                  onChange={(e) => setTargetAmount(e.target.value)}
-                  placeholder="10000"
-                  className="font-heading text-2xl"
+                  type="text"
+                  inputMode="numeric"
+                  value={targetAmount ? `₹${Number(targetAmount).toLocaleString("en-IN")}` : ""}
+                  onChange={(e) => setTargetAmount(e.target.value.replace(/\D/g, ""))}
+                  placeholder="₹0"
+                  className="h-auto border-none bg-transparent p-0 font-heading text-4xl text-foreground shadow-none focus-visible:ring-0"
                 />
                 <div className="flex flex-wrap gap-1.5">
                   {AMOUNT_PRESETS.map((preset) => (
@@ -227,7 +231,7 @@ export function CreateGoalDialog({
                       onClick={() => setTargetAmount(String(preset))}
                       className={cn(
                         "rounded-full border px-3.5 py-1.5 text-sm font-medium",
-                        amount === preset ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-muted"
+                        amount === preset ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-white"
                       )}
                     >
                       ₹{preset.toLocaleString("en-IN")}
