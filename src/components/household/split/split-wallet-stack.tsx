@@ -16,7 +16,7 @@ function inr(n: number): string {
 // its stable position in `cards`, not by drag direction) — mirrors the
 // Expenses budget cards' per-card CARD_THEMES rotation, just in the lighter
 // pastel palette this card's dark-on-light text needs.
-const CARD_THEMES = [
+export const CARD_THEMES = [
   "bg-[linear-gradient(135deg,#B7E4DC_0%,#E1EFEA_100%)]",
   "bg-[linear-gradient(135deg,#F3C5C8_0%,#FBEAE9_100%)]",
   "bg-[linear-gradient(135deg,#CCD9AA_0%,#EDF3E1_100%)]",

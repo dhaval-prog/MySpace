@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SplitWalletStack, type WalletCardData } from "@/components/household/split/split-wallet-stack";
+import { SplitWalletStack, CARD_THEMES, type WalletCardData } from "@/components/household/split/split-wallet-stack";
 import { SplitDetailPanel } from "@/components/household/split/split-detail-panel";
 import { SplitGroupWorkspace } from "@/components/household/split/split-group-workspace";
 import { AddExpenseDialog } from "@/components/household/split/add-expense-dialog";
@@ -64,6 +64,10 @@ export function SplitMobileWorkspace({
 
   const detail = detailsByGroupId.get(displayGroupId);
   const pendingAmount = detail ? detail.balances.reduce((sum, t) => sum + t.amount, 0) : 0;
+  // Same lookup SplitWalletStack itself uses for CARD_THEMES — keeps the
+  // detail panel's hero the same color as the card it just replaced.
+  const cardIndex = Math.max(0, cards.findIndex((c) => c.group.id === displayGroupId));
+  const themeClassName = CARD_THEMES[cardIndex % CARD_THEMES.length];
 
   return (
     <>
@@ -75,6 +79,10 @@ export function SplitMobileWorkspace({
             pendingAmount={pendingAmount}
             currentUserId={currentUserId}
             onClose={() => setDetailOpen(false)}
+            themeClassName={themeClassName}
+            addExpenseAction={
+              <AddExpenseDialog householdId={householdId} groupId={displayGroupId} members={detail.members} currentUserId={currentUserId} />
+            }
           />
         ) : (
           <Card className="p-8 text-center">
@@ -94,12 +102,11 @@ export function SplitMobileWorkspace({
         />
       )}
 
-      <div className="flex items-center justify-between gap-2 pt-6">
-        {canCreateGroup && <CreateSplitGroupButton householdId={householdId} currentUserId={currentUserId} householdMembers={householdMembers} />}
-        {detail?.summary && (
-          <AddExpenseDialog householdId={householdId} groupId={displayGroupId} members={detail.members} currentUserId={currentUserId} />
-        )}
-      </div>
+      {canCreateGroup && (
+        <div className="pt-6">
+          <CreateSplitGroupButton householdId={householdId} currentUserId={currentUserId} householdMembers={householdMembers} />
+        </div>
+      )}
 
       {detail?.summary ? (
         <Card className="p-5">
