@@ -270,18 +270,18 @@ export function SplitWalletStack({
 
   return (
     <div className="relative" style={{ perspective: "800px" }}>
-      {/* Peek cards — each the group's own real card, sized and themed exactly like the front one, just offset further down and scaled slightly smaller behind it. The front card covers all but the bottom edge, which is exactly what reads as "there's a real card stacked back there" rather than a decorative sliver. Rendered first so they sit behind the front card in paint order. */}
+      {/* Peek cards — each the group's own real card, the exact same size as the front one (no shrinking-perspective scale), just offset further down behind it. The front card covers all but the bottom edge, which is exactly what reads as "there's a real card stacked back there" rather than a decorative sliver. Rendered first so they sit behind the front card in paint order. */}
       {peeked.map((card, i) => (
         <Link
           key={card.group.id}
           href={`/split?id=${householdId}&group=${card.group.id}`}
           aria-label={`Switch to ${card.group.name}`}
           className={cn(
-            "absolute inset-x-2 bottom-0 touch-none overflow-hidden rounded-[26px] p-5 select-none",
+            "absolute inset-x-0 bottom-0 touch-none overflow-hidden rounded-[26px] p-5 select-none",
             CARD_THEMES[Math.max(0, cards.findIndex((c) => c.group.id === card.group.id)) % CARD_THEMES.length]
           )}
           style={{
-            transform: `translateY(${(i + 1) * 56}px) scale(${1 - (i + 1) * 0.05})`,
+            transform: `translateY(${(i + 1) * 56}px)`,
             opacity: i === 0 ? 1 : 0.85,
             transition: `transform 260ms ${SPRING_EASING}, opacity 260ms ${SPRING_EASING}`,
             zIndex: 10 - i,
