@@ -86,7 +86,7 @@ export function SpendingBudgetsBoard({
       <div className="rounded-2xl bg-white p-8 text-center">
         <p className="text-sm text-muted-foreground">No spending budgets yet — create one to start tracking a category.</p>
         <div className="mt-4 flex justify-center">
-          <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create Budget" categories={categories} />
+          <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create Budget" />
         </div>
       </div>
     );
@@ -107,7 +107,6 @@ export function SpendingBudgetsBoard({
             <CreateGoalDialog
               householdId={householdId}
               defaultGoalType="spending"
-              categories={categories}
               trigger={
                 <button
                   type="button"

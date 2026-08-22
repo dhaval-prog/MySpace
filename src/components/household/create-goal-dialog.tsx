@@ -10,10 +10,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createGoal } from "@/lib/actions/household-goals";
 import type { HouseholdGoalType } from "@/lib/supabase/types";
-import type { ExpenseCategoryOption } from "@/lib/actions/expenses";
 
 const GOAL_ICON_PRESETS = ["🎯", "✈️", "🏠", "📺", "🧊", "🎓", "🚗", "💍"];
-const BUDGET_ICON_PRESETS = ["💳", "🏠", "🛒", "🎉", "🛍️", "💡", "🚗", "📅"];
+const BUDGET_NAME_PRESETS = [
+  { name: "Fuel", icon: "⛽" },
+  { name: "Health", icon: "❤️" },
+  { name: "Gift", icon: "🎁" },
+  { name: "Home", icon: "🏠" },
+  { name: "Groceries", icon: "🛒" },
+  { name: "Eating Out", icon: "🍽️" },
+  { name: "Shopping", icon: "🛍️" },
+  { name: "Travel", icon: "✈️" },
+];
 const RESET_DAY_PRESETS = [1, 5, 15, 25];
 const AMOUNT_PRESETS = [5000, 10000, 15000, 25000];
 
@@ -31,21 +39,18 @@ export function CreateGoalDialog({
   defaultGoalType = "saving",
   triggerLabel,
   trigger,
-  categories,
 }: {
   householdId: string;
   iconOnly?: boolean;
   defaultGoalType?: HouseholdGoalType;
   triggerLabel?: string;
   trigger?: React.ReactElement;
-  /** Household expense categories — offered as quick-pick name+icon pills when creating a spending budget, so a budget can start out matching a real category instead of always being typed from scratch. */
-  categories?: ExpenseCategoryOption[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [goalType, setGoalType] = useState<HouseholdGoalType>(defaultGoalType);
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState(defaultGoalType === "spending" ? BUDGET_ICON_PRESETS[0] : GOAL_ICON_PRESETS[0]);
+  const [icon, setIcon] = useState(defaultGoalType === "spending" ? BUDGET_NAME_PRESETS[0].icon : GOAL_ICON_PRESETS[0]);
   const [targetAmount, setTargetAmount] = useState("");
   const [deadline, setDeadline] = useState("");
   const [showCustomDate, setShowCustomDate] = useState(false);
@@ -53,7 +58,6 @@ export function CreateGoalDialog({
   const [pending, startTransition] = useTransition();
 
   const isSpending = goalType === "spending";
-  const iconPresets = isSpending ? BUDGET_ICON_PRESETS : GOAL_ICON_PRESETS;
 
   const amount = Number(targetAmount);
   const canSubmit = name.trim().length > 0 && Number.isFinite(amount) && amount > 0;
@@ -61,7 +65,7 @@ export function CreateGoalDialog({
   function resetAll() {
     setGoalType(defaultGoalType);
     setName("");
-    setIcon(defaultGoalType === "spending" ? BUDGET_ICON_PRESETS[0] : GOAL_ICON_PRESETS[0]);
+    setIcon(defaultGoalType === "spending" ? BUDGET_NAME_PRESETS[0].icon : GOAL_ICON_PRESETS[0]);
     setTargetAmount("");
     setDeadline("");
     setShowCustomDate(false);
@@ -112,7 +116,7 @@ export function CreateGoalDialog({
                 type="button"
                 onClick={() => {
                   setGoalType("spending");
-                  setIcon(BUDGET_ICON_PRESETS[0]);
+                  setIcon(BUDGET_NAME_PRESETS[0].icon);
                 }}
                 className={cn("flex-1 rounded-lg border px-3 py-2 text-xs font-medium", isSpending ? "border-primary bg-primary/10" : "")}
               >
@@ -127,40 +131,27 @@ export function CreateGoalDialog({
 
               <div className="space-y-2">
                 <Label className="font-mono text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Name</Label>
-                {categories && categories.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {categories.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setName(c.name);
-                          setIcon(c.icon);
-                        }}
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium",
-                          name === c.name && icon === c.icon ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-muted"
-                        )}
-                      >
-                        <span>{c.icon}</span>
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {iconPresets.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => setIcon(emoji)}
-                        className={`flex size-9 items-center justify-center rounded-full border text-lg ${icon === emoji ? "border-primary bg-primary/10" : "border-transparent bg-muted"}`}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1.5">
+                  {BUDGET_NAME_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        setName(preset.name);
+                        setIcon(preset.icon);
+                      }}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium",
+                        name === preset.name && icon === preset.icon
+                          ? "border-secondary bg-secondary text-secondary-foreground"
+                          : "border-transparent bg-muted"
+                      )}
+                    >
+                      <span>{preset.icon}</span>
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
                 <Input
                   id="goal-name"
                   value={name}
@@ -223,14 +214,14 @@ export function CreateGoalDialog({
                   placeholder="₹0"
                   className="h-auto border-none bg-transparent p-0 font-heading text-4xl text-foreground shadow-none focus-visible:ring-0"
                 />
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid grid-cols-4 gap-1.5">
                   {AMOUNT_PRESETS.map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setTargetAmount(String(preset))}
                       className={cn(
-                        "rounded-full border px-3.5 py-1.5 text-sm font-medium",
+                        "rounded-full border px-1.5 py-1.5 text-center text-xs font-medium",
                         amount === preset ? "border-secondary bg-secondary text-secondary-foreground" : "border-transparent bg-white"
                       )}
                     >
@@ -243,7 +234,7 @@ export function CreateGoalDialog({
           ) : (
             <>
               <div className="flex flex-wrap gap-1.5">
-                {iconPresets.map((emoji) => (
+                {GOAL_ICON_PRESETS.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
@@ -278,9 +269,11 @@ export function CreateGoalDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
+          {defaultGoalType !== "spending" && (
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          )}
           <Button
             disabled={pending || !canSubmit}
             onClick={() =>

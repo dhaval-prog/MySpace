@@ -83,7 +83,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                 {inr(totalBudgeted)} · {inr(stats.totalThisMonth)}
               </p>
             </div>
-            <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create spending budget" categories={categories} />
+            <CreateGoalDialog householdId={householdId} defaultGoalType="spending" triggerLabel="Create spending budget" />
           </div>
         }
       />
