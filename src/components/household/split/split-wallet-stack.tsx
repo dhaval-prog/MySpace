@@ -37,7 +37,7 @@ function pct(numerator: number, denominator: number): number {
 
 export interface WalletCardData {
   group: SplitGroupSummary;
-  /** Money still owed by anyone to anyone in this group — viewer-independent for the active group (from getSimplifiedBalances), a viewer-scoped stand-in for peeked ones. */
+  /** Money still owed by anyone to anyone in this group — viewer-independent, from getSimplifiedBalances() for the active group and getGroupTotals() for every other one. */
   pendingAmount: number;
   /** Every confirmed settlement ever recorded in this group (SplitSummary.settledAmount) — paired with pendingAmount for a "% settled" that's about the settlement ledger, not just what's left of totalSpent. */
   settledAmount: number;
@@ -90,7 +90,7 @@ function WalletCardBody({ card }: { card: WalletCardData }) {
 
 type DragState = { x: number; y: number; dragging: boolean; exitDir: "left" | "right" | null };
 const IDLE_DRAG: DragState = { x: 0, y: 0, dragging: false, exitDir: null };
-/** How long the outgoing card's fly-off / the tap-to-open roll-down transition plays before it's removed/navigated — matches the transition durations below. */
+/** How long the outgoing card's fly-off / the tap "tip forward" acknowledgment plays before it's removed/reset — matches the transition durations below. */
 const EXIT_MS = 260;
 
 /**
@@ -105,19 +105,19 @@ const EXIT_MS = 260;
  * threshold and it flings off-screen (spring-eased) while the next card
  * scales/fades up to take its place; drag short of that and it snaps back.
  * A press that barely moves at all is a tap rather than an aborted drag —
- * see enableTapToOpenDetail.
+ * see onToggleDetail.
  */
 export function SplitWalletStack({
   householdId,
   cards,
   activeGroupId,
-  enableTapToOpenDetail = false,
+  onToggleDetail,
 }: {
   householdId: string;
   cards: WalletCardData[];
   activeGroupId: string;
-  /** Tapping (not dragging) the front card opens /split/[groupId] when set — left off on desktop, where the group's full detail already sits inline beside the stack. */
-  enableTapToOpenDetail?: boolean;
+  /** Tapping (not dragging) the front card calls this — left off on desktop, where the group's full detail already sits inline beside the stack. */
+  onToggleDetail?: () => void;
 }) {
   const router = useRouter();
   // Which group is shown as front — advanced the instant a fling is
@@ -132,8 +132,8 @@ export function SplitWalletStack({
   // to its own data, purely to animate away on top while the (already
   // updated) live front sits underneath at rest.
   const [outgoingCard, setOutgoingCard] = useState<WalletCardData | null>(null);
-  // True while a tapped card is playing its roll-down-and-open transition,
-  // just before navigating to Split Detail.
+  // True while a tapped card is playing its brief "tip forward" acknowledgment
+  // as the Split Detail panel opens/closes below it.
   const [opening, setOpening] = useState(false);
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
   // Mirrors the latest in-flight drag delta outside React state so
@@ -206,9 +206,10 @@ export function SplitWalletStack({
     const pastThreshold = Math.abs(x) > FLING_DISTANCE || velocity > FLING_VELOCITY;
 
     if (!nextGroupId || !pastThreshold) {
-      if (Math.hypot(x, y) < TAP_SLOP && enableTapToOpenDetail) {
+      if (Math.hypot(x, y) < TAP_SLOP && onToggleDetail) {
         setOpening(true);
-        exitTimeoutRef.current = setTimeout(() => router.push(`/split/${front.group.id}?id=${householdId}`), EXIT_MS);
+        exitTimeoutRef.current = setTimeout(() => setOpening(false), EXIT_MS);
+        onToggleDetail();
       } else {
         setDrag((d) => (d.dragging ? IDLE_DRAG : d));
       }
@@ -238,7 +239,7 @@ export function SplitWalletStack({
   const rotation = Math.max(-5, Math.min(5, drag.x / 20));
 
   return (
-    <div className="relative">
+    <div className="relative" style={{ perspective: "800px" }}>
       {/* Peek cards — just enough of a sliver (bottom edge + its own progress bar) to say "there's more here". Rendered first so they sit behind the front card in paint order. */}
       {peeked.map((card, i) => (
         <Link
@@ -267,15 +268,14 @@ export function SplitWalletStack({
             ? undefined
             : opening
               ? {
-                  transform: "translateY(22%) scale(0.9) rotateX(60deg)",
-                  transformOrigin: "bottom center",
-                  opacity: 0,
-                  transition: `transform ${EXIT_MS}ms ease-in, opacity ${EXIT_MS}ms ease-in`,
+                  transform: "scale(0.97) rotateX(8deg)",
+                  transformOrigin: "top center",
+                  transition: `transform ${EXIT_MS}ms ${SPRING_EASING}`,
                 }
               : {
                   transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rotation}deg)`,
                   transition: drag.dragging ? "none" : `transform 260ms ${SPRING_EASING}`,
-                  cursor: nextGroupId ? "grab" : enableTapToOpenDetail ? "pointer" : undefined,
+                  cursor: nextGroupId ? "grab" : onToggleDetail ? "pointer" : undefined,
                 }
         }
         onPointerDown={handlePointerDown}
